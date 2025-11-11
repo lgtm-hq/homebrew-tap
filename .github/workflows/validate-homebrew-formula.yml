@@ -27,38 +27,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Show environment
-        run: |
-          sw_vers
-          brew --version
-          ruby --version
-
-      - name: Brew style (all formulas)
-        run: |
-          for formula in Formula/*.rb; do
-            formula_name=$(basename "$formula" .rb)
-            echo "Checking style for $formula_name"
-            brew style "$formula_name"
-          done
-
-      - name: Brew audit (all formulas)
-        run: |
-          for formula in Formula/*.rb; do
-            formula_name=$(basename "$formula" .rb)
-            echo "Auditing $formula_name"
-            brew audit --strict --online "$formula_name"
-          done
-
-      - name: Install from source (smoke test)
-        run: |
-          for formula in Formula/*.rb; do
-            formula_name=$(basename "$formula" .rb)
-            echo "Installing $formula_name from $formula"
-            brew install --build-from-source "$formula"
-            # Test that the binary exists and runs
-            if command -v "$formula_name" >/dev/null 2>&1; then
-              "$formula_name" --version || "$formula_name" version || true
-            fi
-          done
+      - name: Validate all formulas
+        run: scripts/ci/validate-formulas.sh
 
 
