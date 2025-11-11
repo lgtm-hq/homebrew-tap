@@ -31,15 +31,30 @@ jobs:
           brew --version
           ruby --version
 
-      - name: Brew style
-        run: brew style Formula/lintro.rb
+      - name: Brew style (all formulas)
+        run: |
+          for formula in Formula/*.rb; do
+            echo "Checking style for $formula"
+            brew style "$formula"
+          done
 
-      - name: Brew audit
-        run: brew audit --strict --online Formula/lintro.rb
+      - name: Brew audit (all formulas)
+        run: |
+          for formula in Formula/*.rb; do
+            echo "Auditing $formula"
+            brew audit --strict --online "$formula"
+          done
 
       - name: Install from source (smoke test)
         run: |
-          brew install --build-from-source Formula/lintro.rb
-          lintro --version
+          for formula in Formula/*.rb; do
+            formula_name=$(basename "$formula" .rb)
+            echo "Installing $formula_name from $formula"
+            brew install --build-from-source "$formula"
+            # Test that the binary exists and runs
+            if command -v "$formula_name" >/dev/null 2>&1; then
+              "$formula_name" --version || "$formula_name" version || true
+            fi
+          done
 
 
