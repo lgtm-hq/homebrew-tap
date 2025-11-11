@@ -159,5 +159,3 @@ class Lintro < Formula
     assert_match version.to_s, shell_output("#{bin}/lintro --version")
   end
 end
-
-
