@@ -1,0 +1,45 @@
+---
+name: Quality Check - Homebrew Formula Validation (Tap)
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Formula/**'
+      - '.github/workflows/validate-homebrew-formula.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'Formula/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-formula:
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Show environment
+        run: |
+          sw_vers
+          brew --version
+          ruby --version
+
+      - name: Brew style
+        run: brew style Formula/lintro.rb
+
+      - name: Brew audit
+        run: brew audit --strict --online Formula/lintro.rb
+
+      - name: Install from source (smoke test)
+        run: |
+          brew install --build-from-source Formula/lintro.rb
+          lintro --version
+
+
