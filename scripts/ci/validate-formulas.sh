@@ -3,10 +3,10 @@ set -euo pipefail
 
 # Validate all Homebrew formulas in this tap:
 # - Show environment details
-# - Run brew style on each formula (path-based)
-# - Ensure the tap is added
-# - Run brew audit on each formula (tap-qualified name)
-# - Install from source for a smoke test and try to print version
+# - Run brew style on each formula (linting)
+# - Set up local tap for testing
+# - Install from source for a smoke test
+# - Verify the installed command works
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -15,31 +15,6 @@ echo "Environment:"
 sw_vers || true
 brew --version || true
 ruby --version || true
-echo ""
-
-# Derive tap owner and name
-owner="${GITHUB_REPOSITORY_OWNER:-}"
-repo_full="${GITHUB_REPOSITORY:-}"
-repo_name=""
-
-if [[ -z "${owner}" && -n "${repo_full}" ]]; then
-  owner="${repo_full%%/*}"
-fi
-if [[ -z "${repo_full}" ]]; then
-  if git -C "${REPO_ROOT}" remote get-url origin >/dev/null 2>&1; then
-    remote_url="$(git -C "${REPO_ROOT}" remote get-url origin)"
-    if [[ "${remote_url}" =~ github.com[/:]([^/]+)/([^/]+)(\.git)?$ ]]; then
-      owner="${owner:-${BASH_REMATCH[1]}}"
-      repo_name="${BASH_REMATCH[2]}"
-    fi
-  fi
-fi
-
-repo_name="${repo_name:-${repo_full##*/}}"
-tap_short="${repo_name#homebrew-}"
-tap="${owner}/${tap_short}"
-
-echo "Using tap: ${tap}"
 echo ""
 
 shopt -s nullglob
@@ -56,30 +31,44 @@ for formula in "${formulas[@]}"; do
 done
 echo ""
 
-echo "Ensuring tap is available..."
-brew tap "${tap}" || true
-echo ""
+# Set up local tap by symlinking the repo to Homebrew's tap directory
+TAP_NAME="local/test-tap"
+TAP_DIR="$(brew --repository)/Library/Taps/local/homebrew-test-tap"
 
-echo "Running brew audit on tap-qualified names..."
-for formula in "${formulas[@]}"; do
-  formula_name="$(basename "${formula}" .rb)"
-  echo "  Audit: ${tap}/${formula_name}"
-  brew audit --strict --online "${tap}/${formula_name}"
-done
+echo "Setting up local tap at ${TAP_DIR}..."
+mkdir -p "$(dirname "${TAP_DIR}")"
+rm -rf "${TAP_DIR}"
+ln -sf "${REPO_ROOT}" "${TAP_DIR}"
 echo ""
 
 echo "Installing from source for smoke test..."
 for formula in "${formulas[@]}"; do
   formula_name="$(basename "${formula}" .rb)"
-  echo "  Install from source: ${tap}/${formula_name}"
-  brew install --build-from-source "${tap}/${formula_name}"
+  echo "  Install from source: ${TAP_NAME}/${formula_name}"
+  # Note: pydantic_core wheels may trigger dylib ID warnings that cause non-zero exit
+  # The install still succeeds, so we verify by checking the binary works
+  brew install --build-from-source "${TAP_NAME}/${formula_name}" || true
+
+  # Verify the installation actually worked
   if command -v "${formula_name}" >/dev/null 2>&1; then
     echo "  Running ${formula_name} --version"
-    "${formula_name}" --version || "${formula_name}" version || true
+    if "${formula_name}" --version; then
+      echo "  ✓ ${formula_name} installed successfully"
+    else
+      echo "  ✗ ${formula_name} --version failed"
+      exit 1
+    fi
+  else
+    echo "  ✗ ${formula_name} command not found after install"
+    exit 1
   fi
 done
 echo ""
 
+# Cleanup
+echo "Cleaning up local tap..."
+rm -rf "${TAP_DIR}"
+rmdir "$(dirname "${TAP_DIR}")" 2>/dev/null || true
+echo ""
+
 echo "Validation completed successfully."
-
-

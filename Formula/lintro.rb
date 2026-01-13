@@ -27,6 +27,7 @@ class Lintro < Formula
   depends_on "prettier"
   depends_on "python@3.13"
   depends_on "ruff"
+  depends_on "yamllint"
 
   # Pure Python library dependencies
   resource "annotated-types" do
@@ -155,11 +156,6 @@ class Lintro < Formula
     sha256 "ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"
   end
 
-  resource "yamllint" do
-    url "https://files.pythonhosted.org/packages/46/f2/cd8b7584a48ee83f0bc94f8a32fea38734cefcdc6f7324c4d3bfc699457b/yamllint-1.37.1.tar.gz"
-    sha256 "81f7c0c5559becc8049470d86046b36e96113637bcbe4753ecef06977c00245d"
-  end
-
   # pydantic_core requires Rust to build - use platform-specific wheel
   resource "pydantic_core" do
     on_arm do
@@ -202,10 +198,10 @@ class Lintro < Formula
         - hadolint - Dockerfile linter
         - actionlint - GitHub Actions workflow linter
         - prettier - Code formatter
+        - yamllint - YAML linter
 
       Bundled tools:
         - darglint - Python docstring linter
-        - yamllint - YAML linter
 
       Get started:
         lintro check          # Check files for issues
