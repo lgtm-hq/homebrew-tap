@@ -36,6 +36,5 @@
   "semanticCommitScope": "deps",
   "prTitle": "{{semanticCommitType}}({{semanticCommitScope}}): update {{depName}} to {{newVersion}}",
   "dependencyDashboard": true,
-  "dependencyDashboardTitle": "Dependency Dashboard",
-  "commitMessagePrefix": "chore(deps):"
+  "dependencyDashboardTitle": "Dependency Dashboard"
 }
