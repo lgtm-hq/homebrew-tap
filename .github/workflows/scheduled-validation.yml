@@ -1,7 +1,7 @@
 ---
 name: Scheduled Formula Validation
 
-on:
+"on":
   schedule:
     # Run every Sunday at 6:00 AM UTC
     - cron: '0 6 * * 0'
@@ -26,13 +26,17 @@ jobs:
       has_drift: ${{ steps.version-check.outputs.has_drift }}
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
 
       - name: Check version drift
         id: version-check
-        run: scripts/ci/check-version-drift.sh "${{ env.FORMULA_NAME }}" "${{ env.PYPI_PACKAGE }}"
+        run: |
+          scripts/ci/check-version-drift.sh \
+            "${{ env.FORMULA_NAME }}" \
+            "${{ env.PYPI_PACKAGE }}"
 
       - name: Validate formula
         run: scripts/ci/validate-formulas.sh
@@ -44,7 +48,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Report version drift
         env:
@@ -62,12 +67,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Report validation failure
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           source scripts/lib/github-issues.sh
-          report_validation_failure \
-            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          RUN_URL="${RUN_URL}/actions/runs/${GITHUB_RUN_ID}"
+          report_validation_failure "$RUN_URL"
