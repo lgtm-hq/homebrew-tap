@@ -23,6 +23,7 @@ class Lintro < Formula
   depends_on "bandit"
   depends_on "black"
   depends_on "hadolint"
+  depends_on "libyaml"
   depends_on "mypy"
   depends_on "prettier"
   depends_on "python@3.13"
@@ -186,7 +187,6 @@ class Lintro < Formula
     sha256 "5ae11c259c17b0701618a20c3da343a3eb98b3bc4b5a83d31cdd94f5ebdced8d"
   end
 
-
   # pydantic_core requires Rust to build - use platform-specific wheels
   resource "pydantic_core" do
     on_arm do
@@ -198,7 +198,6 @@ class Lintro < Formula
       sha256 "941103c9be18ac8daf7b7adca8228f8ed6bb7a1849020f643b3a14d15b1924d9"
     end
   end
-
 
   def install
     venv = virtualenv_create(libexec, "python3.13")
