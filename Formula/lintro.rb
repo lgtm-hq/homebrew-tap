@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/TurboCoder13/py-lintro"
-  url "https://files.pythonhosted.org/packages/42/5e/a1d1bf7f33577b371ed685a4898c34ad3301d5f34bd9e642af681aa9128e/lintro-0.27.0.tar.gz"
-  sha256 "f25a8662a72cda8bede83aeb9a011740906ee5a71693af90e36f3fee9e59648d"
+  url "https://files.pythonhosted.org/packages/2d/6d/0185963394b05d70c6d3b2b602225b4efadf424b6f80523c3cbf5cb04b68/lintro-0.28.0.tar.gz"
+  sha256 "91506af8f7fef52c000d1f347b143210d796d9423d16af52c57a8bafd11ed1e1"
   license "MIT"
 
   livecheck do
@@ -23,10 +23,12 @@ class Lintro < Formula
   depends_on "bandit"
   depends_on "black"
   depends_on "hadolint"
+  depends_on "libyaml"
   depends_on "mypy"
   depends_on "prettier"
   depends_on "python@3.13"
   depends_on "ruff"
+  depends_on "semgrep"
   depends_on "shfmt"
   depends_on "yamllint"
 
@@ -180,13 +182,11 @@ class Lintro < Formula
     url "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac53367ae42139cf4b1ca5f36bb3dc6c9d33acdb43655/typing_inspection-0.4.2.tar.gz"
     sha256 "ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"
   end
-
   # darglint requires poetry to build - use wheel
   resource "darglint" do
     url "https://files.pythonhosted.org/packages/69/28/85d1e0396d64422c5218d68e5cdcc53153aa8a2c83c7dbc3ee1502adf3a1/darglint-1.8.1-py3-none-any.whl"
     sha256 "5ae11c259c17b0701618a20c3da343a3eb98b3bc4b5a83d31cdd94f5ebdced8d"
   end
-
 
   # pydantic_core requires Rust to build - use platform-specific wheels
   resource "pydantic_core" do
@@ -199,7 +199,6 @@ class Lintro < Formula
       sha256 "941103c9be18ac8daf7b7adca8228f8ed6bb7a1849020f643b3a14d15b1924d9"
     end
   end
-
 
   def install
     venv = virtualenv_create(libexec, "python3.13")
@@ -233,6 +232,7 @@ class Lintro < Formula
         - actionlint - GitHub Actions workflow linter
         - prettier - Code formatter
         - yamllint - YAML linter
+        - semgrep - Security scanner
 
       Bundled tools:
         - darglint - Python docstring linter
