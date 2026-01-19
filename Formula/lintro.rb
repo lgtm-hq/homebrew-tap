@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/TurboCoder13/py-lintro"
-  url "https://files.pythonhosted.org/packages/2d/6d/0185963394b05d70c6d3b2b602225b4efadf424b6f80523c3cbf5cb04b68/lintro-0.28.0.tar.gz"
-  sha256 "91506af8f7fef52c000d1f347b143210d796d9423d16af52c57a8bafd11ed1e1"
+  url "https://files.pythonhosted.org/packages/26/dc/f134be2275dd327d12b6fd486890d349bfc5de0d2762afddca7582c59a65/lintro-0.29.0.tar.gz"
+  sha256 "72ee2f9914d6635ef8854754042b537d428a655d2e0aca60dae1d87c444d6ef7"
   license "MIT"
 
   livecheck do
@@ -29,6 +29,7 @@ class Lintro < Formula
   depends_on "python@3.13"
   depends_on "ruff"
   depends_on "semgrep"
+  depends_on "shellcheck"
   depends_on "shfmt"
   depends_on "yamllint"
 
@@ -144,8 +145,8 @@ class Lintro < Formula
   end
 
   resource "pytokens" do
-    url "https://files.pythonhosted.org/packages/4e/8d/a762be14dae1c3bf280202ba3172020b2b0b4c537f94427435f19c413b72/pytokens-0.3.0.tar.gz"
-    sha256 "2f932b14ed08de5fcf0b391ace2642f858f1394c0857202959000b68ed7a458a"
+    url "https://files.pythonhosted.org/packages/e5/16/4b9cfd90d55e66ffdb277d7ebe3bc25250c2311336ec3fc73b2673c794d5/pytokens-0.4.0.tar.gz"
+    sha256 "6b0b03e6ea7c9f9d47c5c61164b69ad30f4f0d70a5d9fe7eac4d19f24f77af2d"
   end
 
   resource "pyyaml" do
@@ -233,6 +234,8 @@ class Lintro < Formula
         - prettier - Code formatter
         - yamllint - YAML linter
         - semgrep - Security scanner
+        - shellcheck - Shell script analyzer
+        - shfmt - Shell script formatter
 
       Bundled tools:
         - darglint - Python docstring linter
