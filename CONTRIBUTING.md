@@ -1,26 +1,35 @@
-# Contributing to homebrew-tap
+# Contributing to LGTM Homebrew Tap
 
-Thank you for your interest in contributing to the Lintro Homebrew tap!
+Thank you for your interest in contributing to the LGTM Homebrew tap!
 
 ## How to Contribute
 
 ### Reporting Issues
 
-- **Formula Issues**: If you encounter problems installing or using lintro via
-  Homebrew, please
-  [open an issue](https://github.com/lgtm-hq/homebrew-tap/issues/new)
-- **Lintro Tool Issues**: For issues with lintro itself, please report to the
-  [main repository](https://github.com/lgtm-hq/py-lintro/issues)
+- **Formula Issues**: If you encounter problems installing or using a formula,
+  please [open an issue](https://github.com/lgtm-hq/homebrew-tap/issues/new)
+- **Tool-Specific Issues**: For issues with the tools themselves (not the
+  Homebrew formula), please report to the respective tool's repository
 
 ### Formula Updates
 
-This formula is **automatically updated** when new versions of lintro are
-released to PyPI. Manual updates are generally not needed.
+Formulae are **automatically updated** when new versions are released. Manual
+updates are generally not needed.
 
-If you notice the formula is out of date:
+If you notice a formula is out of date:
 
 1. Check if a PR is already open for the update
 2. If not, feel free to open an issue
+
+### Adding a New Formula
+
+To propose a new formula:
+
+1. Fork the repository
+2. Create a new formula in `Formula/`
+3. Follow [Homebrew's formula cookbook](https://docs.brew.sh/Formula-Cookbook)
+4. Test locally (see below)
+5. Open a Pull Request
 
 ### Making Changes
 
@@ -30,8 +39,8 @@ If you notice the formula is out of date:
 4. Test the formula locally:
 
    ```bash
-   brew install --build-from-source ./Formula/lintro.rb
-   brew test lintro
+   brew install --build-from-source ./Formula/<formula>.rb
+   brew test <formula>
    ```
 
 5. Commit your changes with a clear message
@@ -43,13 +52,13 @@ Before submitting changes, test the formula:
 
 ```bash
 # Install from local formula
-brew install --build-from-source ./Formula/lintro.rb
+brew install --build-from-source ./Formula/<formula>.rb
 
 # Run formula tests
-brew test lintro
+brew test <formula>
 
 # Audit the formula
-brew audit --strict --online lintro
+brew audit --strict --online <formula>
 ```
 
 ## Code of Conduct

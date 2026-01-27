@@ -8,7 +8,8 @@ This repository contains only Homebrew formulae. Security issues related to the 
 | --------- | --------- |
 | Formula   | Yes       |
 
-For security issues with the lintro tool itself, please report to the [main repository](https://github.com/lgtm-hq/py-lintro).
+For security issues with the tools themselves, please report to the respective
+tool's repository.
 
 ## Reporting Security Issues
 

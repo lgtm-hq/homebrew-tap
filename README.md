@@ -1,91 +1,101 @@
 <p align="center">
-  <h1 align="center">Homebrew Tap for Lintro</h1>
-  <p align="center">
-    Install <a href="https://github.com/lgtm-hq/py-lintro">lintro</a> on macOS via Homebrew
-  </p>
+  <img src="https://brew.sh/assets/img/homebrew-256x256.png" width="100" height="100" alt="Homebrew">
+</p>
+
+<h1 align="center">LGTM Homebrew Tap</h1>
+
+<p align="center">
+  <strong>Official Homebrew tap for LGTM tools and utilities</strong>
+</p>
+
+<p align="center">
+  Install and manage LGTM developer tools on macOS with a single command.
+</p>
+
+<p align="center">
+  <a href="#-installation">Installation</a> •
+  <a href="#-available-formulae">Formulae</a> •
+  <a href="#-upgrading">Upgrading</a> •
+  <a href="#-contributing">Contributing</a>
 </p>
 
 ---
 
-## Table of Contents
+## 🚀 Installation
 
-- [Installation](#installation)
-- [Upgrading](#upgrading)
-- [Usage](#usage)
-- [Included Tools](#included-tools)
-- [Requirements](#requirements)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-
-## Installation
+Add the tap to your Homebrew:
 
 ```bash
 brew tap lgtm-hq/tap
-brew install lintro
 ```
 
-## Upgrading
+Then install any available formula:
 
 ```bash
-brew update
-brew upgrade lintro
+brew install <formula-name>
 ```
 
-## Usage
+---
 
-| Command             | Description                  |
-| ------------------- | ---------------------------- |
-| `lintro check`      | Check files for issues       |
-| `lintro format`     | Auto-fix formatting issues   |
-| `lintro list-tools` | View available linting tools |
-| `lintro --version`  | Check installed version      |
+## 📦 Available Formulae
 
-## Included Tools
+<table>
+  <tr>
+    <td width="50">🔧</td>
+    <td><strong><a href="https://github.com/lgtm-hq/py-lintro">lintro</a></strong></td>
+    <td>Unified CLI for code formatting, linting, and quality assurance</td>
+    <td><code>brew install lintro</code></td>
+  </tr>
+</table>
 
-Lintro bundles these tools for unified code quality:
+---
 
-| Tool           | Purpose                        |
-| -------------- | ------------------------------ |
-| **ruff**       | Python linter and formatter    |
-| **black**      | Python code formatter          |
-| **bandit**     | Python security linter         |
-| **darglint**   | Python docstring linter        |
-| **hadolint**   | Dockerfile linter              |
-| **actionlint** | GitHub Actions workflow linter |
-| **prettier**   | Multi-language code formatter  |
-| **yamllint**   | YAML linter                    |
+## ⬆️ Upgrading
 
-## Requirements
+Update Homebrew and upgrade all formulae:
+
+```bash
+brew update && brew upgrade
+```
+
+Or upgrade a specific formula:
+
+```bash
+brew upgrade <formula-name>
+```
+
+---
+
+## 📋 Requirements
 
 | Requirement | Version |
 | ----------- | ------- |
 | macOS       | 10.15+  |
 | Homebrew    | Latest  |
 
-## Documentation
+---
 
-- [Lintro Documentation](https://github.com/lgtm-hq/py-lintro/tree/main/docs)
-- [Lintro Repository](https://github.com/lgtm-hq/py-lintro)
+## 🔄 Formula Maintenance
 
-## Formula Maintenance
-
-This formula is automatically updated when new versions are released to PyPI. The update process is handled by GitHub Actions in the [py-lintro repository](https://github.com/lgtm-hq/py-lintro).
+Formulae are automatically updated when new versions are released. The update
+process is handled by GitHub Actions.
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for
+guidelines.
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE)
+file for details.
 
 ---
 
 <p align="center">
-  <a href="https://github.com/lgtm-hq/py-lintro">Lintro</a> · <a href="https://github.com/lgtm-hq/homebrew-tap/issues">Issues</a> · <a href="CONTRIBUTING.md">Contributing</a>
+  <a href="https://github.com/lgtm-hq">LGTM</a> •
+  <a href="https://github.com/lgtm-hq/homebrew-tap/issues">Issues</a> •
+  <a href="CONTRIBUTING.md">Contributing</a>
 </p>
