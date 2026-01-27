@@ -6,15 +6,15 @@ name: Quality Check - Homebrew Formula Validation (Tap)
   pull_request:
     branches: [main]
     paths:
-      - 'Formula/**'
-      - '.github/workflows/validate-homebrew-formula.yml'
-      - 'scripts/**'
+      - "Formula/**"
+      - ".github/workflows/validate-homebrew-formula.yml"
+      - "scripts/**"
   push:
     branches: [main]
     paths:
-      - 'Formula/**'
-      - '.github/workflows/validate-homebrew-formula.yml'
-      - 'scripts/**'
+      - "Formula/**"
+      - ".github/workflows/validate-homebrew-formula.yml"
+      - "scripts/**"
 
 permissions:
   contents: read

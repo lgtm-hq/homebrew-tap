@@ -16,33 +16,33 @@ PYPI_PACKAGE="${2:-lintro}"
 FORMULA_FILE="$REPO_ROOT/Formula/$FORMULA_NAME.rb"
 
 if [[ ! -f "$FORMULA_FILE" ]]; then
-    log_error "Formula not found: $FORMULA_FILE"
-    exit 1
+	log_error "Formula not found: $FORMULA_FILE"
+	exit 1
 fi
 
 # Extract formula version from URL pattern (supports pre-release like 1.0.0rc1)
-FORMULA_VERSION=$(grep -E '^\s+url\s+"https://files.pythonhosted.org' "$FORMULA_FILE" | \
-    sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+[^"]*)\.tar\.gz.*/\1/')
+FORMULA_VERSION=$(grep -E '^\s+url\s+"https://files.pythonhosted.org' "$FORMULA_FILE" |
+	sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+[^"]*)\.tar\.gz.*/\1/')
 
 if [[ -z "$FORMULA_VERSION" ]]; then
-    log_error "Could not extract version from formula"
-    exit 1
+	log_error "Could not extract version from formula"
+	exit 1
 fi
 
 # Get latest PyPI version
-if ! PYPI_VERSION=$(curl -sf "https://pypi.org/pypi/$PYPI_PACKAGE/json" | \
-    python3 -c "import sys, json; print(json.load(sys.stdin)['info']['version'])"); then
-    log_error "Could not fetch PyPI version"
-    exit 1
+if ! PYPI_VERSION=$(curl -sf "https://pypi.org/pypi/$PYPI_PACKAGE/json" |
+	python3 -c "import sys, json; print(json.load(sys.stdin)['info']['version'])"); then
+	log_error "Could not fetch PyPI version"
+	exit 1
 fi
 
 # Compare versions
 if [[ "$FORMULA_VERSION" == "$PYPI_VERSION" ]]; then
-    HAS_DRIFT="false"
-    log_success "Versions match: $FORMULA_VERSION"
+	HAS_DRIFT="false"
+	log_success "Versions match: $FORMULA_VERSION"
 else
-    HAS_DRIFT="true"
-    log_warning "Version drift: formula=$FORMULA_VERSION, PyPI=$PYPI_VERSION"
+	HAS_DRIFT="true"
+	log_warning "Version drift: formula=$FORMULA_VERSION, PyPI=$PYPI_VERSION"
 fi
 
 # Output results

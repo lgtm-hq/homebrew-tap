@@ -16,19 +16,19 @@ NC='\033[0m' # No Color
 # =============================================================================
 
 log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+	echo -e "${BLUE}[INFO]${NC} $1"
 }
 
 log_success() {
-    echo -e "${GREEN}[OK]${NC} $1"
+	echo -e "${GREEN}[OK]${NC} $1"
 }
 
 log_warning() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+	echo -e "${YELLOW}[WARN]${NC} $1"
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1" >&2
+	echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
 # =============================================================================
@@ -38,13 +38,13 @@ log_error() {
 # Set a GitHub Actions output variable
 # Usage: set_github_output "key" "value"
 set_github_output() {
-    local key="$1"
-    local value="$2"
-    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-        echo "$key=$value" >> "$GITHUB_OUTPUT"
-    fi
-    # Also echo for local testing
-    echo "$key=$value"
+	local key="$1"
+	local value="$2"
+	if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+		echo "$key=$value" >>"$GITHUB_OUTPUT"
+	fi
+	# Also echo for local testing
+	echo "$key=$value"
 }
 
 # =============================================================================
@@ -53,12 +53,12 @@ set_github_output() {
 
 # Check if running in CI environment
 is_ci() {
-    [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]
+	[[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]
 }
 
 # Get repository root (assumes script is sourced from scripts/ subdirectory)
 get_repo_root() {
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[1]:-${BASH_SOURCE[0]}}")" && pwd)"
-    (cd "$script_dir" && git rev-parse --show-toplevel 2>/dev/null) || dirname "$(dirname "$script_dir")"
+	local script_dir
+	script_dir="$(cd "$(dirname "${BASH_SOURCE[1]:-${BASH_SOURCE[0]}}")" && pwd)"
+	(cd "$script_dir" && git rev-parse --show-toplevel 2>/dev/null) || dirname "$(dirname "$script_dir")"
 }

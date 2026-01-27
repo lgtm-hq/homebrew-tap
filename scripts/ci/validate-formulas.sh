@@ -22,15 +22,15 @@ echo ""
 shopt -s nullglob
 formulas=("$REPO_ROOT"/Formula/*.rb)
 if [[ ${#formulas[@]} -eq 0 ]]; then
-    log_error "No formulas found in $REPO_ROOT/Formula"
-    exit 1
+	log_error "No formulas found in $REPO_ROOT/Formula"
+	exit 1
 fi
 
 # Style check
 log_info "Running brew style on formula files..."
 for formula in "${formulas[@]}"; do
-    log_info "  Style: $formula"
-    brew style "$formula"
+	log_info "  Style: $formula"
+	brew style "$formula"
 done
 echo ""
 
@@ -42,9 +42,9 @@ echo ""
 # Install and verify each formula
 log_info "Installing from source for smoke test..."
 for formula in "${formulas[@]}"; do
-    formula_name="$(basename "$formula" .rb)"
-    install_local_formula "$formula_name"
-    verify_formula "$formula_name" || exit 1
+	formula_name="$(basename "$formula" .rb)"
+	install_local_formula "$formula_name"
+	verify_formula "$formula_name" || exit 1
 done
 echo ""
 
