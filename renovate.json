@@ -18,7 +18,6 @@
       "matchUpdateTypes": ["major"],
       "groupName": "all major dependencies",
       "groupSlug": "all-major",
-      "matchPackageNames": ["**"],
       "automerge": false
     }
   ],
