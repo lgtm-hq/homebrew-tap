@@ -1,13 +1,13 @@
 # Homebrew Tap for Lintro
 
-This repository contains the Homebrew formula for [lintro](https://github.com/TurboCoder13/py-lintro), a unified CLI tool for code formatting, linting, and quality assurance.
+This repository contains the Homebrew formula for [lintro](https://github.com/lgtm-hq/py-lintro), a unified CLI tool for code formatting, linting, and quality assurance.
 
 ## Installation
 
 To install lintro via Homebrew:
 
 ```bash
-brew tap TurboCoder13/tap
+brew tap lgtm-hq/tap
 brew install lintro
 ```
 
@@ -45,9 +45,9 @@ lintro --version      # Check version
 
 ## Documentation
 
-For more information, visit the [lintro documentation](https://github.com/TurboCoder13/py-lintro/tree/main/docs).
+For more information, visit the [lintro documentation](https://github.com/lgtm-hq/py-lintro/tree/main/docs).
 
 ## Formula Maintenance
 
-This formula is automatically updated when new versions are released to PyPI. The update process is handled by GitHub Actions workflows in the [py-lintro repository](https://github.com/TurboCoder13/py-lintro).
+This formula is automatically updated when new versions are released to PyPI. The update process is handled by GitHub Actions workflows in the [py-lintro repository](https://github.com/lgtm-hq/py-lintro).
 
