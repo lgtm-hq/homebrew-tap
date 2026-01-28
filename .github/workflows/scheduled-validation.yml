@@ -43,7 +43,7 @@ jobs:
     name: Report Version Drift
     needs: validate-formula
     if: needs.validate-formula.outputs.has_drift == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         # v4.2.2
@@ -62,7 +62,7 @@ jobs:
     name: Notify on Failure
     needs: validate-formula
     if: failure()
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         # v4.2.2
