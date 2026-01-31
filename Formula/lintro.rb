@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/81/d0/22874cfd7de86b9e978b41d4daf9856628710ea629cbfaba1431226874b6/lintro-0.42.4.tar.gz"
-  sha256 "1cf559620e61155a44e42acbf3fcde82abc189651b069e1f6230476aff3c5caa"
+  url "https://files.pythonhosted.org/packages/17/87/1a5296bf2083d2ffaab5b5d82bf07b05fff97f35d1307d8d561e3822bcb3/lintro-0.42.5.tar.gz"
+  sha256 "91b1fd5b29f75ecfe650e2f005138374d1af59b05b79a7475d92d2f53b753c1b"
   license "MIT"
 
   livecheck do
@@ -21,14 +21,13 @@ class Lintro < Formula
   # CLI tools installed via Homebrew
   depends_on "actionlint"
   depends_on "bandit"
+  depends_on "node"  # Required for oxlint and oxfmt via npm
   depends_on "black"
   depends_on "gitleaks"
   depends_on "hadolint"
   depends_on "libyaml"
   depends_on "markdownlint-cli2"
   depends_on "mypy"
-  depends_on "oxfmt"
-  depends_on "oxlint"
   depends_on "prettier"
   depends_on "python@3.13"
   depends_on "ruff"
@@ -230,6 +229,11 @@ class Lintro < Formula
 
     # Install lintro itself
     venv.pip_install_and_link buildpath
+
+    # Install oxlint and oxfmt via npm (node dependency provides npm)
+    system "npm", "install", "-g", "--prefix", libexec, "oxlint", "oxfmt"
+    bin.install_symlink Dir[libexec/"bin/oxlint"]
+    bin.install_symlink Dir[libexec/"bin/oxfmt"]
   end
 
   def caveats
@@ -247,8 +251,6 @@ class Lintro < Formula
         - actionlint - GitHub Actions workflow linter
         - gitleaks - Secret detection in git repos
         - markdownlint-cli2 - Markdown linter
-        - oxlint - JavaScript/TypeScript linter (Rust-based)
-        - oxfmt - JavaScript/TypeScript formatter
         - prettier - Code formatter
         - yamllint - YAML linter
         - semgrep - Security scanner
@@ -256,6 +258,10 @@ class Lintro < Formula
         - shfmt - Shell script formatter
         - sqlfluff - SQL linter and formatter
         - taplo - TOML linter and formatter
+
+      Included tools (installed via npm):
+        - oxlint - JavaScript/TypeScript linter (Rust-based)
+        - oxfmt - JavaScript/TypeScript formatter
 
       Bundled tools:
         - pydoclint - Python docstring linter
