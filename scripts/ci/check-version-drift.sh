@@ -21,7 +21,9 @@ if [[ ! -f "$FORMULA_FILE" ]]; then
 fi
 
 # Extract formula version from URL pattern (supports pre-release like 1.0.0rc1)
+# Use head -1 to only get the main formula URL (first match), not resource URLs
 FORMULA_VERSION=$(grep -E '^\s+url\s+"https://files.pythonhosted.org' "$FORMULA_FILE" |
+	head -1 |
 	sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+[^"]*)\.tar\.gz.*/\1/')
 
 if [[ -z "$FORMULA_VERSION" ]]; then
