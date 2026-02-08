@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/96/d8/410f6cf72f313945ca782181626446880a5f61ec7d96d90b336ece1a365b/lintro-0.48.0.tar.gz"
-  sha256 "b5f8d039f14566c5465b455a0d3378293812d964225ffb79689b7b1c2ce87cf3"
+  url "https://files.pythonhosted.org/packages/da/44/d1751df6c588216a9d163a93895a2198dc0043425a20472ef62e36bde4c5/lintro-0.49.0.tar.gz"
+  sha256 "6edd953da49063216300bfe74cbf40d1626562c26d080a9ce46fbd30a68a67f6"
   license "MIT"
 
   livecheck do
@@ -172,8 +172,8 @@ class Lintro < Formula
   end
 
   resource "setuptools" do
-    url "https://files.pythonhosted.org/packages/0d/1c/73e719955c59b8e424d015ab450f51c0af856ae46ea2da83eba51cc88de1/setuptools-81.0.0.tar.gz"
-    sha256 "487b53915f52501f0a79ccfd0c02c165ffe06631443a886740b91af4b7a5845a"
+    url "https://files.pythonhosted.org/packages/82/f3/748f4d6f65d1756b9ae577f329c951cda23fb900e4de9f70900ced962085/setuptools-82.0.0.tar.gz"
+    sha256 "22e0a2d69474c6ae4feb01951cb69d515ed23728cf96d05513d36e42b62b37cb"
   end
 
   resource "stevedore" do
