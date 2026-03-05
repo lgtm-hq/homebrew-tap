@@ -93,10 +93,10 @@ get_formula_command() {
 	# Find the actual binary in the formula's Cellar bin directory
 	if [[ -d "$cellar_bin" ]]; then
 		local bin_dir
-		bin_dir=$(find "$cellar_bin" -maxdepth 2 -type d -name bin | head -1)
+		bin_dir=$(find "$cellar_bin" -maxdepth 2 -type d -name bin -print -quit)
 		if [[ -n "$bin_dir" ]]; then
 			local binary
-			binary=$(find "$bin_dir" -maxdepth 1 -type f -perm +111 | head -1)
+			binary=$(find "$bin_dir" -maxdepth 1 -type f -perm -111 -print -quit)
 			if [[ -n "$binary" ]]; then
 				basename "$binary"
 				return 0
