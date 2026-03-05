@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/47/da/ec0d5b5bcbdedfae2ac6ce91db86f88550ec0d449dab4a2216d8cc98be8b/lintro-0.52.8.tar.gz"
-  sha256 "cad5464d217b9cd9574c22deac73c8ea12d89edee351b299d44855fc1a9f7e75"
+  url "https://files.pythonhosted.org/packages/d7/dd/b12667e56e145082e41b62df68f6744c5f4ec160451353e4d050ac5f9082/lintro-0.52.9.tar.gz"
+  sha256 "a23714383e072113d03e05435d17d509fc846f8edea1c8d244b9c621d72683f3"
   license "MIT"
 
   livecheck do
@@ -182,8 +182,8 @@ class Lintro < Formula
   end
 
   resource "tabulate" do
-    url "https://files.pythonhosted.org/packages/ec/fe/802052aecb21e3797b8f7902564ab6ea0d60ff8ca23952079064155d1ae1/tabulate-0.9.0.tar.gz"
-    sha256 "0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c"
+    url "https://files.pythonhosted.org/packages/46/58/8c37dea7bbf769b20d58e7ace7e5edfe65b849442b00ffcdd56be88697c6/tabulate-0.10.0.tar.gz"
+    sha256 "e2cfde8f79420f6deeffdeda9aaec3b6bc5abce947655d17ac662b126e48a60d"
   end
 
   resource "typing-extensions" do
@@ -202,15 +202,14 @@ class Lintro < Formula
   end
 
   # pydantic_core requires Rust to build - use platform-specific wheels
-  # Version must match pydantic's pinned pydantic-core requirement
   resource "pydantic_core" do
     on_arm do
-      url "https://files.pythonhosted.org/packages/94/02/abfa0e0bda67faa65fef1c84971c7e45928e108fe24333c81f3bfe35d5f5/pydantic_core-2.41.5-cp313-cp313-macosx_11_0_arm64.whl"
-      sha256 "112e305c3314f40c93998e567879e887a3160bb8689ef3d2c04b6cc62c33ac34"
+      url "https://files.pythonhosted.org/packages/eb/a7/dfba778590b8b7fc2660320d6124b666b902fe7f3bb60f79bfd75f8d6cfb/pydantic_core-2.42.0-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "c042694870c20053b8814a57c416cd2c6273fe462a440460005c791c24c39baf"
     end
     on_intel do
-      url "https://files.pythonhosted.org/packages/87/06/8806241ff1f70d9939f9af039c6c35f2360cf16e93c2ca76f184e76b1564/pydantic_core-2.41.5-cp313-cp313-macosx_10_12_x86_64.whl"
-      sha256 "941103c9be18ac8daf7b7adca8228f8ed6bb7a1849020f643b3a14d15b1924d9"
+      url "https://files.pythonhosted.org/packages/d9/73/f1ca9122a23924bb1b09e15b09e48dcf1ccbef8eb7151ffde8ba7723350e/pydantic_core-2.42.0-cp313-cp313-macosx_10_12_x86_64.whl"
+      sha256 "02fd2b4a62efa12e004fce2bfd2648cf8c39efc5dfc5ed5f196eb4ccefc7db4e"
     end
   end
 
