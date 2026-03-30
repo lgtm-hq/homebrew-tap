@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/77/76/28860078c0a12d1380a1a7b4279df4fa2e926de171364cb820898a5b3b7c/lintro-0.57.4.tar.gz"
-  sha256 "9e440c324dfb8960d1ee2b4199899974b923f1f623972f8aaafd0a407163ff97"
+  url "https://files.pythonhosted.org/packages/c2/24/2798a24b798f498e7d4e2afb010f5443387abba47bd02267307955d0b650/lintro-0.57.5.tar.gz"
+  sha256 "27d5fb1135d7867921f6fbe2ca51895973fa1136bc55212ed6d6cd56b26b3690"
   license "MIT"
 
   livecheck do
@@ -152,8 +152,8 @@ class Lintro < Formula
   end
 
   resource "pygments" do
-    url "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b0140bde72ea885a803b82086995367bf2037de0159d924/pygments-2.19.2.tar.gz"
-    sha256 "636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887"
+    url "https://files.pythonhosted.org/packages/c3/b2/bc9c9196916376152d655522fdcebac55e66de6603a76a02bca1b6414f6c/pygments-2.20.0.tar.gz"
+    sha256 "6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f"
   end
 
   resource "pytokens" do
