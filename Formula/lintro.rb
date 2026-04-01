@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/64/23/9535812f8e1d05f7a66f8fa36e4b9ab2f1fa9de99f85f2d6f2961b3ebaa9/lintro-0.58.1.tar.gz"
-  sha256 "8389bb93c2826eb728a05b66538c4f20027c390d3ba688764fa805c74acb4b27"
+  url "https://files.pythonhosted.org/packages/55/08/72c143def0d0464d73a2cca56bcc6cc9cb150f71e4a89d0a2bf9af6c6e70/lintro-0.58.2.tar.gz"
+  sha256 "b862ce59162d542073e8f3afca0c46ba68c5dfda853de3aa3d35dc4702ad4c8f"
   license "MIT"
 
   livecheck do
