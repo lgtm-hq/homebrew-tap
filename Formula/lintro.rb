@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/4a/b1/98358cfd82e852d5dfa350b0ff61026170facef64042558fd8e8be5f3170/lintro-0.58.4.tar.gz"
-  sha256 "9a99a028b090792ebd30d013ace11c19230eecb1058d89ab0cc9e573b3371893"
+  url "https://files.pythonhosted.org/packages/c1/b5/75149e8dd72b6dd962af1cd4ab380f05ceb9f35112d11f0ced675847c0c3/lintro-0.58.5.tar.gz"
+  sha256 "87495eb6abed78a65cea3c43eeb89a54264e1f5ae492b24fe8af8ac6356ed841"
   license "MIT"
 
   livecheck do
@@ -234,42 +234,29 @@ class Lintro < Formula
 
   def caveats
     <<~EOS
-      Lintro is now installed!
+      Lintro is now installed (#{deps.count} Homebrew formulae included).
 
-      Included tools (installed via Homebrew):
-        - ruff - Python linter and formatter
-        - black - Python code formatter
-        - mypy - Python type checker
-        - bandit - Python security linter
-        - clippy - Rust linter (via rust)
-        - rustfmt - Rust formatter (via rust)
-        - hadolint - Dockerfile linter
-        - actionlint - GitHub Actions workflow linter
-        - gitleaks - Secret detection in git repos
-        - markdownlint-cli2 - Markdown linter
-        - oxlint - JavaScript/TypeScript linter
-        - oxfmt - JavaScript/TypeScript formatter
-        - prettier - Code formatter
-        - yamllint - YAML linter
-        - semgrep - Security scanner
-        - shellcheck - Shell script analyzer
-        - shfmt - Shell script formatter
-        - sqlfluff - SQL linter and formatter
-        - taplo - TOML linter and formatter
+      Python quality:   ruff, black, mypy, bandit, pydoclint (bundled)
+      YAML / TOML:      yamllint, taplo
+      Shell:            shellcheck, shfmt
+      Markdown:         markdownlint-cli2
+      JS / TS:          oxlint, oxfmt, prettier
+      Dockerfiles:      hadolint
+      GitHub Actions:   actionlint
+      Security:         gitleaks, semgrep
+      Rust:             clippy, rustfmt (via rust)
+      SQL:              sqlfluff
 
-      Bundled tools:
-        - pydoclint - Python docstring linter
+      Not installed automatically (install if needed):
+        cargo install cargo-audit cargo-deny   # Rust dependency auditing
+        npm install -g astro svelte-check vue-tsc  # Framework type-checkers
 
-      Optional (install manually via cargo):
-        - cargo-audit - Rust dependency vulnerability scanner
-          Install with: cargo install cargo-audit
+      Run 'lintro doctor' to check tool status and get install hints.
 
       Get started:
-        lintro check          # Check files for issues
-        lintro format         # Auto-fix issues
-        lintro list-tools     # View available tools
-
-      Documentation: https://github.com/lgtm-hq/py-lintro/tree/main/docs
+        lintro check .        # Lint your project
+        lintro format .       # Auto-fix issues
+        lintro doctor         # Check which tools are available
     EOS
   end
 
