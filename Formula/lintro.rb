@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/a5/04/6919873691240776bb8e7fc69ee69eaeb4b9bc3307a0e7fed6ccccd0d623/lintro-0.61.0.tar.gz"
-  sha256 "61294d436b3d24c11bf31a03b132ec5dd28c8f9fd444f05e330119c786ec0a1f"
+  url "https://files.pythonhosted.org/packages/d9/73/cbeb90e3842a03f4e0a4ffbf89e5cf636109189fafc626283bd4426d0f6a/lintro-0.61.1.tar.gz"
+  sha256 "e521948b2d0426e720381d0177d29fb0d4077aaab2611f064f8910a3ad18393b"
   license "MIT"
 
   livecheck do
@@ -132,8 +132,8 @@ class Lintro < Formula
   end
 
   resource "pathspec" do
-    url "https://files.pythonhosted.org/packages/2e/17/9c3094b822982b9f1ea666d8580ce59000f61f87c1663556fb72031ad9ec/pathspec-1.1.0.tar.gz"
-    sha256 "f5d7c555da02fd8dde3e4a2354b6aba817a89112fa8f333f7917a2a4834dd080"
+    url "https://files.pythonhosted.org/packages/5a/82/42f767fc1c1143d6fd36efb827202a2d997a375e160a71eb2888a925aac1/pathspec-1.1.1.tar.gz"
+    sha256 "17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a"
   end
 
   resource "pip" do
