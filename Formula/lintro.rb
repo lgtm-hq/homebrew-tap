@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/f1/55/475e0f07659faff0443e32299c02d94b059b646946481836e033e323ae52/lintro-0.62.1.tar.gz"
-  sha256 "7aa61f573937bdc39ffb7caf26b2f5f25aca720b6e423a89a79f4d8ba24e4f9e"
+  url "https://files.pythonhosted.org/packages/ca/9c/320dcdce9b92ec94b39ff787d9377c533dd8c5df56c927558df562d2fef7/lintro-0.62.3.tar.gz"
+  sha256 "36f597be0177a16f234870b8094db572f9f1691613f23f278611bda65d122228"
   license "MIT"
 
   livecheck do
@@ -67,8 +67,8 @@ class Lintro < Formula
   end
 
   resource "coverage" do
-    url "https://files.pythonhosted.org/packages/9d/e0/70553e3000e345daff267cec284ce4cbf3fc141b6da229ac52775b5428f1/coverage-7.13.5.tar.gz"
-    sha256 "c81f6515c4c40141f83f502b07bbfa5c240ba25bbe73da7b33f1e5b6120ff179"
+    url "https://files.pythonhosted.org/packages/23/7f/d0720730a397a999ffc0fd3f5bebef347338e3a47b727da66fbb228e2ff2/coverage-7.14.0.tar.gz"
+    sha256 "057a6af2f160a85384cde4ab36f0d2777bae1057bae255f95413cdd382aa5c74"
   end
 
   resource "coverage-badge" do
@@ -102,13 +102,13 @@ class Lintro < Formula
   end
 
   resource "idna" do
-    url "https://files.pythonhosted.org/packages/ce/cc/762dfb036166873f0059f3b7de4565e1b5bc3d6f28a414c13da27e442f99/idna-3.13.tar.gz"
-    sha256 "585ea8fe5d69b9181ec1afba340451fba6ba764af97026f92a91d4eef164a242"
+    url "https://files.pythonhosted.org/packages/82/77/7b3966d0b9d1d31a36ddf1746926a11dface89a83409bf1483f0237aa758/idna-3.15.tar.gz"
+    sha256 "ca962446ea538f7092a95e057da437618e886f4d349216d2b1e294abfdb65fdc"
   end
 
   resource "librt" do
-    url "https://files.pythonhosted.org/packages/39/cb/c1945e506893b5b8577fb45a60c80e3ffe4a82092a04a6f29b0b951d9a24/librt-0.10.0.tar.gz"
-    sha256 "1aba1e8aa4e3307a7be68a74149545fde7451964dc0235a8bec5704a17bdda42"
+    url "https://files.pythonhosted.org/packages/40/08/9e7f6b5d2b5bed6ad055cdd5925f192bb403a51280f86b56554d9d0699a2/librt-0.11.0.tar.gz"
+    sha256 "075dc3ef4458a278e0195cbf6ac9d38808d9b906c5a6c7f7f79c3888276a3fb1"
   end
 
   resource "loguru" do
