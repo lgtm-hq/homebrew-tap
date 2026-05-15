@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/ca/9c/320dcdce9b92ec94b39ff787d9377c533dd8c5df56c927558df562d2fef7/lintro-0.62.3.tar.gz"
-  sha256 "36f597be0177a16f234870b8094db572f9f1691613f23f278611bda65d122228"
+  url "https://files.pythonhosted.org/packages/b9/87/cbb7df63b8e6a484d1f271da568eda67b0f9c73846ac4ed7b01339293990/lintro-0.62.4.tar.gz"
+  sha256 "ed0cc901d428af712b988d83e50f757c8e1f53e31270c686a966366a83dccfd6"
   license "MIT"
 
   livecheck do
@@ -52,8 +52,8 @@ class Lintro < Formula
   end
 
   resource "ast-serialize" do
-    url "https://files.pythonhosted.org/packages/a9/9d/912fefab0e30aee6a3af8a62bbea4a81b29afa4ba2c973d31170620a26de/ast_serialize-0.3.0.tar.gz"
-    sha256 "1bc3ca09a63a021376527c4e938deedd11d11d675ce850e6f9c7487f5889992b"
+    url "https://files.pythonhosted.org/packages/e2/1f/50f241d4e01fe75f4bba6a209edd4047c4b26acf70992ff885fd161f79cb/ast_serialize-0.4.0.tar.gz"
+    sha256 "74e4e634ab82d1466acf0be27043178570b98ebeaa3165f9240a6fad4c286471"
   end
 
   resource "certifi" do
@@ -142,8 +142,8 @@ class Lintro < Formula
   end
 
   resource "pip" do
-    url "https://files.pythonhosted.org/packages/48/83/0d7d4e9efe3344b8e2fe25d93be44f64b65364d3c8d7bc6dc90198d5422e/pip-26.0.1.tar.gz"
-    sha256 "c4037d8a277c89b320abe636d59f91e6d0922d08a05b60e85e53b296613346d8"
+    url "https://files.pythonhosted.org/packages/b6/48/cb9b7a682f6fe01a4221e1728941dd4ac3cd9090a17db3779d6ff490b602/pip-26.1.1.tar.gz"
+    sha256 "d36762751d156a4ee895de8af39aa0abeeeb577f93a2eca6ab62467bbf0f8a78"
   end
 
   resource "platformdirs" do
