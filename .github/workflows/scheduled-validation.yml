@@ -18,7 +18,7 @@ env:
 jobs:
   validate-formula:
     name: Validate Formula Installation
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 20
     outputs:
       formula_version: ${{ steps.version-check.outputs.formula_version }}
