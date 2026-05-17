@@ -1,0 +1,46 @@
+---
+name: Merge - Release Bot Tap PR
+
+"on":
+  workflow_run:
+    workflows:
+      - Quality Check - Homebrew Formula Validation (Tap)
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  merge-release-bot-pr:
+    runs-on: ubuntu-24.04
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        # Pinned actions/checkout@v4.2.2.
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Create GitHub App token
+        id: app-token
+        # Pinned actions/create-github-app-token@v3.
+        # yamllint disable-line rule:line-length
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ secrets.HOMEBREW_TAP_APP_ID }}
+          private-key: ${{ secrets.HOMEBREW_TAP_APP_PRIVATE_KEY }}
+          owner: lgtm-hq
+          repositories: homebrew-tap
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Merge trusted release-bot PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          WORKFLOW_RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: bash scripts/ci/merge-release-bot-pr.sh
