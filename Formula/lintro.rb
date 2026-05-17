@@ -9,8 +9,8 @@ class Lintro < Formula
 
   desc "Unified CLI tool for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/01/5e/8c01328e0ac717f52e7566d2f777a86066500b4d95ecd1c785231fca2980/lintro-0.63.1.tar.gz"
-  sha256 "e2abea5936f6de50d2886dd2c46acdc9293b49e00017a8a78554cd35ab22e806"
+  url "https://files.pythonhosted.org/packages/6c/99/972d0bf04470c3d36164ec323b34e09c6f0f72c9db1e8dfb5e75f275145f/lintro-0.63.2.tar.gz"
+  sha256 "0d6fcd706aab55b7028b523736d2db76ffef8711d8eb2a36b7e6df6202de636f"
   license "MIT"
 
   livecheck do
@@ -62,8 +62,8 @@ class Lintro < Formula
   end
 
   resource "click" do
-    url "https://files.pythonhosted.org/packages/bb/63/f9e1ea081ce35720d8b92acde70daaedace594dc93b693c869e0d5910718/click-8.3.3.tar.gz"
-    sha256 "398329ad4837b2ff7cbe1dd166a4c0f8900c3ca3a218de04466f38f6497f18a2"
+    url "https://files.pythonhosted.org/packages/23/e4/796662cd90cf80e3a363c99db2b88e0e394b988a575f60a17e16440cd011/click-8.4.0.tar.gz"
+    sha256 "638f1338fe1235c8f4e008e4a8a254fb5c5fbdcbb40ece3c9142ebb78e792973"
   end
 
   resource "coverage" do
@@ -202,8 +202,8 @@ class Lintro < Formula
   end
   # pydoclint - use wheel for consistency
   resource "pydoclint" do
-    url "https://files.pythonhosted.org/packages/87/6f/cc2b231dc78d8c3aaa674a676db190b8f8071c50134af8f8cf39b9b8e8df/pydoclint-0.8.3-py3-none-any.whl"
-    sha256 "5fc9b82d0d515afce0908cb70e8ff695a68b19042785c248c4f227ad66b4a164"
+    url "https://files.pythonhosted.org/packages/0b/f9/f15c95d6b200167cb22c5eca5eecfa9d28a8ee3f74095f1cd2345c71f2f9/pydoclint-0.8.4-py3-none-any.whl"
+    sha256 "5e0f94f785d0e902faacebb117aadf84d6e30c5f781e0fdd0ee03c3b80ea2098"
   end
 
   # pydantic_core requires Rust to build - use platform-specific wheels
