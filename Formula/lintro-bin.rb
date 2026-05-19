@@ -6,7 +6,7 @@
 class LintroBin < Formula
   desc "Unified CLI for code quality (binary)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  version "0.63.2"
+  version "0.63.4"
   license "MIT"
 
   RELEASE_BASE = "https://github.com/lgtm-hq/py-lintro/releases"
@@ -14,11 +14,11 @@ class LintroBin < Formula
   on_macos do
     on_arm do
       url "#{RELEASE_BASE}/download/v#{version}/lintro-macos-arm64"
-      sha256 "2ea939b568c5ae3618418ceda4a69d8022738a14aa485122a06c6f6487f74f80"
+      sha256 "6bcde7b588a2a8251cce57852b403ae40cf759f45d625d3b9f3d795413082b34"
     end
     on_intel do
       url "#{RELEASE_BASE}/download/v#{version}/lintro-macos-x86_64"
-      sha256 "3a9d68eae234ee9593de7938e3a783ba41f8e5fb707a05011f5140eca0d7a26e"
+      sha256 "a813ddc59408a539189ef8f6d69aa226a0535d75915f9a95faaa104248a89b1c"
     end
   end
 
