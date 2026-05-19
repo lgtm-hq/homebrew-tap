@@ -1,5 +1,5 @@
 ---
-# Homebrew tap — shell, workflow, and docs only (no Rust/Python/Node workspaces).
+# Homebrew tap — workflows, shell scripts, and docs (no Rust/Python/Node).
 # https://github.com/lgtm-hq/py-lintro
 
 enforce:
@@ -9,7 +9,6 @@ execution:
   enabled_tools:
     - actionlint
     - gitleaks
-    - markdownlint
     - osv_scanner
     - prettier
     - semgrep
@@ -19,12 +18,24 @@ execution:
   tool_order: priority
   fail_fast: false
 
+defaults:
+  yamllint:
+    extends: default
+    rules:
+      comments-indentation: disable
+      comments:
+        min-spaces-from-content: 1
+      line-length:
+        max: 88
+        allow-non-breakable-inline-mappings: true
+
+  shellcheck:
+    severity: warning
+
 tools:
   actionlint:
     enabled: true
   gitleaks:
-    enabled: true
-  markdownlint:
     enabled: true
   osv_scanner:
     enabled: true
