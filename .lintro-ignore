@@ -1,3 +1,4 @@
 # Homebrew tap — ignore generated/vendor paths from lintro
 
 .lintro/*
+Formula/

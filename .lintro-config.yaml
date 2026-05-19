@@ -1,0 +1,40 @@
+---
+# Homebrew tap — shell, workflow, and docs only (no Rust/Python/Node workspaces).
+# https://github.com/lgtm-hq/py-lintro
+
+enforce:
+  line_length: 88
+
+execution:
+  enabled_tools:
+    - actionlint
+    - gitleaks
+    - markdownlint
+    - osv_scanner
+    - prettier
+    - semgrep
+    - shellcheck
+    - shfmt
+    - yamllint
+  tool_order: priority
+  fail_fast: false
+
+tools:
+  actionlint:
+    enabled: true
+  gitleaks:
+    enabled: true
+  markdownlint:
+    enabled: true
+  osv_scanner:
+    enabled: true
+  prettier:
+    enabled: true
+  semgrep:
+    enabled: true
+  shellcheck:
+    enabled: true
+  shfmt:
+    enabled: true
+  yamllint:
+    enabled: true
