@@ -28,6 +28,10 @@ tools:
     enabled: true
   gitleaks:
     enabled: true
+  # This tap has no Python files. Keep applicable tools enabled, but skip
+  # mypy until py-lintro#930 treats no-Python repos as a clean Docker no-op.
+  mypy:
+    enabled: false
   osv_scanner:
     enabled: true
   prettier:
