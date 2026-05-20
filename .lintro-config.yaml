@@ -1,20 +1,11 @@
 ---
-# Homebrew tap — workflows, shell scripts, and docs (no Rust/Python/Node).
+# Homebrew tap — run the full lintro tool set, with tap-specific defaults below.
 # https://github.com/lgtm-hq/py-lintro
 
 enforce:
   line_length: 88
 
 execution:
-  enabled_tools:
-    - actionlint
-    - gitleaks
-    - osv_scanner
-    - prettier
-    - semgrep
-    - shellcheck
-    - shfmt
-    - yamllint
   tool_order: priority
   fail_fast: false
 
