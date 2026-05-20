@@ -43,7 +43,7 @@ TITLE="$(
 	gh pr view "$PR_NUMBER" \
 		--repo "$REPO" \
 		--json title \
-		--jq -r '.title'
+		--jq '.title'
 )"
 
 if [[ ! "$TITLE" =~ ^chore\(homebrew\):\ update\ lintro\ to\  ]]; then
