@@ -1,0 +1,2 @@
+# Report warning and above (skip info-level SC1091 on sourced libs).
+severity=warning
