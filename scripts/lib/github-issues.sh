@@ -4,6 +4,7 @@
 # Requires: gh CLI authenticated with issues:write permission
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh disable=SC1091 # Dynamic SCRIPT_DIR source is intentional; lintro issue #928 tracks ShellCheck source-path support.
 source "$SCRIPT_DIR/common.sh"
 
 # =============================================================================
