@@ -33,7 +33,8 @@ AUTHOR_LOGIN="$(
 		--jq '.author.login'
 )"
 
-if [[ "$AUTHOR_LOGIN" != "homebrew-tap-release-bot" && "$AUTHOR_LOGIN" != "homebrew-tap-release-bot[bot]" ]]; then
+# GitHub App authors appear as app/<slug> via GraphQL and <slug>[bot] elsewhere.
+if [[ "$AUTHOR_LOGIN" != "app/homebrew-tap-release-bot" && "$AUTHOR_LOGIN" != "homebrew-tap-release-bot[bot]" ]]; then
 	echo "Skipping merge: PR #${PR_NUMBER} author is '${AUTHOR_LOGIN}', expected release bot."
 	exit 0
 fi
