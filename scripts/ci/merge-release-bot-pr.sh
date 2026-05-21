@@ -51,5 +51,5 @@ if [[ ! "$TITLE" =~ ^chore\(homebrew\):\ update\ lintro\ to\  ]]; then
 	exit 0
 fi
 
-echo "Merging PR #${PR_NUMBER} (squash, delete branch)."
-gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --delete-branch
+echo "Enabling auto-merge for PR #${PR_NUMBER} (squash)."
+gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash
