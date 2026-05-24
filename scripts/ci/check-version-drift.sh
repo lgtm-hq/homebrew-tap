@@ -19,14 +19,18 @@ extract_formula_version() {
 	local formula_file="$1"
 
 	local version
-	version=$(grep -E '^\s+url\s+"https://files.pythonhosted.org' "$formula_file" |
-		head -1 |
-		sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+[^"]*)\.tar\.gz.*/\1/')
+	version=$(
+		{
+			grep -E '^\s+url\s+"https://files.pythonhosted.org' "$formula_file" || true
+		} | head -1 | sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+[^"]*)\.tar\.gz.*/\1/'
+	)
 
 	if [[ -z "$version" ]]; then
-		version=$(grep -E '^\s+version\s+"' "$formula_file" |
-			head -1 |
-			sed -E 's/.*version\s+"([^"]+)".*/\1/')
+		version=$(
+			{
+				grep -E '^\s+version\s+"' "$formula_file" || true
+			} | head -1 | sed -E 's/.*version[[:space:]]+"([^"]+)".*/\1/'
+		)
 	fi
 
 	if [[ -z "$version" ]]; then
