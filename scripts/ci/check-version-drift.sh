@@ -19,18 +19,12 @@ extract_formula_version() {
 	local formula_file="$1"
 
 	local version
-	version=$(
-		{
-			grep -E '^\s+url\s+"https://files.pythonhosted.org' "$formula_file" || true
-		} | head -1 | sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+[^"]*)\.tar\.gz.*/\1/'
-	)
+	version=$(sed -nE 's/^[[:space:]]*url[[:space:]]+"https:\/\/files\.pythonhosted\.org.*-([0-9]+\.[0-9]+\.[0-9]+[^"]*)\.tar\.gz.*/\1/p' "$formula_file" |
+		head -1)
 
 	if [[ -z "$version" ]]; then
-		version=$(
-			{
-				grep -E '^\s+version\s+"' "$formula_file" || true
-			} | head -1 | sed -E 's/.*version[[:space:]]+"([^"]+)".*/\1/'
-		)
+		version=$(sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p' "$formula_file" |
+			head -1)
 	fi
 
 	if [[ -z "$version" ]]; then
@@ -80,10 +74,8 @@ done
 if [[ ${#FORMULAS[@]} -eq 1 ]]; then
 	FORMULA_VERSION_OUTPUT="${FORMULA_VERSIONS[0]#*=}"
 else
-	FORMULA_VERSION_OUTPUT=$(
-		IFS=', '
-		echo "${FORMULA_VERSIONS[*]}"
-	)
+	FORMULA_VERSION_OUTPUT=$(printf '%s, ' "${FORMULA_VERSIONS[@]}")
+	FORMULA_VERSION_OUTPUT="${FORMULA_VERSION_OUTPUT%, }"
 fi
 
 set_github_output "formula_version" "$FORMULA_VERSION_OUTPUT"
