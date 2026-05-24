@@ -11,6 +11,19 @@ source "$SCRIPT_DIR/common.sh"
 # Issue Management Functions
 # =============================================================================
 
+# Ensure a GitHub label exists, creating it if missing
+# Usage: ensure_label "label-name" "description" "color-hex"
+ensure_label() {
+	local name="$1"
+	local description="${2:-}"
+	local color="${3:-ededed}"
+
+	if ! gh label list --json name --jq ".[].name" 2>/dev/null | grep -qx "$name"; then
+		log_info "Creating missing label: $name"
+		gh label create "$name" --description "$description" --color "$color" 2>/dev/null || true
+	fi
+}
+
 # Find an existing open issue by label
 # Usage: issue_number=$(find_open_issue "label-name")
 find_open_issue() {
@@ -18,12 +31,20 @@ find_open_issue() {
 	gh issue list --state open --label "$label" --json number --jq '.[0].number // empty' 2>/dev/null || echo ""
 }
 
-# Create a new issue
+# Create a new issue, ensuring all labels exist first
 # Usage: create_issue "title" "body" "label1,label2"
 create_issue() {
 	local title="$1"
 	local body="$2"
 	local labels="$3"
+
+	local IFS=','
+	for label in $labels; do
+		label="${label#"${label%%[![:space:]]*}"}"
+		label="${label%"${label##*[![:space:]]}"}"
+		[[ -z "$label" ]] && continue
+		ensure_label "$label"
+	done
 
 	gh issue create \
 		--title "$title" \

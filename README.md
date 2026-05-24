@@ -43,14 +43,14 @@ brew install <formula-name>
   <tr>
     <td width="50">🔧</td>
     <td><strong><a href="https://github.com/lgtm-hq/py-lintro">lintro</a></strong></td>
-    <td>Unified CLI for code formatting, linting, and quality assurance</td>
+    <td>Lightweight standalone binary (no Python required)</td>
     <td><code>brew install lintro</code></td>
   </tr>
   <tr>
     <td width="50">📦</td>
-    <td><strong><a href="https://github.com/lgtm-hq/py-lintro">lintro-bin</a></strong></td>
-    <td>Pre-built binary (faster install, no dependencies)</td>
-    <td><code>brew install lintro-bin</code> <em>(coming soon)</em></td>
+    <td><strong><a href="https://github.com/lgtm-hq/py-lintro">lintro-full</a></strong></td>
+    <td>PyPI install with all linting tools bundled via Homebrew dependencies</td>
+    <td><code>brew install lintro-full</code></td>
   </tr>
 </table>
 

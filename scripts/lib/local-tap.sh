@@ -84,9 +84,9 @@ install_local_formula() {
 }
 
 # Resolve the installed binary path for a formula
-# Some formulas install under a different binary name (e.g., lintro-bin -> lintro)
+# Some formulas install under a different binary name than the formula name
 # Returns the absolute path to the binary, or the formula name as fallback
-# Usage: cmd=$(get_formula_command "lintro-bin")
+# Usage: cmd=$(get_formula_command "lintro")
 get_formula_command() {
 	local formula="$1"
 	local prefix
