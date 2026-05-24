@@ -12,7 +12,6 @@ permissions:
   issues: write
 
 env:
-  FORMULA_NAME: lintro
   PYPI_PACKAGE: lintro
 
 jobs:
@@ -32,9 +31,7 @@ jobs:
       - name: Check version drift
         id: version-check
         run: |
-          scripts/ci/check-version-drift.sh \
-            "${{ env.FORMULA_NAME }}" \
-            "${{ env.PYPI_PACKAGE }}"
+          scripts/ci/check-version-drift.sh --all "${{ env.PYPI_PACKAGE }}"
 
       - name: Validate formula
         run: scripts/ci/validate-formulas.sh

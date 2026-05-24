@@ -3,7 +3,9 @@
 #
 # Supports both PyPI-based formulas (url pattern) and binary formulas (version field).
 # Outputs: formula_version, pypi_version, has_drift (true/false)
-# Usage: check-version-drift.sh [formula-name] [pypi-package]
+# Usage:
+#   check-version-drift.sh [formula-name] [pypi-package]
+#   check-version-drift.sh --all [pypi-package]
 
 set -euo pipefail
 
@@ -13,48 +15,73 @@ source "$SCRIPT_DIR/../lib/common.sh"
 
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-FORMULA_NAME="${1:-lintro}"
-PYPI_PACKAGE="${2:-lintro}"
-FORMULA_FILE="$REPO_ROOT/Formula/$FORMULA_NAME.rb"
+extract_formula_version() {
+	local formula_file="$1"
 
-if [[ ! -f "$FORMULA_FILE" ]]; then
-	log_error "Formula not found: $FORMULA_FILE"
-	exit 1
-fi
-
-# Extract formula version: try PyPI tar.gz URL first, then fall back to version field
-FORMULA_VERSION=$(grep -E '^\s+url\s+"https://files.pythonhosted.org' "$FORMULA_FILE" |
-	head -1 |
-	sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+[^"]*)\.tar\.gz.*/\1/')
-
-if [[ -z "$FORMULA_VERSION" ]]; then
-	FORMULA_VERSION=$(grep -E '^\s+version\s+"' "$FORMULA_FILE" |
+	local version
+	version=$(grep -E '^\s+url\s+"https://files.pythonhosted.org' "$formula_file" |
 		head -1 |
-		sed -E 's/.*version\s+"([^"]+)".*/\1/')
+		sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+[^"]*)\.tar\.gz.*/\1/')
+
+	if [[ -z "$version" ]]; then
+		version=$(grep -E '^\s+version\s+"' "$formula_file" |
+			head -1 |
+			sed -E 's/.*version\s+"([^"]+)".*/\1/')
+	fi
+
+	if [[ -z "$version" ]]; then
+		log_error "Could not extract version from formula: $formula_file"
+		return 1
+	fi
+
+	echo "$version"
+}
+
+if [[ "${1:-}" == "--all" ]]; then
+	PYPI_PACKAGE="${2:-lintro}"
+	FORMULAS=("lintro" "lintro-full")
+else
+	FORMULAS=("${1:-lintro}")
+	PYPI_PACKAGE="${2:-lintro}"
 fi
 
-if [[ -z "$FORMULA_VERSION" ]]; then
-	log_error "Could not extract version from formula"
-	exit 1
-fi
-
-# Get latest PyPI version
 if ! PYPI_VERSION=$(curl -sf "https://pypi.org/pypi/$PYPI_PACKAGE/json" |
 	python3 -c "import sys, json; print(json.load(sys.stdin)['info']['version'])"); then
 	log_error "Could not fetch PyPI version"
 	exit 1
 fi
 
-# Compare versions
-if [[ "$FORMULA_VERSION" == "$PYPI_VERSION" ]]; then
-	HAS_DRIFT="false"
-	log_success "Versions match: $FORMULA_VERSION"
+HAS_DRIFT="false"
+FORMULA_VERSIONS=()
+
+for FORMULA_NAME in "${FORMULAS[@]}"; do
+	FORMULA_FILE="$REPO_ROOT/Formula/$FORMULA_NAME.rb"
+
+	if [[ ! -f "$FORMULA_FILE" ]]; then
+		log_error "Formula not found: $FORMULA_FILE"
+		exit 1
+	fi
+
+	FORMULA_VERSION=$(extract_formula_version "$FORMULA_FILE")
+	FORMULA_VERSIONS+=("$FORMULA_NAME=$FORMULA_VERSION")
+
+	if [[ "$FORMULA_VERSION" == "$PYPI_VERSION" ]]; then
+		log_success "$FORMULA_NAME matches PyPI: $FORMULA_VERSION"
+	else
+		HAS_DRIFT="true"
+		log_warning "Version drift ($FORMULA_NAME): formula=$FORMULA_VERSION, PyPI=$PYPI_VERSION"
+	fi
+done
+
+if [[ ${#FORMULAS[@]} -eq 1 ]]; then
+	FORMULA_VERSION_OUTPUT="${FORMULA_VERSIONS[0]#*=}"
 else
-	HAS_DRIFT="true"
-	log_warning "Version drift: formula=$FORMULA_VERSION, PyPI=$PYPI_VERSION"
+	FORMULA_VERSION_OUTPUT=$(
+		IFS=', '
+		echo "${FORMULA_VERSIONS[*]}"
+	)
 fi
 
-# Output results
-set_github_output "formula_version" "$FORMULA_VERSION"
+set_github_output "formula_version" "$FORMULA_VERSION_OUTPUT"
 set_github_output "pypi_version" "$PYPI_VERSION"
 set_github_output "has_drift" "$HAS_DRIFT"
