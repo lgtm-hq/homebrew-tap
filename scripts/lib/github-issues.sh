@@ -40,6 +40,9 @@ create_issue() {
 
 	local IFS=','
 	for label in $labels; do
+		label="${label#"${label%%[![:space:]]*}"}"
+		label="${label%"${label##*[![:space:]]}"}"
+		[[ -z "$label" ]] && continue
 		ensure_label "$label"
 	done
 
