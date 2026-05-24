@@ -9,8 +9,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/6b/fb/99ef4d001ebec3c876150f1351b63c293d50b62ddc3a26164e12f9f67026/lintro-0.64.1.tar.gz"
-  sha256 "00a5b231ba7eff3ce149b8fdd0ea32871eae4d6e01d516c46fdc7e468abfb365"
+  url "https://files.pythonhosted.org/packages/7f/bc/82cce730216646fd79e2ac734ae84a9c9772868d493d435f83fee080ae2f/lintro-0.64.2.tar.gz"
+  sha256 "55c34a997e3e306cf86b8854a8678f2bd330c2efa94f3277c9b414237f0bf30f"
   license "MIT"
 
   livecheck do
@@ -57,8 +57,8 @@ class LintroFull < Formula
   end
 
   resource "click" do
-    url "https://files.pythonhosted.org/packages/23/e4/796662cd90cf80e3a363c99db2b88e0e394b988a575f60a17e16440cd011/click-8.4.0.tar.gz"
-    sha256 "638f1338fe1235c8f4e008e4a8a254fb5c5fbdcbb40ece3c9142ebb78e792973"
+    url "https://files.pythonhosted.org/packages/9b/98/518d8e5081007684232226f475082b30087d0f585e8457db087298259f49/click-8.4.1.tar.gz"
+    sha256 "918b5633eddf6b41c32d4f454bf0de810065c74e3f7dbf8ee5452f8be88d3e96"
   end
 
   resource "defusedxml" do
@@ -82,8 +82,8 @@ class LintroFull < Formula
   end
 
   resource "idna" do
-    url "https://files.pythonhosted.org/packages/82/77/7b3966d0b9d1d31a36ddf1746926a11dface89a83409bf1483f0237aa758/idna-3.15.tar.gz"
-    sha256 "ca962446ea538f7092a95e057da437618e886f4d349216d2b1e294abfdb65fdc"
+    url "https://files.pythonhosted.org/packages/1a/88/bcf9709822fe69d02c2a6a77956c98ce6ea8ca8767a9aadcedc7eb6a2390/idna-3.16.tar.gz"
+    sha256 "d7a6da03db833450fca25d2358ac9ff06cd624577a4aea3a596d5c0f77b8e03d"
   end
 
   resource "loguru" do
