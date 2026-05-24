@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # check-version-drift.sh - Check for version drift between formula and PyPI
 #
+# Supports both PyPI-based formulas (url pattern) and binary formulas (version field).
 # Outputs: formula_version, pypi_version, has_drift (true/false)
 # Usage: check-version-drift.sh [formula-name] [pypi-package]
 
@@ -21,11 +22,16 @@ if [[ ! -f "$FORMULA_FILE" ]]; then
 	exit 1
 fi
 
-# Extract formula version from URL pattern (supports pre-release like 1.0.0rc1)
-# Use head -1 to only get the main formula URL (first match), not resource URLs
+# Extract formula version: try PyPI tar.gz URL first, then fall back to version field
 FORMULA_VERSION=$(grep -E '^\s+url\s+"https://files.pythonhosted.org' "$FORMULA_FILE" |
 	head -1 |
 	sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+[^"]*)\.tar\.gz.*/\1/')
+
+if [[ -z "$FORMULA_VERSION" ]]; then
+	FORMULA_VERSION=$(grep -E '^\s+version\s+"' "$FORMULA_FILE" |
+		head -1 |
+		sed -E 's/.*version\s+"([^"]+)".*/\1/')
+fi
 
 if [[ -z "$FORMULA_VERSION" ]]; then
 	log_error "Could not extract version from formula"
