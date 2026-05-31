@@ -9,8 +9,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/7f/bc/82cce730216646fd79e2ac734ae84a9c9772868d493d435f83fee080ae2f/lintro-0.64.2.tar.gz"
-  sha256 "55c34a997e3e306cf86b8854a8678f2bd330c2efa94f3277c9b414237f0bf30f"
+  url "https://files.pythonhosted.org/packages/f1/ff/39995011b4ea7e396c0d4d5d2706ec45baecd2060c26c0c5acaa9addec3b/lintro-0.64.3.tar.gz"
+  sha256 "42be63a1e1134721ad82f7ceddca27477ea7e0141f30fb63568c909b8e20694b"
   license "MIT"
 
   livecheck do
@@ -82,8 +82,8 @@ class LintroFull < Formula
   end
 
   resource "idna" do
-    url "https://files.pythonhosted.org/packages/1a/88/bcf9709822fe69d02c2a6a77956c98ce6ea8ca8767a9aadcedc7eb6a2390/idna-3.16.tar.gz"
-    sha256 "d7a6da03db833450fca25d2358ac9ff06cd624577a4aea3a596d5c0f77b8e03d"
+    url "https://files.pythonhosted.org/packages/b9/28/99c51f664567218d824af024c0251650fb27e4ca066df188dab0769c5b91/idna-3.17.tar.gz"
+    sha256 "5eb0cb53bc467c12eadcf6de83163ad8527cec9416f44b9b61b19caedad2b87f"
   end
 
   resource "loguru" do
