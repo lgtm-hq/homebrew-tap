@@ -9,8 +9,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/f1/ff/39995011b4ea7e396c0d4d5d2706ec45baecd2060c26c0c5acaa9addec3b/lintro-0.64.3.tar.gz"
-  sha256 "42be63a1e1134721ad82f7ceddca27477ea7e0141f30fb63568c909b8e20694b"
+  url "https://files.pythonhosted.org/packages/7a/3c/41591542a79fd68dd8295d864016e9d0c1fa033bb3720a9addc68abeb136/lintro-0.64.4.tar.gz"
+  sha256 "ef4e4d75fedf9ccbf274be82fd7630f3f61a8503d3e3474c55b39d6e9c90b340"
   license "MIT"
 
   livecheck do
@@ -82,8 +82,8 @@ class LintroFull < Formula
   end
 
   resource "idna" do
-    url "https://files.pythonhosted.org/packages/b9/28/99c51f664567218d824af024c0251650fb27e4ca066df188dab0769c5b91/idna-3.17.tar.gz"
-    sha256 "5eb0cb53bc467c12eadcf6de83163ad8527cec9416f44b9b61b19caedad2b87f"
+    url "https://files.pythonhosted.org/packages/cd/63/9496c57188a2ee585e0f1db071d75089a11e98aa86eb99d9d7618fc1edce/idna-3.18.tar.gz"
+    sha256 "ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848"
   end
 
   resource "loguru" do
@@ -142,8 +142,8 @@ class LintroFull < Formula
   end
   # pydoclint - use wheel for consistency
   resource "pydoclint" do
-    url "https://files.pythonhosted.org/packages/0b/f9/f15c95d6b200167cb22c5eca5eecfa9d28a8ee3f74095f1cd2345c71f2f9/pydoclint-0.8.4-py3-none-any.whl"
-    sha256 "5e0f94f785d0e902faacebb117aadf84d6e30c5f781e0fdd0ee03c3b80ea2098"
+    url "https://files.pythonhosted.org/packages/b7/36/ca79e758c05bb40afb6a03178fa68618149f31293b8cee6969d0fe1bfcb7/pydoclint-0.8.6-py3-none-any.whl"
+    sha256 "8f2a8b995d69cb41631d56e653e38e522cd227916a04587db842c07b7977906e"
   end
 
   # pydantic_core requires Rust to build - use platform-specific wheels
