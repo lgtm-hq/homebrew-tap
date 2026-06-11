@@ -1,0 +1,30 @@
+# typed: strict
+# frozen_string_literal: true
+
+# Homebrew formula for {{FORMULA_KEY}}
+# Auto-generated - do not edit manually
+class {{CLASS_NAME}} < Formula
+  include Language::Python::Virtualenv
+
+  desc "{{DESCRIPTION}}"
+  homepage "{{HOMEPAGE}}"
+  url "{{TARBALL_URL}}"
+  sha256 "{{TARBALL_SHA}}"
+  license "{{LICENSE}}"
+
+  livecheck do
+    url :stable
+    strategy :pypi
+  end
+
+  depends_on "python@{{PYTHON_VERSION}}"
+
+  def install
+    virtualenv_create(libexec, "{{PYTHON_VENV}}")
+    pip_install_and_link buildpath
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/{{TEST_BINARY}} --version")
+  end
+end

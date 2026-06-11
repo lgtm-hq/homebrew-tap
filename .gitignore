@@ -1,1 +1,4 @@
 .lintro/
+.test-venv/
+coverage/
+__pycache__/

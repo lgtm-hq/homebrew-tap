@@ -83,8 +83,95 @@ brew upgrade <formula-name>
 
 ## 🔄 Formula Maintenance
 
-Formulae are automatically updated when new versions are released. The update
-process is handled by GitHub Actions.
+Formulae are updated tap-side when caller repos send a `repository_dispatch`
+event. The tap generates formulas, opens a PR, validates them, and auto-merges
+after CI passes.
+
+### Dispatch contract (caller repos)
+
+```yaml
+notify-homebrew-tap:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: peter-evans/repository-dispatch@v3
+      with:
+        token: ${{ secrets.HOMEBREW_TAP_DISPATCH_TOKEN }}
+        repository: lgtm-hq/homebrew-tap
+        event-type: update-formula
+        client-payload: >-
+          {
+            "formula": "winnow",
+            "version": "v0.0.1",
+            "pypi-package": "winnow-media"
+          }
+```
+
+For binary products (e.g. lintro), include SHA256s from release assets:
+
+```json
+{
+  "formula": "lintro",
+  "version": "v0.64.4",
+  "pypi-package": "lintro",
+  "binary-assets": {
+    "arm64-sha": "<sha256>",
+    "x86-sha": "<sha256>"
+  }
+}
+```
+
+| Field | Required | Description |
+| ----- | -------- | ----------- |
+| `formula` | yes | Product config name (`formulas/<formula>.yml`) |
+| `version` | yes | Release version (with or without `v` prefix) |
+| `pypi-package` | no | Override PyPI package name from config |
+| `binary-assets` | for binary formulas | `arm64-sha` and `x86-sha` from release assets |
+
+### Product config schema (`formulas/*.yml`)
+
+Each product declares metadata and one or more formula entries:
+
+```yaml
+package: winnow-media
+source-repo: lgtm-hq/winnow
+homepage: https://github.com/lgtm-hq/winnow
+license: MIT
+description: "Short product description"
+
+formulas:
+  winnow:
+    type: pypi
+    python-version: "3.13"
+    test-command: "winnow --version"
+```
+
+Formula entry fields:
+
+| Field | Applies to | Description |
+| ----- | ---------- | ----------- |
+| `type` | all | `pypi` or `binary` |
+| `python-version` | pypi | Homebrew Python dependency (e.g. `3.13`) |
+| `test-command` | all | Command used in the formula `test` block |
+| `generate-resources` | pypi | Run importlib.metadata resource generation |
+| `homebrew-deps` | pypi | CLI tools installed via `depends_on` |
+| `wheel-only-packages` | pypi | Packages installed from wheels (not sdist) |
+| `binary-url-pattern` | binary | Release URL with `{version}` and `{arch}` |
+| `binary-names` | binary | Asset filenames per architecture |
+| `install-name` | binary | Binary name installed to `$PREFIX/bin` |
+| `class-name` | optional | Override Homebrew class name |
+| `description` | optional | Override product-level description |
+| `caveats` | optional | Multi-line caveats block |
+
+### Adding a new product
+
+1. Add `formulas/<product>.yml` following the schema above.
+2. Add a `repository_dispatch` step to the caller repo's release workflow.
+3. Store `HOMEBREW_TAP_DISPATCH_TOKEN` (fine-grained PAT with dispatch access)
+   in the caller repo secrets.
+4. Merge the first generated PR — validation and auto-merge run automatically.
+
+See [issue #44](https://github.com/lgtm-hq/homebrew-tap/issues/44) for the full
+design and migration plan.
 
 ---
 

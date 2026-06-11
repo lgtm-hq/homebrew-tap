@@ -7,13 +7,17 @@ name: Quality Check - Homebrew Formula Validation (Tap)
     branches: [main]
     paths:
       - "Formula/**"
+      - "formulas/**"
       - ".github/workflows/validate-homebrew-formula.yml"
+      - ".github/workflows/update-formula.yml"
       - "scripts/**"
   push:
     branches: [main]
     paths:
       - "Formula/**"
+      - "formulas/**"
       - ".github/workflows/validate-homebrew-formula.yml"
+      - ".github/workflows/update-formula.yml"
       - "scripts/**"
 
 permissions:

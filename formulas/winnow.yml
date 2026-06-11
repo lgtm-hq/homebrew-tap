@@ -1,0 +1,12 @@
+---
+package: winnow-media
+source-repo: lgtm-hq/winnow
+homepage: https://github.com/lgtm-hq/winnow
+license: MIT
+description: "Winnow your media library — organize, deduplicate, keep the best"
+
+formulas:
+  winnow:
+    type: pypi
+    python-version: "3.13"
+    test-command: "winnow --version"
