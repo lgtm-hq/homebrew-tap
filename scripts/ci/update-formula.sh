@@ -45,8 +45,18 @@ if [[ -z "$PACKAGE_NAME" ]]; then
 	PACKAGE_NAME=$(python3 -c "import yaml; print(yaml.safe_load(open('${CONFIG_PATH}'))['package'])")
 fi
 
-log_info "Waiting for PyPI package ${PACKAGE_NAME} ${VERSION}..."
-bash "$SCRIPT_DIR/wait-for-pypi.sh" "$PACKAGE_NAME" "$VERSION"
+needs_pypi_wait=$(python3 -c "
+import yaml
+cfg = yaml.safe_load(open('${CONFIG_PATH}'))
+print('true' if any(v.get('type') == 'pypi' for v in cfg.get('formulas', {}).values()) else 'false')
+")
+
+if [[ "$needs_pypi_wait" == "true" ]]; then
+	log_info "Waiting for PyPI package ${PACKAGE_NAME} ${VERSION}..."
+	bash "$SCRIPT_DIR/wait-for-pypi.sh" "$PACKAGE_NAME" "$VERSION"
+else
+	log_info "Skipping PyPI wait: no pypi formulas in ${CONFIG_PATH}"
+fi
 
 mapfile -t FORMULA_KEYS < <(
 	python3 "$SCRIPT_DIR/read_formula_config.py" "$CONFIG_PATH" --list-formulas
@@ -97,6 +107,8 @@ PR_BODY="Automated formula update triggered by repository_dispatch for ${PRODUCT
 
 cd "$REPO_ROOT"
 
+: "${GH_TOKEN:?GH_TOKEN is required}"
+
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -110,8 +122,6 @@ fi
 
 git checkout -B "$PR_BRANCH"
 git commit -m "$PR_TITLE"
-
-: "${GH_TOKEN:?GH_TOKEN is required}"
 
 log_info "Pushing branch ${PR_BRANCH}"
 git push --force-with-lease origin "HEAD:${PR_BRANCH}"

@@ -50,6 +50,15 @@ run_merge_bot() {
 	[[ "$output" == *"Skipping merge"* ]]
 }
 
+@test "merge-release-bot-pr: skips invalid homebrew branch format" {
+	export MOCK_AUTHOR="github-actions[bot]"
+	export MOCK_TITLE="chore(homebrew): update winnow to 0.0.1"
+
+	run run_merge_bot "homebrew/winnow"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Skipping merge"* ]]
+}
+
 @test "merge-release-bot-pr: skips unexpected title" {
 	export MOCK_AUTHOR="github-actions[bot]"
 	export MOCK_TITLE="feat: add something else"

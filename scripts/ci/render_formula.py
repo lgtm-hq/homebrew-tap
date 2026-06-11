@@ -71,7 +71,9 @@ def main() -> None:
     rendered = render_template(template, replacements)
 
     if args.output:
-        Path(args.output).write_text(rendered, encoding="utf-8")
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(rendered, encoding="utf-8")
         print(f"Formula written to {args.output}", file=sys.stderr)
     else:
         print(rendered)

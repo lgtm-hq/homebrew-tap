@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
@@ -83,12 +84,11 @@ def emit_shell(config: dict[str, Any]) -> None:
         if isinstance(value, bool):
             print(f"{env_key}={'true' if value else 'false'}")
         elif isinstance(value, (dict, list)):
-            print(f"{env_key}={json.dumps(value)!r}")
+            print(f"{env_key}={json.dumps(value)}")
         elif value is None:
             print(f'{env_key}=""')
         else:
-            escaped = str(value).replace('"', '\\"')
-            print(f'{env_key}="{escaped}"')
+            print(f"{env_key}={shlex.quote(str(value))}")
 
 
 def main() -> None:

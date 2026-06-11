@@ -170,8 +170,45 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 
 	python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('caveats', ''))" "$CONFIG_JSON" |
 		while IFS= read -r line || [[ -n "$line" ]]; do
-			printf '      %s\n' "$line"
+			if [[ -z "$line" ]]; then
+				echo ""
+			else
+				printf '      %s\n' "$line"
+			fi
 		done >"$TMPDIR/caveats.txt"
+
+	if [[ -s "$TMPDIR/caveats.txt" ]]; then
+		CAVEATS_BLOCK=$(
+			cat <<EOF
+
+  def caveats
+    <<~EOS
+$(cat "$TMPDIR/caveats.txt")
+    EOS
+  end
+EOF
+		)
+	else
+		CAVEATS_BLOCK=""
+	fi
+
+	PYDANTIC_CORE_INSTALL=""
+	if printf '%s\n' "${WHEEL_PKG_ARRAY[@]}" | grep -qx "pydantic_core"; then
+		PYDANTIC_CORE_INSTALL=$(
+			cat <<'EOF'
+    # Install pydantic_core wheel (requires special handling due to Rust build)
+    resource("pydantic_core").stage do
+      wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
+      odie "pydantic_core wheel not found in staged resource" if wheel.nil?
+      system libexec/"bin/python", "-m", "pip",
+             "install", "--no-deps", "--ignore-installed", wheel.to_s
+    end
+
+EOF
+		)
+	fi
+	printf '%s' "$PYDANTIC_CORE_INSTALL" >"$TMPDIR/pydantic_install.txt"
+	printf '%s' "$CAVEATS_BLOCK" >"$TMPDIR/caveats_block.txt"
 
 	{
 		for dep in "${HOMEBREW_PKG_ARRAY[@]}"; do
@@ -198,7 +235,8 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 		--replace-file "HOMEBREW_DEPS=${TMPDIR}/deps.txt" \
 		--replace-file "POET_RESOURCES=${TMPDIR}/resources.txt" \
 		--replace-file "WHEEL_RESOURCES=${TMPDIR}/wheels.txt" \
-		--replace-file "CAVEATS=${TMPDIR}/caveats.txt" \
+		--replace-file "PYDANTIC_CORE_INSTALL=${TMPDIR}/pydantic_install.txt" \
+		--replace-file "CAVEATS_BLOCK=${TMPDIR}/caveats_block.txt" \
 		--output "$OUTPUT_FILE"
 else
 	python3 "$SCRIPT_DIR/render_formula.py" \

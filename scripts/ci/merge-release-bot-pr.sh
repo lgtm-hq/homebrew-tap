@@ -7,7 +7,7 @@ set -euo pipefail
 REPO="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 HEAD_BRANCH="${WORKFLOW_RUN_HEAD_BRANCH:?WORKFLOW_RUN_HEAD_BRANCH is required}"
 
-if [[ ! "$HEAD_BRANCH" =~ ^homebrew/ ]]; then
+if [[ ! "$HEAD_BRANCH" =~ ^homebrew/[a-z0-9-]+-[0-9] ]]; then
 	echo "Skipping merge: branch '${HEAD_BRANCH}' is not a release-bot tap branch."
 	exit 0
 fi
@@ -48,7 +48,7 @@ TITLE="$(
 		--jq '.title'
 )"
 
-if [[ ! "$TITLE" =~ ^chore\(homebrew\):\ update\ .+\ to\  ]]; then
+if [[ ! "$TITLE" =~ ^chore\(homebrew\):\ update\ [a-zA-Z0-9_.-]+\ to\  ]]; then
 	echo "Skipping merge: unexpected PR title: ${TITLE}"
 	exit 0
 fi
