@@ -7,6 +7,7 @@ load "../../../helpers/common"
 setup() {
 	setup_temp_dir
 	REPO_ROOT="$(repo_root)"
+	bootstrap_test_env "$REPO_ROOT"
 	SCRIPTS_DIR="$REPO_ROOT/scripts/ci"
 }
 

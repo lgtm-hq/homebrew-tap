@@ -165,10 +165,29 @@ Formula entry fields:
 ### Adding a new product
 
 1. Add `formulas/<product>.yml` following the schema above.
-2. Add a `repository_dispatch` step to the caller repo's release workflow.
+2. Add a `repository_dispatch` step to the caller repo's release workflow (see
+   [lgtm-ci#342](https://github.com/lgtm-hq/lgtm-ci/issues/342) for the thin
+   `trigger-homebrew-update` action once available).
 3. Store `HOMEBREW_TAP_DISPATCH_TOKEN` (fine-grained PAT with dispatch access)
    in the caller repo secrets.
 4. Merge the first generated PR — validation and auto-merge run automatically.
+
+### Tooling dependencies
+
+Tap scripts reuse [lgtm-ci](https://github.com/lgtm-hq/lgtm-ci) for PyPI
+registry helpers (`wait_for_package`, `get_pypi_download_url`, `get_pypi_sha256`).
+CI workflows sparse-checkout lgtm-ci at the same ref as `reusable-quality`
+(`375d104f6ca707f4f35344170a42bf901a617a9f`).
+
+For local development and tests:
+
+```bash
+bash scripts/ci/ensure-lgtm-ci-tooling.sh
+bash scripts/ci/run-tests.sh
+```
+
+Advanced PyPI resource generation (`lintro-full`) still uses tap-local Python
+helpers; simple PyPI formulas and PyPI polling delegate to lgtm-ci.
 
 See [issue #44](https://github.com/lgtm-hq/homebrew-tap/issues/44) for the full
 design and migration plan.

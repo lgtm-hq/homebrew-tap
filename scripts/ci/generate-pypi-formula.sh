@@ -5,8 +5,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=../lib/common.sh disable=SC1091
 source "$SCRIPT_DIR/../lib/common.sh"
+# shellcheck source=../lib/lgtm-ci-tooling.sh disable=SC1091
+source "$SCRIPT_DIR/../lib/lgtm-ci-tooling.sh"
 
 usage() {
 	cat <<'EOF'
@@ -81,6 +84,10 @@ PYTHON_VERSION="${PYTHON_VERSION:-3.13}"
 PYTHON_VERSION_DOT="${PYTHON_VERSION//./}"
 GENERATE_RESOURCES=$(python3 -c "import json, sys; print('true' if json.loads(sys.argv[1]).get('generate-resources') else 'false')" "$CONFIG_JSON")
 TEST_COMMAND="$(read_config_value test-command)"
+if [[ -z "$TEST_COMMAND" ]]; then
+	log_error "test-command is required in config for ${FORMULA_KEY}"
+	exit 1
+fi
 CLASS_NAME="$(read_config_value class-name)"
 DESCRIPTION="$(read_config_value description)"
 HOMEPAGE="$(read_config_value homepage)"
@@ -89,10 +96,16 @@ TEST_BINARY="${TEST_COMMAND%% *}"
 
 log_info "Generating PyPI formula '${FORMULA_KEY}' for ${PACKAGE_NAME} ${VERSION}"
 
-{
-	read -r TARBALL_URL
-	read -r TARBALL_SHA
-} < <(python3 "$SCRIPT_DIR/fetch_package_info.py" "$PACKAGE_NAME" "$VERSION")
+if [[ -n "${PYPI_FIXTURE_DIR:-}" ]]; then
+	{
+		read -r TARBALL_URL
+		read -r TARBALL_SHA
+	} < <(python3 "$SCRIPT_DIR/read_pypi_sdist.py" "$PACKAGE_NAME" "$VERSION")
+else
+	source_lgtm_ci_publish "$REPO_ROOT"
+	TARBALL_URL=$(get_pypi_download_url "$PACKAGE_NAME" "$VERSION" "false") || true
+	TARBALL_SHA=$(get_pypi_sha256 "$PACKAGE_NAME" "$VERSION" "false") || true
+fi
 
 if [[ -z "$TARBALL_URL" ]] || [[ -z "$TARBALL_SHA" ]]; then
 	log_error "Failed to fetch tarball info from PyPI"

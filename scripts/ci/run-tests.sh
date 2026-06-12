@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# Purpose: Run shell tests with optional coverage reporting.
+# Purpose: Run shell tests locally with lgtm-ci tooling and optional coverage.
 
 set -euo pipefail
 
@@ -13,14 +13,9 @@ if ! command -v bats &>/dev/null; then
 	exit 1
 fi
 
-TEST_VENV="$REPO_ROOT/.test-venv"
-if [[ ! -d "$TEST_VENV" ]]; then
-	python3 -m venv "$TEST_VENV"
-fi
-# shellcheck disable=SC1091
-source "$TEST_VENV/bin/activate"
-python -m pip install --quiet --upgrade pip
-python -m pip install --quiet -r "$REPO_ROOT/requirements-test.txt"
+# shellcheck source=../helpers/common.bash disable=SC1091
+source "$REPO_ROOT/tests/helpers/common.bash"
+bootstrap_test_env "$REPO_ROOT"
 
 if command -v kcov &>/dev/null; then
 	mkdir -p "$COVERAGE_DIR"

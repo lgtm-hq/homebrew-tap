@@ -16,21 +16,54 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    env:
+      LGTM_CI_TOOLING_REF: 375d104f6ca707f4f35344170a42bf901a617a9f
     steps:
       - name: Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           persist-credentials: false
 
+      - name: Checkout lgtm-ci tooling
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: lgtm-hq/lgtm-ci
+          path: .lgtm-ci-tooling
+          ref: ${{ env.LGTM_CI_TOOLING_REF }}
+          sparse-checkout: |
+            .github/actions/harden-runner
+            .github/actions/resolve-egress-allowlist
+            .github/actions/setup-python
+            scripts/ci/
+          sparse-checkout-cone-mode: true
+          persist-credentials: false
+
+      - name: Resolve egress allowlist
+        id: egress
+        uses: ./.lgtm-ci-tooling/.github/actions/resolve-egress-allowlist
+        with:
+          egress-policy: block
+          egress-preset: pypi
+
+      - name: Harden runner
+        uses: ./.lgtm-ci-tooling/.github/actions/harden-runner
+        with:
+          egress-policy: block
+          allowed-endpoints: ${{ steps.egress.outputs['allowed-endpoints'] }}
+
       - name: Set up Python
-        uses: actions/setup-python@8f8098deeaa281d25c1c56b5abd0c865784a148
+        uses: ./.lgtm-ci-tooling/.github/actions/setup-python
         with:
           python-version: "3.13"
+          install-dependencies: "false"
+          cache: "false"
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyyaml packaging
+          python -m pip install -r requirements-test.txt
 
       - name: Parse dispatch payload
         id: payload
@@ -45,4 +78,5 @@ jobs:
           DISPATCH_PYPI_PACKAGE: ${{ steps.payload.outputs.pypi-package }}
           DISPATCH_BINARY_ASSETS: ${{ steps.payload.outputs.binary-assets }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LGTM_CI_TOOLING_DIR: ${{ github.workspace }}/.lgtm-ci-tooling
         run: bash scripts/ci/update-formula.sh
