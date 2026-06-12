@@ -7,7 +7,7 @@ set -euo pipefail
 REPO="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 HEAD_BRANCH="${WORKFLOW_RUN_HEAD_BRANCH:?WORKFLOW_RUN_HEAD_BRANCH is required}"
 
-if [[ ! "$HEAD_BRANCH" =~ ^homebrew/lintro ]]; then
+if [[ ! "$HEAD_BRANCH" =~ ^homebrew/[a-z0-9-]+-[A-Za-z0-9.+-]+$ ]]; then
 	echo "Skipping merge: branch '${HEAD_BRANCH}' is not a release-bot tap branch."
 	exit 0
 fi
@@ -34,7 +34,9 @@ AUTHOR_LOGIN="$(
 )"
 
 # GitHub App authors appear as app/<slug> via GraphQL and <slug>[bot] elsewhere.
-if [[ "$AUTHOR_LOGIN" != "app/homebrew-tap-release-bot" && "$AUTHOR_LOGIN" != "homebrew-tap-release-bot[bot]" ]]; then
+if [[ "$AUTHOR_LOGIN" != "app/homebrew-tap-release-bot" &&
+	"$AUTHOR_LOGIN" != "homebrew-tap-release-bot[bot]" &&
+	"$AUTHOR_LOGIN" != "github-actions[bot]" ]]; then
 	echo "Skipping merge: PR #${PR_NUMBER} author is '${AUTHOR_LOGIN}', expected release bot."
 	exit 0
 fi
@@ -46,7 +48,7 @@ TITLE="$(
 		--jq '.title'
 )"
 
-if [[ ! "$TITLE" =~ ^chore\(homebrew\):\ update\ lintro\ to\  ]]; then
+if [[ ! "$TITLE" =~ ^chore\(homebrew\):\ update\ [a-zA-Z0-9_.-]+\ to\ [A-Za-z0-9.+-]+$ ]]; then
 	echo "Skipping merge: unexpected PR title: ${TITLE}"
 	exit 0
 fi

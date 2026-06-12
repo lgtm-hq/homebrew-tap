@@ -1,0 +1,45 @@
+# typed: strict
+# frozen_string_literal: true
+
+# Homebrew formula for {{FORMULA_KEY}}
+# CLI tools are installed as Homebrew dependencies; Python libraries are bundled
+class {{CLASS_NAME}} < Formula
+  include Language::Python::Virtualenv
+
+  desc "{{DESCRIPTION}}"
+  homepage "{{HOMEPAGE}}"
+  url "{{TARBALL_URL}}"
+  sha256 "{{TARBALL_SHA}}"
+  license "{{LICENSE}}"
+
+  livecheck do
+    url :stable
+    strategy :pypi
+  end
+
+  # CLI tools installed via Homebrew
+{{HOMEBREW_DEPS}}
+
+  # Pure Python library dependencies
+{{POET_RESOURCES}}
+{{WHEEL_RESOURCES}}
+
+  def install
+    venv = virtualenv_create(libexec, "{{PYTHON_VENV}}")
+
+    # Install other resources first (this sets up pip in the venv)
+    other_resources = resources.reject { |r| r.name == "pydantic_core" }
+    venv.pip_install other_resources
+
+{{PYDANTIC_CORE_INSTALL}}
+
+    # Install the package itself
+    venv.pip_install_and_link buildpath
+  end
+
+{{CAVEATS_BLOCK}}
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/{{TEST_BINARY}} --version")
+  end
+end

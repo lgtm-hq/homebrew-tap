@@ -9,15 +9,13 @@ class Lintro < Formula
   version "0.64.4"
   license "MIT"
 
-  RELEASE_BASE = "https://github.com/lgtm-hq/py-lintro/releases"
-
   on_macos do
     on_arm do
-      url "#{RELEASE_BASE}/download/v#{version}/lintro-macos-arm64"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v#{version}/lintro-macos-arm64"
       sha256 "a4c1663e5908757746676c9a48bdc35a4d0ef4dbaa3bd6a96dd3a29c0a0d4c10"
     end
     on_intel do
-      url "#{RELEASE_BASE}/download/v#{version}/lintro-macos-x86_64"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v#{version}/lintro-macos-x86_64"
       sha256 "fdab37737c071fb07543c5fd2f99a36bb3031524ba7a25b6bd63aa333bed12f5"
     end
   end

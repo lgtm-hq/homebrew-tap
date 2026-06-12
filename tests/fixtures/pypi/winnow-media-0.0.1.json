@@ -1,0 +1,14 @@
+{
+  "info": {
+    "version": "0.0.1"
+  },
+  "urls": [
+    {
+      "packagetype": "sdist",
+      "url": "https://files.pythonhosted.org/packages/ab/cd/winnow_media-0.0.1.tar.gz",
+      "digests": {
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      }
+    }
+  ]
+}

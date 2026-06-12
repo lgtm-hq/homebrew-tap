@@ -7,13 +7,17 @@ name: Quality Check - Homebrew Formula Validation (Tap)
     branches: [main]
     paths:
       - "Formula/**"
+      - "formulas/**"
       - ".github/workflows/validate-homebrew-formula.yml"
+      - ".github/workflows/update-formula.yml"
       - "scripts/**"
   push:
     branches: [main]
     paths:
       - "Formula/**"
+      - "formulas/**"
       - ".github/workflows/validate-homebrew-formula.yml"
+      - ".github/workflows/update-formula.yml"
       - "scripts/**"
 
 permissions:
@@ -25,8 +29,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        # v5
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Validate all formulas
         run: scripts/ci/validate-formulas.sh

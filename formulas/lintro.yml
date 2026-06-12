@@ -1,0 +1,89 @@
+---
+package: lintro
+source-repo: lgtm-hq/py-lintro
+homepage: https://github.com/lgtm-hq/py-lintro
+license: MIT
+description: "Unified CLI for code formatting, linting, and quality assurance"
+
+formulas:
+  lintro:
+    type: binary
+    test-command: "lintro --version"
+    binary-url-pattern: >-
+      https://github.com/lgtm-hq/py-lintro/releases/download/v{version}/lintro-macos-{arch}
+    binary-names:
+      arm64: lintro-macos-arm64
+      x86_64: lintro-macos-x86_64
+    install-name: lintro
+    full-formula-ref: lintro-full
+    caveats: |
+      lintro is a lightweight standalone binary (no Python required).
+
+      Install tools with:
+        lintro doctor
+        lintro install --profile recommended
+
+      For all tools bundled via Homebrew dependencies:
+        brew install lgtm-hq/tap/lintro-full
+
+  lintro-full:
+    type: pypi
+    python-version: "3.13"
+    test-command: "lintro --version"
+    generate-resources: true
+    min-resource-count: 5
+    class-name: LintroFull
+    description: "Unified CLI for code quality (all tools included)"
+    homebrew-deps:
+      - actionlint
+      - bandit
+      - black
+      - gitleaks
+      - hadolint
+      - libyaml
+      - markdownlint-cli2
+      - mypy
+      - oxfmt
+      - oxlint
+      - prettier
+      - ruff
+      - rust
+      - semgrep
+      - shellcheck
+      - shfmt
+      - sqlfluff
+      - taplo
+      - yamllint
+    wheel-only-packages:
+      pydoclint:
+        type: universal
+        comment: "pydoclint - use wheel for consistency"
+      pydantic_core:
+        type: platform
+        resolve-version-from: pydantic-core
+        comment: >-
+          pydantic_core requires Rust to build - use platform-specific wheels
+    caveats: |
+      Lintro is now installed (#{deps.count} Homebrew formulae included).
+
+      Python quality:   ruff, black, mypy, bandit, pydoclint (bundled)
+      YAML / TOML:      yamllint, taplo
+      Shell:            shellcheck, shfmt
+      Markdown:         markdownlint-cli2
+      JS / TS:          oxlint, oxfmt, prettier
+      Dockerfiles:      hadolint
+      GitHub Actions:   actionlint
+      Security:         gitleaks, semgrep
+      Rust:             clippy, rustfmt (via rust)
+      SQL:              sqlfluff
+
+      Not installed automatically (install if needed):
+        cargo install cargo-audit cargo-deny   # Rust dependency auditing
+        npm install -g astro svelte-check vue-tsc  # Framework type-checkers
+
+      Run 'lintro doctor' to check tool status and get install hints.
+
+      Get started:
+        lintro check .        # Lint your project
+        lintro format .       # Auto-fix issues
+        lintro doctor         # Check which tools are available

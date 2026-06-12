@@ -1,0 +1,84 @@
+---
+name: Update - Homebrew Formula
+
+concurrency:
+  # yamllint disable-line rule:line-length
+  group: update-formula-${{ github.repository }}-${{ github.event.client_payload.formula }}
+  cancel-in-progress: true
+
+"on":
+  repository_dispatch:
+    types: [update-formula]
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      LGTM_CI_TOOLING_REF: 6a80f4a55e4080272b2d93b30cc292d618f5dd5a
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          # Required for scripts/ci/update-formula.sh git push via GITHUB_TOKEN
+          persist-credentials: true
+
+      - name: Checkout lgtm-ci tooling
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: lgtm-hq/lgtm-ci
+          path: .lgtm-ci-tooling
+          ref: ${{ env.LGTM_CI_TOOLING_REF }}
+          sparse-checkout: |
+            .github/actions/harden-runner
+            .github/actions/resolve-egress-allowlist
+            .github/actions/setup-python
+            scripts/ci/
+          sparse-checkout-cone-mode: true
+          persist-credentials: false
+
+      - name: Resolve egress allowlist
+        id: egress
+        uses: ./.lgtm-ci-tooling/.github/actions/resolve-egress-allowlist
+        with:
+          egress-policy: block
+          egress-preset: pypi
+
+      - name: Harden runner
+        uses: ./.lgtm-ci-tooling/.github/actions/harden-runner
+        with:
+          egress-policy: block
+          allowed-endpoints: ${{ steps.egress.outputs['allowed-endpoints'] }}
+
+      - name: Set up Python
+        uses: ./.lgtm-ci-tooling/.github/actions/setup-python
+        with:
+          python-version: "3.13"
+          install-dependencies: "false"
+          cache: "false"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-test.txt
+
+      - name: Parse dispatch payload
+        id: payload
+        env:
+          CLIENT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: bash scripts/ci/parse-dispatch-payload.sh
+
+      - name: Generate formulas and open PR
+        env:
+          DISPATCH_FORMULA: ${{ steps.payload.outputs.formula }}
+          DISPATCH_VERSION: ${{ steps.payload.outputs.version }}
+          DISPATCH_PYPI_PACKAGE: ${{ steps.payload.outputs.pypi-package }}
+          DISPATCH_BINARY_ASSETS: ${{ steps.payload.outputs.binary-assets }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LGTM_CI_TOOLING_DIR: ${{ github.workspace }}/.lgtm-ci-tooling
+        run: bash scripts/ci/update-formula.sh

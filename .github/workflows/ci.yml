@@ -13,11 +13,46 @@ permissions:
 jobs:
   quality:
     permissions:
-      contents: read
-      packages: read
-      pull-requests: write
+      contents: read  # checkout repository code
+      packages: read  # pull py-lintro container image
     # yamllint disable-line rule:line-length
-    # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality.yml@375d104f6ca707f4f35344170a42bf901a617a9f  # v0.15.0
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality-lint.yml@6a80f4a55e4080272b2d93b30cc292d618f5dd5a  # v0.45.0
     with:
-      tooling-ref: "375d104f6ca707f4f35344170a42bf901a617a9f"
+      tooling-ref: "6a80f4a55e4080272b2d93b30cc292d618f5dd5a"
+      job-name: "Lintro Quality Checks"
+      egress-policy: block
+      egress-preset: quality
+      runner-image: ubuntu-24.04
+
+  publish-pr-comment:
+    needs: quality
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read  # read quality job outputs and artifacts
+      pull-requests: write  # post lint summary to PR
+    # yamllint disable-line rule:line-length
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-publish-quality-summary.yml@6a80f4a55e4080272b2d93b30cc292d618f5dd5a  # v0.45.0
+    with:
+      tooling-ref: "6a80f4a55e4080272b2d93b30cc292d618f5dd5a"
+      # yamllint disable-line rule:line-length
+      exit-code: ${{ needs.quality.outputs.exit-code != '' && needs.quality.outputs.exit-code || '1' }}
+      job-name: "PR Lint Comment"
+      egress-policy: block
+      egress-preset: github-tooling
+
+  shell-tests:
+    permissions:
+      contents: read  # checkout repository code
+      pull-requests: write  # post test results/coverage to PR
+    # yamllint disable-line rule:line-length
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-test-shell.yml@6a80f4a55e4080272b2d93b30cc292d618f5dd5a  # v0.45.0
+    with:
+      tooling-ref: "6a80f4a55e4080272b2d93b30cc292d618f5dd5a"
+      test-path: tests/bats
+      coverage: true
+      coverage-threshold: 0
+      upload-coverage: false
+      egress-preset: github-tooling
