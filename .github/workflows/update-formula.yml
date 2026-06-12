@@ -18,7 +18,7 @@ jobs:
       contents: write
       pull-requests: write
     env:
-      LGTM_CI_TOOLING_REF: 509b10a0c813895e4be2989f3e7ef2e8aa14eca3
+      LGTM_CI_TOOLING_REF: 6a80f4a55e4080272b2d93b30cc292d618f5dd5a
     steps:
       - name: Checkout
         # yamllint disable-line rule:line-length
