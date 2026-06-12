@@ -18,13 +18,14 @@ jobs:
       contents: write
       pull-requests: write
     env:
-      LGTM_CI_TOOLING_REF: 375d104f6ca707f4f35344170a42bf901a617a9f
+      LGTM_CI_TOOLING_REF: ba485556d3d4605b825347c2fe431ad4395b1c63
     steps:
       - name: Checkout
         # yamllint disable-line rule:line-length
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          persist-credentials: false
+          # Required for scripts/ci/update-formula.sh git push via GITHUB_TOKEN
+          persist-credentials: true
 
       - name: Checkout lgtm-ci tooling
         # yamllint disable-line rule:line-length

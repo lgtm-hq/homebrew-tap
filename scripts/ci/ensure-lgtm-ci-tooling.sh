@@ -11,7 +11,7 @@ source "$SCRIPT_DIR/../lib/lgtm-ci-tooling.sh"
 
 TOOLING_DIR="$REPO_ROOT/.lgtm-ci-tooling"
 
-if [[ -f "$TOOLING_DIR/scripts/ci/lib/publish.sh" ]]; then
+if _lgtm_ci_tooling_ready "$TOOLING_DIR"; then
 	export LGTM_CI_TOOLING_DIR="$TOOLING_DIR"
 	exit 0
 fi

@@ -24,6 +24,16 @@ from importlib.metadata import distributions
 from packaging.requirements import InvalidRequirement, Requirement
 from pypi_utils import fetch_pypi_json, get_sdist_info
 
+# Homebrew macOS Python formula install environment for marker evaluation.
+TARGET_ENV: dict[str, str] = {
+    "python_version": "3.13",
+    "python_full_version": "3.13.0",
+    "sys_platform": "darwin",
+    "os_name": "posix",
+    "platform_system": "Darwin",
+    "platform_machine": "arm64",
+}
+
 # Template for a single resource stanza
 RESOURCE_TEMPLATE = """  resource "{name}" do
     url "{url}"
@@ -103,6 +113,8 @@ def get_package_dependencies(package_name: str) -> set[str]:
             try:
                 req = Requirement(req_str)
             except InvalidRequirement:
+                continue
+            if req.marker is not None and not req.marker.evaluate(TARGET_ENV):
                 continue
             req_name = normalize_name(req.name)
             if req_name in dist_map:

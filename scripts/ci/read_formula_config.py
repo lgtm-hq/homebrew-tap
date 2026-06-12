@@ -83,7 +83,7 @@ def emit_shell(config: dict[str, Any]) -> None:
         if isinstance(value, bool):
             print(f"{env_key}={'true' if value else 'false'}")
         elif isinstance(value, (dict, list)):
-            print(f"{env_key}={json.dumps(value)}")
+            print(f"{env_key}={shlex.quote(json.dumps(value))}")
         elif value is None:
             print(f'{env_key}=""')
         else:

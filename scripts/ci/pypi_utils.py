@@ -47,6 +47,12 @@ def fetch_pypi_json(
             with fixture_path.open(encoding="utf-8") as handle:
                 result: dict[str, Any] = json.load(handle)
                 return result
+        msg = (
+            f"Missing PyPI fixture for {package}=={version} "
+            f"under {fixture_dir} (expected {fixture_path.name})"
+        )
+        print(msg, file=sys.stderr)
+        sys.exit(1)
 
     if version:
         url = f"{PYPI_BASE_URL}/{package}/{version}/json"

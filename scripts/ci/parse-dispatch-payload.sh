@@ -31,10 +31,12 @@ if [[ ! "$formula" =~ ^[A-Za-z0-9._-]+$ ]]; then
 	exit 1
 fi
 
-if [[ ! "$version" =~ ^[0-9]+(\.[0-9]+)*(-[A-Za-z0-9._-]+)?$ ]]; then
+if [[ ! "$version" =~ ^v?[0-9]+(\.[0-9]+)*(-[A-Za-z0-9._-]+)?$ ]]; then
 	echo "Invalid version: ${version}" >&2
 	exit 1
 fi
+
+version="${version#v}"
 
 if [[ -n "$pypi_package" && ! "$pypi_package" =~ ^[A-Za-z0-9._-]+$ ]]; then
 	echo "Invalid pypi-package: ${pypi_package}" >&2

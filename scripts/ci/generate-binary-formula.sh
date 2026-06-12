@@ -30,25 +30,40 @@ VERSION=""
 OUTPUT_FILE=""
 BINARY_ASSETS="{}"
 
+require_option_value() {
+	local flag="$1"
+	local value="${2:-}"
+	if [[ -z "$value" ]]; then
+		log_error "Missing value for ${flag}"
+		usage
+		exit 1
+	fi
+}
+
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--config)
+		require_option_value "$1" "${2:-}"
 		CONFIG_PATH="$2"
 		shift 2
 		;;
 	--formula-key)
+		require_option_value "$1" "${2:-}"
 		FORMULA_KEY="$2"
 		shift 2
 		;;
 	--version)
+		require_option_value "$1" "${2:-}"
 		VERSION="$2"
 		shift 2
 		;;
 	--output)
+		require_option_value "$1" "${2:-}"
 		OUTPUT_FILE="$2"
 		shift 2
 		;;
 	--binary-assets)
+		require_option_value "$1" "${2:-}"
 		BINARY_ASSETS="$2"
 		shift 2
 		;;

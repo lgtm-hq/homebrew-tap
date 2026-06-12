@@ -4,14 +4,21 @@
 ensure_test_python_deps() {
 	local repo_root="$1"
 	local venv="$repo_root/.test-venv"
+	local sentinel="$venv/.deps-installed"
 
 	if [[ ! -d "$venv" ]]; then
 		python3 -m venv "$venv"
 	fi
 	# shellcheck disable=SC1091
 	source "$venv/bin/activate"
+
+	if [[ -f "$sentinel" ]]; then
+		return 0
+	fi
+
 	python -m pip install --quiet --upgrade pip
 	python -m pip install --quiet -r "$repo_root/requirements-test.txt"
+	touch "$sentinel"
 }
 
 bootstrap_test_env() {
@@ -34,7 +41,16 @@ teardown_temp_dir() {
 }
 
 repo_root() {
-	cd "$(dirname "${BATS_TEST_FILENAME}")/../../../../" && pwd
+	local dir
+	dir="$(dirname "${BATS_TEST_FILENAME}")"
+	while [[ "$dir" != "/" ]]; do
+		if [[ -e "$dir/.git" ]]; then
+			cd "$dir" && pwd
+			return 0
+		fi
+		dir="$(dirname "$dir")"
+	done
+	return 1
 }
 
 assert_files_equal() {

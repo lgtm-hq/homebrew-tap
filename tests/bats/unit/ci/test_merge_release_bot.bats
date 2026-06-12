@@ -41,6 +41,15 @@ run_merge_bot() {
 	[[ "$output" == *"Enabling auto-merge for PR #42"* ]]
 }
 
+@test "merge-release-bot-pr: merges dot-less integer version branch" {
+	export MOCK_AUTHOR="github-actions[bot]"
+	export MOCK_TITLE="chore(homebrew): update winnow to 1"
+
+	run run_merge_bot "homebrew/winnow-1"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Enabling auto-merge for PR #42"* ]]
+}
+
 @test "merge-release-bot-pr: skips unrelated branch" {
 	export MOCK_AUTHOR="github-actions[bot]"
 	export MOCK_TITLE="chore(homebrew): update winnow to 0.0.1"

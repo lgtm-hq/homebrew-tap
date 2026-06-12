@@ -32,25 +32,40 @@ VERSION=""
 OUTPUT_FILE=""
 PYPI_PACKAGE_OVERRIDE=""
 
+require_option_value() {
+	local flag="$1"
+	local value="${2:-}"
+	if [[ -z "$value" ]]; then
+		log_error "Missing value for ${flag}"
+		usage
+		exit 1
+	fi
+}
+
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--config)
+		require_option_value "$1" "${2:-}"
 		CONFIG_PATH="$2"
 		shift 2
 		;;
 	--formula-key)
+		require_option_value "$1" "${2:-}"
 		FORMULA_KEY="$2"
 		shift 2
 		;;
 	--version)
+		require_option_value "$1" "${2:-}"
 		VERSION="$2"
 		shift 2
 		;;
 	--output)
+		require_option_value "$1" "${2:-}"
 		OUTPUT_FILE="$2"
 		shift 2
 		;;
 	--pypi-package)
+		require_option_value "$1" "${2:-}"
 		PYPI_PACKAGE_OVERRIDE="$2"
 		shift 2
 		;;
@@ -117,6 +132,35 @@ fi
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
+validate_sdist() {
+	local tarball_file="$1"
+
+	if [[ -n "${PYPI_FIXTURE_DIR:-}" ]]; then
+		log_info "Skipping live sdist download in fixture mode"
+		return 0
+	fi
+
+	log_info "Validating sdist checksum..."
+	if ! curl -sSfL "$TARBALL_URL" -o "$tarball_file"; then
+		log_error "Failed to download tarball from $TARBALL_URL"
+		exit 1
+	fi
+
+	local actual_sha
+	if command -v sha256sum &>/dev/null; then
+		actual_sha=$(sha256sum "$tarball_file" | cut -d' ' -f1)
+	else
+		actual_sha=$(shasum -a 256 "$tarball_file" | cut -d' ' -f1)
+	fi
+	if [[ "$actual_sha" != "$TARBALL_SHA" ]]; then
+		log_error "SHA256 mismatch! Expected: $TARBALL_SHA, Got: $actual_sha"
+		exit 1
+	fi
+}
+
+TARBALL_FILE="$TMPDIR/${PACKAGE_NAME}-${VERSION}.tar.gz"
+validate_sdist "$TARBALL_FILE"
+
 if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 	HOMEBREW_DEPS_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('homebrew-deps', [])))" "$CONFIG_JSON")
 	WHEEL_PACKAGES_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('wheel-only-packages', {})))" "$CONFIG_JSON")
@@ -130,22 +174,6 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 	log_info "Creating temporary venv for dependency analysis..."
 	python3 -m venv "$ANALYSIS_VENV"
 
-	TARBALL_FILE="$TMPDIR/${PACKAGE_NAME}-${VERSION}.tar.gz"
-	if ! curl -sSfL "$TARBALL_URL" -o "$TARBALL_FILE"; then
-		log_error "Failed to download tarball from $TARBALL_URL"
-		exit 1
-	fi
-
-	if command -v sha256sum &>/dev/null; then
-		ACTUAL_SHA=$(sha256sum "$TARBALL_FILE" | cut -d' ' -f1)
-	else
-		ACTUAL_SHA=$(shasum -a 256 "$TARBALL_FILE" | cut -d' ' -f1)
-	fi
-	if [[ "$ACTUAL_SHA" != "$TARBALL_SHA" ]]; then
-		log_error "SHA256 mismatch! Expected: $TARBALL_SHA, Got: $ACTUAL_SHA"
-		exit 1
-	fi
-
 	log_info "Installing ${PACKAGE_NAME} from tarball..."
 	"$ANALYSIS_VENV/bin/pip" install --quiet "$TARBALL_FILE"
 
@@ -158,7 +186,7 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 	RESOURCES=$("$ANALYSIS_VENV/bin/python" "$SCRIPT_DIR/generate_resources.py" "$PACKAGE_NAME" \
 		--exclude "${EXCLUDE_ARGS[@]}")
 
-	RESOURCE_COUNT=$(echo "$RESOURCES" | grep -c "^  resource " || echo "0")
+	RESOURCE_COUNT=$(printf '%s\n' "$RESOURCES" | awk '/^  resource / { count++ } END { print count + 0 }')
 	if [[ "$RESOURCE_COUNT" -lt "$MIN_RESOURCE_COUNT" ]]; then
 		log_error "Expected at least ${MIN_RESOURCE_COUNT} resource stanzas but only found ${RESOURCE_COUNT}"
 		exit 1

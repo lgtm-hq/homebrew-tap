@@ -48,7 +48,17 @@ print('true' if any(v.get('type') == 'pypi' for v in cfg.get('formulas', {}).val
 
 PACKAGE_NAME="${PYPI_PACKAGE_OVERRIDE}"
 if [[ -z "$PACKAGE_NAME" && "$needs_pypi_wait" == "true" ]]; then
-	PACKAGE_NAME=$(python3 -c "import yaml; print(yaml.safe_load(open('${CONFIG_PATH}'))['package'])")
+	first_pypi_key=$(python3 -c "
+import yaml
+cfg = yaml.safe_load(open('${CONFIG_PATH}'))
+for key, entry in cfg.get('formulas', {}).items():
+    if entry.get('type') == 'pypi':
+        print(key)
+        break
+")
+	PACKAGE_NAME=$(python3 "$SCRIPT_DIR/read_formula_config.py" "$CONFIG_PATH" \
+		--formula-key "$first_pypi_key" --json |
+		python3 -c "import json, sys; print(json.load(sys.stdin).get('package') or '')")
 fi
 
 if [[ "$needs_pypi_wait" == "true" ]]; then

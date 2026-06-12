@@ -26,6 +26,14 @@ teardown() {
 	grep -q '^binary-assets<<EOF$' "$GITHUB_OUTPUT"
 }
 
+@test "parse-dispatch-payload: accepts version with v prefix" {
+	export CLIENT_PAYLOAD='{"formula":"winnow","version":"v1.0.0"}'
+
+	run bash "$REPO_ROOT/scripts/ci/parse-dispatch-payload.sh"
+	[ "$status" -eq 0 ]
+	grep -q '^version=1.0.0$' "$GITHUB_OUTPUT"
+}
+
 @test "parse-dispatch-payload: rejects invalid formula identifier" {
 	export CLIENT_PAYLOAD='{"formula":"../etc/passwd","version":"1.0.0"}'
 
@@ -35,7 +43,7 @@ teardown() {
 }
 
 @test "parse-dispatch-payload: rejects invalid version" {
-	export CLIENT_PAYLOAD='{"formula":"winnow","version":"v1.0.0"}'
+	export CLIENT_PAYLOAD='{"formula":"winnow","version":"not-a-version"}'
 
 	run bash "$REPO_ROOT/scripts/ci/parse-dispatch-payload.sh"
 	[ "$status" -eq 1 ]

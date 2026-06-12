@@ -3,17 +3,22 @@
 # Purpose: Resolve and source lgtm-ci publish tooling for tap scripts.
 
 # shellcheck disable=SC2034
-LGTM_CI_TOOLING_REF="${LGTM_CI_TOOLING_REF:-375d104f6ca707f4f35344170a42bf901a617a9f}"
+LGTM_CI_TOOLING_REF="${LGTM_CI_TOOLING_REF:-ba485556d3d4605b825347c2fe431ad4395b1c63}"
+
+_lgtm_ci_tooling_ready() {
+	local dir="$1"
+	[[ -f "$dir/scripts/ci/lib/publish.sh" && -f "$dir/scripts/ci/lib/actions.sh" ]]
+}
 
 resolve_lgtm_ci_tooling_dir() {
 	local repo_root="${1:-}"
 
-	if [[ -n "${LGTM_CI_TOOLING_DIR:-}" && -f "${LGTM_CI_TOOLING_DIR}/scripts/ci/lib/publish.sh" ]]; then
+	if [[ -n "${LGTM_CI_TOOLING_DIR:-}" ]] && _lgtm_ci_tooling_ready "${LGTM_CI_TOOLING_DIR}"; then
 		echo "${LGTM_CI_TOOLING_DIR}"
 		return 0
 	fi
 
-	if [[ -n "$repo_root" && -f "$repo_root/.lgtm-ci-tooling/scripts/ci/lib/publish.sh" ]]; then
+	if [[ -n "$repo_root" ]] && _lgtm_ci_tooling_ready "$repo_root/.lgtm-ci-tooling"; then
 		echo "$repo_root/.lgtm-ci-tooling"
 		return 0
 	fi
