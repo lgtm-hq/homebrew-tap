@@ -2,7 +2,8 @@
 name: Update - Homebrew Formula
 
 concurrency:
-  group: update-formula-${{ github.repository }}
+  # yamllint disable-line rule:line-length
+  group: update-formula-${{ github.repository }}-${{ github.event.client_payload.formula }}
   cancel-in-progress: true
 
 "on":

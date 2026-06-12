@@ -40,16 +40,16 @@ if [[ ! -f "$CONFIG_PATH" ]]; then
 	exit 1
 fi
 
-PACKAGE_NAME="${PYPI_PACKAGE_OVERRIDE}"
-if [[ -z "$PACKAGE_NAME" ]]; then
-	PACKAGE_NAME=$(python3 -c "import yaml; print(yaml.safe_load(open('${CONFIG_PATH}'))['package'])")
-fi
-
 needs_pypi_wait=$(python3 -c "
 import yaml
 cfg = yaml.safe_load(open('${CONFIG_PATH}'))
 print('true' if any(v.get('type') == 'pypi' for v in cfg.get('formulas', {}).values()) else 'false')
 ")
+
+PACKAGE_NAME="${PYPI_PACKAGE_OVERRIDE}"
+if [[ -z "$PACKAGE_NAME" && "$needs_pypi_wait" == "true" ]]; then
+	PACKAGE_NAME=$(python3 -c "import yaml; print(yaml.safe_load(open('${CONFIG_PATH}'))['package'])")
+fi
 
 if [[ "$needs_pypi_wait" == "true" ]]; then
 	log_info "Waiting for PyPI package ${PACKAGE_NAME} ${VERSION}..."

@@ -38,12 +38,13 @@ teardown() {
 	output_file="$TEST_TEMP_DIR/lintro.rb"
 	binary_assets='{"arm64-sha":"a4c1663e5908757746676c9a48bdc35a4d0ef4dbaa3bd6a96dd3a29c0a0d4c10","x86-sha":"fdab37737c071fb07543c5fd2f99a36bb3031524ba7a25b6bd63aa333bed12f5"}'
 
-	bash "$SCRIPTS_DIR/generate-binary-formula.sh" \
+	run bash "$SCRIPTS_DIR/generate-binary-formula.sh" \
 		--config "$REPO_ROOT/formulas/lintro.yml" \
 		--formula-key lintro \
 		--version 0.64.4 \
 		--output "$output_file" \
 		--binary-assets "$binary_assets"
 
+	[ "$status" -eq 0 ]
 	assert_files_equal "$REPO_ROOT/Formula/lintro.rb" "$output_file"
 }

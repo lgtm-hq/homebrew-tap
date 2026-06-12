@@ -81,7 +81,9 @@ read_config_value() {
 PACKAGE_NAME="${PYPI_PACKAGE_OVERRIDE:-$(read_config_value package)}"
 PYTHON_VERSION="$(read_config_value python-version)"
 PYTHON_VERSION="${PYTHON_VERSION:-3.13}"
-PYTHON_VERSION_DOT="${PYTHON_VERSION//./}"
+PYTHON_VERSION_NODOT="${PYTHON_VERSION//./}"
+MIN_RESOURCE_COUNT="$(read_config_value min-resource-count)"
+MIN_RESOURCE_COUNT="${MIN_RESOURCE_COUNT:-1}"
 GENERATE_RESOURCES=$(python3 -c "import json, sys; print('true' if json.loads(sys.argv[1]).get('generate-resources') else 'false')" "$CONFIG_JSON")
 TEST_COMMAND="$(read_config_value test-command)"
 if [[ -z "$TEST_COMMAND" ]]; then
@@ -157,8 +159,8 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 		--exclude "${EXCLUDE_ARGS[@]}")
 
 	RESOURCE_COUNT=$(echo "$RESOURCES" | grep -c "^  resource " || echo "0")
-	if [[ "$RESOURCE_COUNT" -lt 5 ]]; then
-		log_error "Expected multiple resource stanzas but only found ${RESOURCE_COUNT}"
+	if [[ "$RESOURCE_COUNT" -lt "$MIN_RESOURCE_COUNT" ]]; then
+		log_error "Expected at least ${MIN_RESOURCE_COUNT} resource stanzas but only found ${RESOURCE_COUNT}"
 		exit 1
 	fi
 	echo "$RESOURCES" >"$TMPDIR/resources.txt"
@@ -171,7 +173,7 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 		wheel_comment=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('comment', ''))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
 		resolve_from=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('resolve-version-from', ''))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
 
-		wheel_args=(--type "$wheel_type" --comment "$wheel_comment" --python-version "${PYTHON_VERSION_DOT}")
+		wheel_args=(--type "$wheel_type" --comment "$wheel_comment" --python-version "${PYTHON_VERSION_NODOT}")
 		if [[ "$wheel_type" == "platform" && -n "$resolve_from" ]]; then
 			wheel_version=$("$ANALYSIS_VENV/bin/python" -c \
 				"from importlib.metadata import version; print(version('${resolve_from}'))")

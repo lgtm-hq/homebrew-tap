@@ -11,8 +11,23 @@ set -euo pipefail
 cmd=("$@")
 
 if [[ "${cmd[0]}" == "pr" && "${cmd[1]}" == "list" ]]; then
+	json="[]"
 	if [[ -n "${MOCK_PR_NUMBER:-}" ]]; then
-		echo "${MOCK_PR_NUMBER}"
+		json="[{\"number\": ${MOCK_PR_NUMBER}}]"
+	fi
+
+	jq_expr=""
+	for ((i = 0; i < ${#cmd[@]}; i++)); do
+		if [[ "${cmd[$i]}" == "--jq" ]]; then
+			jq_expr="${cmd[$((i + 1))]}"
+			break
+		fi
+	done
+
+	if [[ -n "$jq_expr" ]]; then
+		echo "$json" | jq -r "$jq_expr"
+	else
+		echo "$json"
 	fi
 	exit 0
 fi

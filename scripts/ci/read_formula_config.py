@@ -57,7 +57,7 @@ def merge_formula_config(
         raise KeyError(msg)
 
     formula_entry = dict(formulas[formula_key])
-    merged = {
+    return {
         "product": formula_key,
         "package": product_config.get("package"),
         "source-repo": product_config.get("source-repo"),
@@ -70,7 +70,6 @@ def merge_formula_config(
         "class-name": formula_entry.pop("class-name", formula_class_name(formula_key)),
         **formula_entry,
     }
-    return merged
 
 
 def emit_shell(config: dict[str, Any]) -> None:

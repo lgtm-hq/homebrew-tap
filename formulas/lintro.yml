@@ -31,6 +31,7 @@ formulas:
     python-version: "3.13"
     test-command: "lintro --version"
     generate-resources: true
+    min-resource-count: 5
     class-name: LintroFull
     description: "Unified CLI for code quality (all tools included)"
     homebrew-deps:

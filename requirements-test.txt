@@ -1,2 +1,2 @@
-pyyaml
-packaging
+pyyaml==6.0.2
+packaging>=21.0

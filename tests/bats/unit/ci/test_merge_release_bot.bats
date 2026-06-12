@@ -76,3 +76,21 @@ run_merge_bot() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"expected release bot"* ]]
 }
+
+@test "merge-release-bot-pr: skips branch with trailing malicious content" {
+	export MOCK_AUTHOR="github-actions[bot]"
+	export MOCK_TITLE="chore(homebrew): update winnow to 0.0.1"
+
+	run run_merge_bot "homebrew/winnow-0.0.1; rm -rf /"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Skipping merge"* ]]
+}
+
+@test "merge-release-bot-pr: skips title with trailing malicious content" {
+	export MOCK_AUTHOR="github-actions[bot]"
+	export MOCK_TITLE="chore(homebrew): update winnow to 0.0.1; malicious"
+
+	run run_merge_bot "homebrew/winnow-0.0.1"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"unexpected PR title"* ]]
+}

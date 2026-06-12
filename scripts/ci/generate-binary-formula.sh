@@ -98,10 +98,15 @@ TEST_ARGS="${TEST_ARGS# }"
 ARM64_ASSET=$(python3 -c "import json, sys; print(json.loads(sys.argv[1])['arm64'])" "$BINARY_NAMES_JSON")
 X86_ASSET=$(python3 -c "import json, sys; print(json.loads(sys.argv[1])['x86_64'])" "$BINARY_NAMES_JSON")
 
-ARM64_URL="${BINARY_URL_PATTERN//\{version\}/$VERSION}"
-ARM64_URL="${ARM64_URL//\{arch\}/arm64}"
+build_binary_url() {
+	local arch="$1"
+	printf '%s\n' "$BINARY_URL_PATTERN" | sed \
+		-e 's/{version}/#{version}/g' \
+		-e "s/{arch}/${arch}/g"
+}
 
-RELEASE_BASE="${ARM64_URL%/download/*}"
+ARM64_URL=$(build_binary_url "arm64")
+X86_URL=$(build_binary_url "x86_64")
 
 log_info "Generating binary formula '${FORMULA_KEY}' for version ${VERSION}"
 
@@ -139,15 +144,13 @@ class ${CLASS_NAME} < Formula
   version "${VERSION}"
   license "${LICENSE}"
 
-  RELEASE_BASE = "${RELEASE_BASE}"
-
   on_macos do
     on_arm do
-      url "#{RELEASE_BASE}/download/v#{version}/${ARM64_ASSET}"
+      url "${ARM64_URL}"
       sha256 "${ARM64_SHA}"
     end
     on_intel do
-      url "#{RELEASE_BASE}/download/v#{version}/${X86_ASSET}"
+      url "${X86_URL}"
       sha256 "${X86_SHA}"
     end
   end
