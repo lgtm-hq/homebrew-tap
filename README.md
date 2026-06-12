@@ -177,7 +177,7 @@ Formula entry fields:
 Tap scripts reuse [lgtm-ci](https://github.com/lgtm-hq/lgtm-ci) for PyPI
 registry helpers (`wait_for_package`, `get_pypi_download_url`, `get_pypi_sha256`).
 CI workflows sparse-checkout lgtm-ci at the same ref as `reusable-quality`
-(`ba485556d3d4605b825347c2fe431ad4395b1c63`, v0.44.1).
+(`509b10a0c813895e4be2989f3e7ef2e8aa14eca3`, v0.45.0).
 
 For local development and tests:
 

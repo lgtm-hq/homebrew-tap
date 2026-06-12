@@ -20,8 +20,8 @@ class {{CLASS_NAME}} < Formula
   depends_on "python@{{PYTHON_VERSION}}"
 
   def install
-    virtualenv_create(libexec, "{{PYTHON_VENV}}")
-    pip_install_and_link buildpath
+    venv = virtualenv_create(libexec, "{{PYTHON_VENV}}")
+    venv.pip_install_and_link buildpath
   end
 
   test do
