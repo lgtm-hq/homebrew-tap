@@ -15,11 +15,33 @@ jobs:
     permissions:
       contents: read  # checkout repository code
       packages: read  # pull py-lintro container image
-      pull-requests: write  # post lint results to PR
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality.yml@ba485556d3d4605b825347c2fe431ad4395b1c63  # v0.44.1
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality-lint.yml@ba485556d3d4605b825347c2fe431ad4395b1c63  # v0.44.1
     with:
       tooling-ref: "ba485556d3d4605b825347c2fe431ad4395b1c63"
+      job-name: "Lintro Quality Checks"
+      egress-policy: block
+      egress-preset: quality
+      runner-image: ubuntu-24.04
+
+  publish-pr-comment:
+    needs: quality
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read  # read quality job outputs and artifacts
+      pull-requests: write  # post lint summary to PR
+    # yamllint disable-line rule:line-length
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-publish-quality-summary.yml@ba485556d3d4605b825347c2fe431ad4395b1c63  # v0.44.1
+    with:
+      tooling-ref: "ba485556d3d4605b825347c2fe431ad4395b1c63"
+      # yamllint disable-line rule:line-length
+      exit-code: ${{ needs.quality.outputs.exit-code != '' && needs.quality.outputs.exit-code || '1' }}
+      job-name: "PR Lint Comment"
+      egress-policy: block
+      egress-preset: github-tooling
 
   shell-tests:
     permissions:
