@@ -1,0 +1,32 @@
+#!/usr/bin/env bats
+# SPDX-License-Identifier: MIT
+# Purpose: Tests for FormulaAudit/Desc validation helper.
+
+load "../../../helpers/common"
+
+setup() {
+	REPO_ROOT="$(repo_root)"
+	SCRIPTS_DIR="$REPO_ROOT/scripts/ci"
+}
+
+@test "formula_description: accepts description without leading formula name" {
+	run python3 "$SCRIPTS_DIR/formula_description.py" winnow \
+		"Organize, deduplicate, and keep the best from your media library"
+
+	[ "$status" -eq 0 ]
+}
+
+@test "formula_description: rejects description starting with formula name" {
+	run python3 "$SCRIPTS_DIR/formula_description.py" winnow \
+		"Winnow your media library — organize, deduplicate, keep the best"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"FormulaAudit/Desc"* ]]
+}
+
+@test "formula_description: rejects hyphenated formula key prefix" {
+	run python3 "$SCRIPTS_DIR/formula_description.py" lintro-full \
+		"Lintro-full bundle with all tools"
+
+	[ "$status" -eq 1 ]
+}
