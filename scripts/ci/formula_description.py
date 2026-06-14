@@ -8,6 +8,13 @@ import sys
 
 from read_formula_config import formula_class_name
 
+# Homebrew uses `desc.downcase.start_with?(name.downcase)` with no suffix analysis.
+# We require a separator (or end-of-string) after the matched name so short formula
+# keys do not false-positive (e.g. "win" vs "windows manager"). Mid-word prefixes
+# such as "WinnowTool" may still pass here but fail `brew audit`; prefer explicit
+# separators in product descriptions.
+FORMULA_NAME_SUFFIX_SEPARATORS = " \t:-—.,;'("
+
 
 def audit_name_candidates(formula_key: str) -> tuple[str, ...]:
     """Return name variants Homebrew treats as the formula name.
@@ -59,7 +66,7 @@ def description_starts_with_formula_name(
         if not desc_lower.startswith(name_lower):
             continue
         suffix = desc[len(name) :]
-        if not suffix or suffix[0] in " \t:-—.,;":
+        if not suffix or suffix[0] in FORMULA_NAME_SUFFIX_SEPARATORS:
             return True
     return False
 
@@ -72,8 +79,12 @@ def validate_formula_description(description: str, formula_key: str) -> None:
         formula_key: Formula key under formulas: in product config.
 
     Raises:
-        ValueError: When the description starts with the formula name.
+        ValueError: When the description is empty or starts with the formula name.
     """
+    if not description.strip():
+        msg = "Description must not be empty (FormulaAudit/Desc)."
+        raise ValueError(msg)
+
     if description_starts_with_formula_name(
         description=description,
         formula_key=formula_key,

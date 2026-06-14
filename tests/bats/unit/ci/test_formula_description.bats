@@ -30,3 +30,25 @@ setup() {
 
 	[ "$status" -eq 1 ]
 }
+
+@test "formula_description: rejects empty description" {
+	run python3 "$SCRIPTS_DIR/formula_description.py" winnow ""
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"must not be empty"* ]]
+}
+
+@test "formula_description: rejects whitespace-only description" {
+	run python3 "$SCRIPTS_DIR/formula_description.py" winnow "   "
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"must not be empty"* ]]
+}
+
+@test "formula_description: rejects apostrophe after formula name" {
+	run python3 "$SCRIPTS_DIR/formula_description.py" winnow \
+		"Winnow's media library organizer"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"FormulaAudit/Desc"* ]]
+}

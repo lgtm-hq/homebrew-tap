@@ -159,7 +159,7 @@ Formula entry fields:
 | `binary-names` | binary | Asset filenames per architecture |
 | `install-name` | binary | Binary name installed to `$PREFIX/bin` |
 | `class-name` | optional | Override Homebrew class name |
-| `description` | optional | Override product-level description. Must not start with the formula name ([FormulaAudit/Desc](https://docs.brew.sh/Formula-Cookbook#summary)) |
+| `description` | optional | Override product-level description. Must be non-empty and must not start with the formula name ([FormulaAudit/Desc](https://docs.brew.sh/Formula-Cookbook#summary)). Generators validate before render; mid-word prefixes (e.g. `WinnowTool`) are not caught and still fail `brew audit`. |
 | `caveats` | optional | Multi-line caveats block |
 
 ### Adding a new product
