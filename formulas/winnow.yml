@@ -3,7 +3,7 @@ package: winnow-media
 source-repo: lgtm-hq/winnow
 homepage: https://github.com/lgtm-hq/winnow
 license: MIT
-description: "Winnow your media library — organize, deduplicate, keep the best"
+description: "Organize, deduplicate, and keep the best from your media library"
 
 formulas:
   winnow:

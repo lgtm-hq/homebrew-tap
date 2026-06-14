@@ -107,6 +107,7 @@ if [[ -z "$TEST_COMMAND" ]]; then
 fi
 CLASS_NAME="$(read_config_value class-name)"
 DESCRIPTION="$(read_config_value description)"
+python3 "$SCRIPT_DIR/formula_description.py" "$FORMULA_KEY" "$DESCRIPTION"
 HOMEPAGE="$(read_config_value homepage)"
 LICENSE="$(read_config_value license)"
 TEST_BINARY="${TEST_COMMAND%% *}"

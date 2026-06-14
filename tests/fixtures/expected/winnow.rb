@@ -6,7 +6,7 @@
 class Winnow < Formula
   include Language::Python::Virtualenv
 
-  desc "Winnow your media library — organize, deduplicate, keep the best"
+  desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
   url "https://files.pythonhosted.org/packages/ab/cd/winnow_media-0.0.1.tar.gz"
   sha256 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
