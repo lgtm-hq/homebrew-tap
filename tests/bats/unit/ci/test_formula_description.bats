@@ -29,6 +29,7 @@ setup() {
 		"Lintro-full bundle with all tools"
 
 	[ "$status" -eq 1 ]
+	[[ "$output" == *"FormulaAudit/Desc"* ]]
 }
 
 @test "formula_description: rejects empty description" {
