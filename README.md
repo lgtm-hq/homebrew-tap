@@ -52,6 +52,12 @@ brew install <formula-name>
     <td>PyPI install with all linting tools bundled via Homebrew dependencies</td>
     <td><code>brew install lintro-full</code></td>
   </tr>
+  <tr>
+    <td width="50">🎬</td>
+    <td><strong><a href="https://github.com/lgtm-hq/winnow">winnow</a></strong></td>
+    <td>PyPI install with pinned dependencies (full template, like lintro-full)</td>
+    <td><code>brew install winnow</code></td>
+  </tr>
 </table>
 
 ---
@@ -141,6 +147,7 @@ description: "Organize, deduplicate, and keep the best from your media library"
 formulas:
   winnow:
     type: pypi
+    generate-resources: true
     python-version: "3.13"
     test-command: "winnow --version"
 ```
@@ -161,6 +168,9 @@ Formula entry fields:
 | `class-name` | optional | Override Homebrew class name |
 | `description` | optional | Override product-level description. Must be non-empty and must not start with the formula name ([FormulaAudit/Desc](https://docs.brew.sh/Formula-Cookbook#summary)). Generators validate before render; mid-word prefixes (e.g. `WinnowTool`) are not caught and still fail `brew audit`. |
 | `caveats` | optional | Multi-line caveats block |
+
+Generated formulas include `# typed: strict` (Sorbet) in the header for
+consistent typing across PyPI and binary templates.
 
 ### Adding a new product
 
@@ -186,7 +196,7 @@ bash scripts/ci/ensure-lgtm-ci-tooling.sh
 bash scripts/ci/run-tests.sh
 ```
 
-Advanced PyPI resource generation (`lintro-full`) still uses tap-local Python
+Advanced PyPI resource generation (`lintro-full`, `winnow`) uses tap-local Python
 helpers; simple PyPI formulas and PyPI polling delegate to lgtm-ci.
 
 See [issue #44](https://github.com/lgtm-hq/homebrew-tap/issues/44) for the full

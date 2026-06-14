@@ -27,6 +27,7 @@ teardown() {
 		--binary-assets "$binary_assets"
 
 	[ "$status" -eq 0 ]
+	grep -q '# typed: strict' "$output_file"
 	grep -q 'class Lintro < Formula' "$output_file"
 	grep -q 'version "0.64.4"' "$output_file"
 	grep -q 'a4c1663e5908757746676c9a48bdc35a4d0ef4dbaa3bd6a96dd3a29c0a0d4c10' "$output_file"

@@ -18,9 +18,25 @@ teardown() {
 @test "generate-pypi-formula: winnow simple formula matches fixture" {
 	export PYPI_FIXTURE_DIR="$REPO_ROOT/tests/fixtures/pypi"
 	output_file="$TEST_TEMP_DIR/winnow.rb"
+	simple_config="$TEST_TEMP_DIR/winnow-simple.yml"
+
+	cat >"$simple_config" <<'EOF'
+---
+package: winnow-media
+source-repo: lgtm-hq/winnow
+homepage: https://github.com/lgtm-hq/winnow
+license: MIT
+description: "Organize, deduplicate, and keep the best from your media library"
+
+formulas:
+  winnow:
+    type: pypi
+    python-version: "3.13"
+    test-command: "winnow --version"
+EOF
 
 	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
-		--config "$REPO_ROOT/formulas/winnow.yml" \
+		--config "$simple_config" \
 		--formula-key winnow \
 		--version 0.0.1 \
 		--output "$output_file"
@@ -36,4 +52,14 @@ teardown() {
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == "winnow" ]]
+}
+
+@test "read_formula_config: winnow enables generate-resources" {
+	run python3 "$SCRIPTS_DIR/read_formula_config.py" \
+		"$REPO_ROOT/formulas/winnow.yml" \
+		--formula-key winnow \
+		--json
+
+	[ "$status" -eq 0 ]
+	[[ "$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('generate-resources'))" "$output")" == "True" ]]
 }
