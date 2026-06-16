@@ -19,7 +19,22 @@ Environment:
   DISPATCH_PYPI_PACKAGE  Optional PyPI package override
   DISPATCH_BINARY_ASSETS Optional JSON with arm64-sha and x86-sha
   GH_TOKEN               GitHub token for PR creation (default GITHUB_TOKEN)
+  PUSH_TOKEN             Optional App installation token for git push
+  GITHUB_REPOSITORY      Required when PUSH_TOKEN is set (owner/repo)
 EOF
+}
+
+# BATS tests extract this function via sed (/^configure_git_push_remote() {/,/^}/).
+# Keep the signature on one line and avoid nested blocks with `}` at column 0
+# (here-docs, case arms) inside this function — they break test extraction.
+configure_git_push_remote() {
+	if [[ -z "${PUSH_TOKEN:-}" ]]; then
+		return 0
+	fi
+
+	: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required when PUSH_TOKEN is set}"
+	git remote set-url origin \
+		"https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 }
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
@@ -134,6 +149,7 @@ git checkout -B "$PR_BRANCH"
 git commit -m "$PR_TITLE"
 
 log_info "Pushing branch ${PR_BRANCH}"
+configure_git_push_remote
 git push --force-with-lease origin "HEAD:${PR_BRANCH}"
 
 existing_pr="$(
