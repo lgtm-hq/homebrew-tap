@@ -28,6 +28,8 @@ teardown() {
 	[ "$status" -eq 0 ]
 	grep -q '# typed: strict' "$output_file"
 	grep -q 'resource "click" do' "$output_file"
-	grep -q 'venv.pip_install other_resources' "$output_file"
+	grep -q 'venv.pip_install resources' "$output_file"
+	! grep -q 'pydantic_core' "$output_file"
+	! grep -q 'def caveats' "$output_file"
 	assert_files_equal "$REPO_ROOT/tests/fixtures/expected/winnow-full.rb" "$output_file"
 }

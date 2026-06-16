@@ -231,22 +231,21 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 		done <<<"$(printf '%s\n' "${WHEEL_PKG_ARRAY[@]}")"
 	fi
 
-	python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('caveats', ''))" "$CONFIG_JSON" |
-		while IFS= read -r line || [[ -n "$line" ]]; do
+	CAVEATS_RAW=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('caveats', '') or '')" "$CONFIG_JSON")
+	if [[ -n "$CAVEATS_RAW" ]]; then
+		INDENTED_CAVEATS=$(while IFS= read -r line || [[ -n "$line" ]]; do
 			if [[ -z "$line" ]]; then
 				echo ""
 			else
 				printf '      %s\n' "$line"
 			fi
-		done >"$TMPDIR/caveats.txt"
-
-	if [[ -s "$TMPDIR/caveats.txt" ]]; then
+		done <<<"$CAVEATS_RAW")
 		CAVEATS_BLOCK=$(
 			cat <<EOF
 
   def caveats
     <<~EOS
-$(cat "$TMPDIR/caveats.txt")
+${INDENTED_CAVEATS}
     EOS
   end
 EOF
@@ -255,10 +254,18 @@ EOF
 		CAVEATS_BLOCK=""
 	fi
 
-	PYDANTIC_CORE_INSTALL=""
+	HAS_PYDANTIC_CORE=false
 	if ((${#WHEEL_PKG_ARRAY[@]})) && printf '%s\n' "${WHEEL_PKG_ARRAY[@]}" | grep -qx "pydantic_core"; then
-		PYDANTIC_CORE_INSTALL=$(
+		HAS_PYDANTIC_CORE=true
+	fi
+
+	if [[ "$HAS_PYDANTIC_CORE" == "true" ]]; then
+		INSTALL_RESOURCES=$(
 			cat <<'EOF'
+    # Install other resources first (this sets up pip in the venv)
+    other_resources = resources.reject { |r| r.name == "pydantic_core" }
+    venv.pip_install other_resources
+
     # Install pydantic_core wheel (requires special handling due to Rust build)
     resource("pydantic_core").stage do
       wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
@@ -266,11 +273,12 @@ EOF
       system libexec/"bin/python", "-m", "pip",
              "install", "--no-deps", "--ignore-installed", wheel.to_s
     end
-
 EOF
 		)
+	else
+		INSTALL_RESOURCES='    venv.pip_install resources'
 	fi
-	printf '%s' "$PYDANTIC_CORE_INSTALL" >"$TMPDIR/pydantic_install.txt"
+	printf '%s' "$INSTALL_RESOURCES" >"$TMPDIR/install_resources.txt"
 	printf '%s' "$CAVEATS_BLOCK" >"$TMPDIR/caveats_block.txt"
 
 	{
@@ -298,7 +306,7 @@ EOF
 		--replace-file "HOMEBREW_DEPS=${TMPDIR}/deps.txt" \
 		--replace-file "POET_RESOURCES=${TMPDIR}/resources.txt" \
 		--replace-file "WHEEL_RESOURCES=${TMPDIR}/wheels.txt" \
-		--replace-file "PYDANTIC_CORE_INSTALL=${TMPDIR}/pydantic_install.txt" \
+		--replace-file "INSTALL_RESOURCES=${TMPDIR}/install_resources.txt" \
 		--replace-file "CAVEATS_BLOCK=${TMPDIR}/caveats_block.txt" \
 		--output "$OUTPUT_FILE"
 else

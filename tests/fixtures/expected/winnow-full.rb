@@ -30,22 +30,13 @@ class Winnow < Formula
   def install
     venv = virtualenv_create(libexec, "python3.13")
 
-    # Install other resources first (this sets up pip in the venv)
-    other_resources = resources.reject { |r| r.name == "pydantic_core" }
-    venv.pip_install other_resources
-
-
+    venv.pip_install resources
 
     # Install the package itself
     venv.pip_install_and_link buildpath
   end
 
 
-  def caveats
-    <<~EOS
-
-    EOS
-  end
 
   test do
     assert_match version.to_s, shell_output("#{bin}/winnow --version")
