@@ -93,6 +93,31 @@ Formulae are updated tap-side when caller repos send a `repository_dispatch`
 event. The tap generates formulas, opens a PR, validates them, and auto-merges
 after CI passes.
 
+### CI token architecture
+
+Automated formula PRs use three credential roles. Org secrets are shared across
+`lgtm-hq` repos (`HOMEBREW_TAP_APP_*`); caller repos only need the dispatch PAT.
+
+| Credential | Where stored | Used for |
+| ---------- | ------------ | -------- |
+| `HOMEBREW_TAP_DISPATCH_TOKEN` | Caller repo secret (py-lintro, winnow, …) | `repository_dispatch` to trigger `update-formula.yml` |
+| `HOMEBREW_TAP_APP_ID` + `HOMEBREW_TAP_APP_PRIVATE_KEY` | Org secret | Mint installation tokens for `homebrew-tap-release-bot` |
+| App installation token | Generated in workflow (`create-github-app-token`) | `git push` on formula branches; `gh pr merge --auto` |
+| `GITHUB_TOKEN` | Per-workflow (no secret) | `gh pr create` / `gh pr list` in `update-formula.yml` |
+
+The `homebrew-tap-release-bot` GitHub App pushes formula branches so
+`pull_request` CI runs without a maintainer clicking **Approve and run
+workflows** (GitHub blocks workflows on branches pushed with `GITHUB_TOKEN` from
+another workflow). PRs are still opened with `GITHUB_TOKEN`, so the PR author is
+usually `github-actions[bot]`; `merge-release-bot-pr.sh` trusts that identity
+along with the App.
+
+Auto-merge uses the App installation token so merges satisfy the org
+`review-required` ruleset bypass granted to `homebrew-tap-release-bot`.
+
+`RELEASE_APP_ID` / `RELEASE_APP_PRIVATE_KEY` are a different App (`lgtm-release-bot`)
+used by product-repo release workflows — not this tap pipeline.
+
 ### Dispatch contract (caller repos)
 
 ```yaml
