@@ -61,5 +61,6 @@ EOF
 		--json
 
 	[ "$status" -eq 0 ]
-	[[ "$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('generate-resources'))" "$output")" == "True" ]]
+	run python3 -c "import json, sys; data=json.loads(sys.argv[1]); sys.exit(0 if data.get('generate-resources') is True else 1)" "$output"
+	[ "$status" -eq 0 ]
 }
