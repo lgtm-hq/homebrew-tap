@@ -8,5 +8,6 @@ description: "Organize, deduplicate, and keep the best from your media library"
 formulas:
   winnow:
     type: pypi
+    generate-resources: true
     python-version: "3.13"
     test-command: "winnow --version"

@@ -137,6 +137,13 @@ validate_sdist() {
 	local tarball_file="$1"
 
 	if [[ -n "${PYPI_FIXTURE_DIR:-}" ]]; then
+		local fixture_sdist
+		fixture_sdist="$(dirname "$PYPI_FIXTURE_DIR")/sdist/${PACKAGE_NAME}-${VERSION}.tar.gz"
+		if [[ -f "$fixture_sdist" ]]; then
+			cp "$fixture_sdist" "$tarball_file"
+			log_info "Using sdist fixture: ${fixture_sdist}"
+			return 0
+		fi
 		log_info "Skipping live sdist download in fixture mode"
 		return 0
 	fi
@@ -166,8 +173,14 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 	HOMEBREW_DEPS_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('homebrew-deps', [])))" "$CONFIG_JSON")
 	WHEEL_PACKAGES_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('wheel-only-packages', {})))" "$CONFIG_JSON")
 
-	mapfile -t HOMEBREW_PKG_ARRAY < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1])))" "$HOMEBREW_DEPS_JSON")
-	mapfile -t WHEEL_PKG_ARRAY < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1]).keys()))" "$WHEEL_PACKAGES_JSON")
+	HOMEBREW_PKG_ARRAY=()
+	while IFS= read -r line; do
+		[[ -n "$line" ]] && HOMEBREW_PKG_ARRAY+=("$line")
+	done < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1])))" "$HOMEBREW_DEPS_JSON")
+	WHEEL_PKG_ARRAY=()
+	while IFS= read -r line; do
+		[[ -n "$line" ]] && WHEEL_PKG_ARRAY+=("$line")
+	done < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1]).keys()))" "$WHEEL_PACKAGES_JSON")
 
 	ANALYSIS_VENV=$(mktemp -d)
 	trap 'rm -rf "$TMPDIR" "$ANALYSIS_VENV"' EXIT
@@ -179,13 +192,17 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 	"$ANALYSIS_VENV/bin/pip" install --quiet "$TARBALL_FILE"
 
 	EXCLUDE_ARGS=()
-	for pkg in "${WHEEL_PKG_ARRAY[@]}" "${HOMEBREW_PKG_ARRAY[@]}"; do
+	for pkg in ${WHEEL_PKG_ARRAY[@]+"${WHEEL_PKG_ARRAY[@]}"} ${HOMEBREW_PKG_ARRAY[@]+"${HOMEBREW_PKG_ARRAY[@]}"}; do
 		EXCLUDE_ARGS+=("$pkg")
 	done
 
 	log_info "Generating resource stanzas..."
-	RESOURCES=$("$ANALYSIS_VENV/bin/python" "$SCRIPT_DIR/generate_resources.py" "$PACKAGE_NAME" \
-		--exclude "${EXCLUDE_ARGS[@]}")
+	ANALYSIS_SITE_PACKAGES=$("$ANALYSIS_VENV/bin/python" -c "import site; print(site.getsitepackages()[0])")
+	generate_resource_args=("$SCRIPT_DIR/generate_resources.py" "$PACKAGE_NAME")
+	if ((${#EXCLUDE_ARGS[@]})); then
+		generate_resource_args+=(--exclude "${EXCLUDE_ARGS[@]}")
+	fi
+	RESOURCES=$(PYTHONPATH="$ANALYSIS_SITE_PACKAGES" python3 "${generate_resource_args[@]}")
 
 	RESOURCE_COUNT=$(printf '%s\n' "$RESOURCES" | awk '/^  resource / { count++ } END { print count + 0 }')
 	if [[ "$RESOURCE_COUNT" -lt "$MIN_RESOURCE_COUNT" ]]; then
@@ -196,38 +213,39 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 
 	log_info "Generating wheel resources..."
 	: >"$TMPDIR/wheels.txt"
-	while IFS= read -r wheel_pkg; do
-		[[ -z "$wheel_pkg" ]] && continue
-		wheel_type=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('type', 'universal'))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
-		wheel_comment=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('comment', ''))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
-		resolve_from=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('resolve-version-from', ''))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
+	if ((${#WHEEL_PKG_ARRAY[@]})); then
+		while IFS= read -r wheel_pkg; do
+			[[ -z "$wheel_pkg" ]] && continue
+			wheel_type=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('type', 'universal'))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
+			wheel_comment=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('comment', ''))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
+			resolve_from=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('resolve-version-from', ''))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
 
-		wheel_args=(--type "$wheel_type" --comment "$wheel_comment" --python-version "${PYTHON_VERSION_NODOT}")
-		if [[ "$wheel_type" == "platform" && -n "$resolve_from" ]]; then
-			wheel_version=$("$ANALYSIS_VENV/bin/python" -c \
-				"from importlib.metadata import version; print(version('${resolve_from}'))")
-			wheel_args+=(--version "$wheel_version")
-		fi
+			wheel_args=(--type "$wheel_type" --comment "$wheel_comment" --python-version "${PYTHON_VERSION_NODOT}")
+			if [[ "$wheel_type" == "platform" && -n "$resolve_from" ]]; then
+				wheel_version=$("$ANALYSIS_VENV/bin/python" -c \
+					"from importlib.metadata import version; print(version('${resolve_from}'))")
+				wheel_args+=(--version "$wheel_version")
+			fi
 
-		python3 "$SCRIPT_DIR/fetch_wheel_info.py" "$wheel_pkg" "${wheel_args[@]}" >>"$TMPDIR/wheels.txt"
-	done <<<"$(printf '%s\n' "${WHEEL_PKG_ARRAY[@]}")"
+			python3 "$SCRIPT_DIR/fetch_wheel_info.py" "$wheel_pkg" "${wheel_args[@]}" >>"$TMPDIR/wheels.txt"
+		done <<<"$(printf '%s\n' "${WHEEL_PKG_ARRAY[@]}")"
+	fi
 
-	python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('caveats', ''))" "$CONFIG_JSON" |
-		while IFS= read -r line || [[ -n "$line" ]]; do
+	CAVEATS_RAW=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('caveats', '') or '')" "$CONFIG_JSON")
+	if [[ -n "$CAVEATS_RAW" ]]; then
+		INDENTED_CAVEATS=$(while IFS= read -r line || [[ -n "$line" ]]; do
 			if [[ -z "$line" ]]; then
 				echo ""
 			else
 				printf '      %s\n' "$line"
 			fi
-		done >"$TMPDIR/caveats.txt"
-
-	if [[ -s "$TMPDIR/caveats.txt" ]]; then
+		done <<<"$CAVEATS_RAW")
 		CAVEATS_BLOCK=$(
 			cat <<EOF
 
   def caveats
     <<~EOS
-$(cat "$TMPDIR/caveats.txt")
+${INDENTED_CAVEATS}
     EOS
   end
 EOF
@@ -236,10 +254,18 @@ EOF
 		CAVEATS_BLOCK=""
 	fi
 
-	PYDANTIC_CORE_INSTALL=""
-	if printf '%s\n' "${WHEEL_PKG_ARRAY[@]}" | grep -qx "pydantic_core"; then
-		PYDANTIC_CORE_INSTALL=$(
+	HAS_PYDANTIC_CORE=false
+	if ((${#WHEEL_PKG_ARRAY[@]})) && printf '%s\n' "${WHEEL_PKG_ARRAY[@]}" | grep -qx "pydantic_core"; then
+		HAS_PYDANTIC_CORE=true
+	fi
+
+	if [[ "$HAS_PYDANTIC_CORE" == "true" ]]; then
+		INSTALL_RESOURCES=$(
 			cat <<'EOF'
+    # Install other resources first (this sets up pip in the venv)
+    other_resources = resources.reject { |r| r.name == "pydantic_core" }
+    venv.pip_install other_resources
+
     # Install pydantic_core wheel (requires special handling due to Rust build)
     resource("pydantic_core").stage do
       wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
@@ -247,15 +273,16 @@ EOF
       system libexec/"bin/python", "-m", "pip",
              "install", "--no-deps", "--ignore-installed", wheel.to_s
     end
-
 EOF
 		)
+	else
+		INSTALL_RESOURCES='    venv.pip_install resources'
 	fi
-	printf '%s' "$PYDANTIC_CORE_INSTALL" >"$TMPDIR/pydantic_install.txt"
+	printf '%s' "$INSTALL_RESOURCES" >"$TMPDIR/install_resources.txt"
 	printf '%s' "$CAVEATS_BLOCK" >"$TMPDIR/caveats_block.txt"
 
 	{
-		for dep in "${HOMEBREW_PKG_ARRAY[@]}"; do
+		for dep in ${HOMEBREW_PKG_ARRAY[@]+"${HOMEBREW_PKG_ARRAY[@]}"}; do
 			if [[ "$dep" == "rust" ]]; then
 				echo '  depends_on "rust" # provides clippy, rustfmt, and cargo for cargo-audit'
 			else
@@ -279,7 +306,7 @@ EOF
 		--replace-file "HOMEBREW_DEPS=${TMPDIR}/deps.txt" \
 		--replace-file "POET_RESOURCES=${TMPDIR}/resources.txt" \
 		--replace-file "WHEEL_RESOURCES=${TMPDIR}/wheels.txt" \
-		--replace-file "PYDANTIC_CORE_INSTALL=${TMPDIR}/pydantic_install.txt" \
+		--replace-file "INSTALL_RESOURCES=${TMPDIR}/install_resources.txt" \
 		--replace-file "CAVEATS_BLOCK=${TMPDIR}/caveats_block.txt" \
 		--output "$OUTPUT_FILE"
 else

@@ -149,7 +149,7 @@ EOF
 fi
 
 cat >"$OUTPUT_FILE" <<EOF
-# typed: false
+# typed: strict
 # frozen_string_literal: true
 
 # Homebrew formula for ${FORMULA_KEY} binary distribution
