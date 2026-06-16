@@ -24,8 +24,7 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
-          # Required for scripts/ci/update-formula.sh git push via GITHUB_TOKEN
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Checkout lgtm-ci tooling
         # yamllint disable-line rule:line-length
@@ -73,6 +72,15 @@ jobs:
           CLIENT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
         run: bash scripts/ci/parse-dispatch-payload.sh
 
+      - name: Create release bot installation token
+        id: release-bot-token
+        # yamllint disable-line rule:line-length
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        with:
+          app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Generate formulas and open PR
         env:
           DISPATCH_FORMULA: ${{ steps.payload.outputs.formula }}
@@ -80,5 +88,7 @@ jobs:
           DISPATCH_PYPI_PACKAGE: ${{ steps.payload.outputs.pypi-package }}
           DISPATCH_BINARY_ASSETS: ${{ steps.payload.outputs.binary-assets }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUSH_TOKEN: ${{ steps.release-bot-token.outputs.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           LGTM_CI_TOOLING_DIR: ${{ github.workspace }}/.lgtm-ci-tooling
         run: bash scripts/ci/update-formula.sh
