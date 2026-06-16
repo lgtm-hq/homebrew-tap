@@ -11,3 +11,9 @@ formulas:
     generate-resources: true
     python-version: "3.13"
     test-command: "winnow --version"
+    wheel-only-packages:
+      pydantic_core:
+        type: platform
+        resolve-version-from: pydantic-core
+        comment: >-
+          pydantic_core requires Rust to build - use platform-specific wheels

@@ -51,11 +51,6 @@ class Winnow < Formula
     sha256 "c40756b57adaa8b1efeeced5c196f3f3b7c435f90e84ea7f443901bec8099ef6"
   end
 
-  resource "pydantic-core" do
-    url "https://files.pythonhosted.org/packages/9d/56/921726b776ace8d8f5db44c4ef961006580d91dc52b803c489fafd1aa249/pydantic_core-2.46.4.tar.gz"
-    sha256 "62f875393d7f270851f20523dd2e29f082bcc82292d66db2b64ea71f64b6e1c1"
-  end
-
   resource "pygments" do
     url "https://files.pythonhosted.org/packages/c3/b2/bc9c9196916376152d655522fdcebac55e66de6603a76a02bca1b6414f6c/pygments-2.20.0.tar.gz"
     sha256 "6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f"
@@ -75,11 +70,31 @@ class Winnow < Formula
     url "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac53367ae42139cf4b1ca5f36bb3dc6c9d33acdb43655/typing_inspection-0.4.2.tar.gz"
     sha256 "ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"
   end
-
+  # pydantic_core requires Rust to build - use platform-specific wheels
+  resource "pydantic_core" do
+    on_arm do
+      url "https://files.pythonhosted.org/packages/c1/81/4fa520eaffa8bd7d1525e644cd6d39e7d60b1592bc5b516693c7340b50f1/pydantic_core-2.46.4-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "c94f0688e7b8d0a67abf40e57a7eaaecd17cc9586706a31b76c031f63df052b4"
+    end
+    on_intel do
+      url "https://files.pythonhosted.org/packages/51/a2/5d30b469c5267a17b39dec53208222f76a8d351dfac4af661888c5aee77d/pydantic_core-2.46.4-cp313-cp313-macosx_10_12_x86_64.whl"
+      sha256 "5d5902252db0d3cedf8d4a1bc68f70eeb430f7e4c7104c8c476753519b423008"
+    end
+  end
   def install
     venv = virtualenv_create(libexec, "python3.13")
 
-    venv.pip_install resources
+    # Install other resources first (this sets up pip in the venv)
+    other_resources = resources.reject { |r| r.name == "pydantic_core" }
+    venv.pip_install other_resources
+
+    # Install pydantic_core wheel (requires special handling due to Rust build)
+    resource("pydantic_core").stage do
+      wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
+      odie "pydantic_core wheel not found in staged resource" if wheel.nil?
+      system libexec/"bin/python", "-m", "pip",
+             "install", "--no-deps", "--ignore-installed", wheel.to_s
+    end
 
     # Install the package itself
     venv.pip_install_and_link buildpath
