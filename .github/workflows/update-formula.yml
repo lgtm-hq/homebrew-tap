@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
     env:
       LGTM_CI_TOOLING_REF: 6a80f4a55e4080272b2d93b30cc292d618f5dd5a
@@ -80,6 +80,7 @@ jobs:
           app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
           private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
 
       - name: Generate formulas and open PR
         env:
