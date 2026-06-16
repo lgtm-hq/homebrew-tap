@@ -76,7 +76,6 @@ class Winnow < Formula
     sha256 "ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"
   end
 
-
   def install
     venv = virtualenv_create(libexec, "python3.13")
 
@@ -85,8 +84,6 @@ class Winnow < Formula
     # Install the package itself
     venv.pip_install_and_link buildpath
   end
-
-
 
   test do
     assert_match version.to_s, shell_output("#{bin}/winnow --version")

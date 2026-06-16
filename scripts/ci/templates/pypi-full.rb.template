@@ -23,7 +23,6 @@ class {{CLASS_NAME}} < Formula
   # Pure Python library dependencies
 {{POET_RESOURCES}}
 {{WHEEL_RESOURCES}}
-
   def install
     venv = virtualenv_create(libexec, "{{PYTHON_VENV}}")
 
@@ -32,9 +31,7 @@ class {{CLASS_NAME}} < Formula
     # Install the package itself
     venv.pip_install_and_link buildpath
   end
-
 {{CAVEATS_BLOCK}}
-
   test do
     assert_match version.to_s, shell_output("#{bin}/{{TEST_BINARY}} --version")
   end
