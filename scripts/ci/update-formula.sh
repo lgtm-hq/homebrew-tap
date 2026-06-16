@@ -24,6 +24,9 @@ Environment:
 EOF
 }
 
+# BATS tests extract this function via sed (/^configure_git_push_remote() {/,/^}/).
+# Keep the signature on one line and avoid nested blocks with `}` at column 0
+# (here-docs, case arms) inside this function — they break test extraction.
 configure_git_push_remote() {
 	if [[ -z "${PUSH_TOKEN:-}" ]]; then
 		return 0

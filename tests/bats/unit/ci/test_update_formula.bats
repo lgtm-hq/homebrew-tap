@@ -10,10 +10,19 @@ setup() {
 	export SCRIPT_DIR="$REPO_ROOT/scripts/ci"
 	# shellcheck source=../../../scripts/lib/common.sh disable=SC1091
 	source "$REPO_ROOT/scripts/lib/common.sh"
-	eval "$(
-		sed -n '/^configure_git_push_remote() {/,/^}/p' \
-			"$REPO_ROOT/scripts/ci/update-formula.sh"
-	)"
+
+	local extracted
+	extracted="$(sed -n '/^configure_git_push_remote() {/,/^}/p' \
+		"$REPO_ROOT/scripts/ci/update-formula.sh")"
+	if [[ -z "$extracted" ]]; then
+		echo "failed to extract configure_git_push_remote from update-formula.sh" >&2
+		return 1
+	fi
+	eval "$extracted"
+	if ! type configure_git_push_remote >/dev/null 2>&1; then
+		echo "configure_git_push_remote not defined after eval" >&2
+		return 1
+	fi
 }
 
 teardown() {
