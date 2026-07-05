@@ -201,6 +201,13 @@ class ${CLASS_NAME} < Formula
   version "${VERSION}"
   license "${LICENSE}"
 
+  # Match only proper semver release tags (e.g. v0.64.4) so livecheck
+  # ignores stray single-component tags such as "v1".
+  livecheck do
+    url :stable
+    regex(/^v?(\d+\.\d+\.\d+)\$/i)
+  end
+
   on_macos do
     on_arm do
       url "${ARM64_URL}"
