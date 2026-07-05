@@ -125,9 +125,7 @@ def build_products(formulas_dir: Path, formula_dir: Path) -> list[Product]:
 
         # A base formula is one no other entry references as its "full" sibling.
         referenced = {
-            e["full-formula-ref"]
-            for e in entries.values()
-            if e.get("full-formula-ref")
+            e["full-formula-ref"] for e in entries.values() if e.get("full-formula-ref")
         }
         base_keys = [k for k in entries if k not in referenced]
         primary_key = base_keys[0] if base_keys else next(iter(entries))
@@ -206,7 +204,7 @@ def render_install(cmd: str) -> str:
     safe = html.escape(cmd)
     return (
         '<div class="install"><code><span class="p">$</span> '
-        f'{safe}</code>'
+        f"{safe}</code>"
         f'<button class="copy" data-copy="{safe}">copy</button></div>'
     )
 
