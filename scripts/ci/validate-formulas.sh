@@ -6,8 +6,13 @@
 set -euo pipefail
 
 # Read formulae from the on-disk local tap rather than the Homebrew API so the
-# copied test tap is loaded and trusted.
+# copied test tap is loaded.
 export HOMEBREW_NO_INSTALL_FROM_API=1
+# Recent Homebrew requires explicit tap trust before loading formulae from a
+# non-official tap. This local test tap is built from the repo under test, so
+# disable the interactive trust gate for the validation run.
+# See https://docs.brew.sh/Tap-Trust
+export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/common.sh disable=SC1091 # Dynamic SCRIPT_DIR source is intentional; lintro issue #928 tracks ShellCheck source-path support.
