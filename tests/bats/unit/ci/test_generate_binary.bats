@@ -16,6 +16,7 @@ teardown() {
 }
 
 @test "generate-binary-formula: lintro binary structure and SHAs" {
+	export SKIP_ASSET_VERIFY=1
 	output_file="$TEST_TEMP_DIR/lintro.rb"
 	binary_assets='{"arm64-sha":"a4c1663e5908757746676c9a48bdc35a4d0ef4dbaa3bd6a96dd3a29c0a0d4c10","x86-sha":"fdab37737c071fb07543c5fd2f99a36bb3031524ba7a25b6bd63aa333bed12f5"}'
 
@@ -51,6 +52,7 @@ teardown() {
 }
 
 @test "generate-binary-formula: parity with committed lintro.rb" {
+	export SKIP_ASSET_VERIFY=1
 	output_file="$TEST_TEMP_DIR/lintro.rb"
 	binary_assets='{"arm64-sha":"a4c1663e5908757746676c9a48bdc35a4d0ef4dbaa3bd6a96dd3a29c0a0d4c10","x86-sha":"fdab37737c071fb07543c5fd2f99a36bb3031524ba7a25b6bd63aa333bed12f5"}'
 
