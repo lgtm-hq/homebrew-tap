@@ -1,38 +1,60 @@
 ---
 name: Quality Check - Homebrew Formula Validation (Tap)
 
+# validate-formula is a required status check. It must therefore report on every
+# PR, or non-formula PRs deadlock on a check that never runs. The workflow runs
+# on all PRs; the `changes` job decides whether the full macOS validation is
+# needed, and the `validate-formula` job reports success cheaply when it is not.
+
 "on":
   workflow_dispatch:
   pull_request:
     branches: [main]
-    paths:
-      - "Formula/**"
-      - "formulas/**"
-      - ".github/workflows/validate-homebrew-formula.yml"
-      - ".github/workflows/update-formula.yml"
-      - "scripts/**"
   push:
     branches: [main]
-    paths:
-      - "Formula/**"
-      - "formulas/**"
-      - ".github/workflows/validate-homebrew-formula.yml"
-      - ".github/workflows/update-formula.yml"
-      - "scripts/**"
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      formula: ${{ steps.detect.outputs.formula }}
+      runner: ${{ steps.detect.outputs.runner }}
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect formula-related changes
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/ci/detect-formula-changes.sh
+
   validate-formula:
-    runs-on: macos-26
+    needs: changes
+    # macOS/Homebrew when formula files change; cheap Ubuntu no-op otherwise.
+    runs-on: ${{ needs.changes.outputs.runner }}
     timeout-minutes: 15
     steps:
       - name: Checkout
+        if: needs.changes.outputs.formula == 'true'
         # yamllint disable-line rule:line-length
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           persist-credentials: false
 
       - name: Validate all formulas
+        if: needs.changes.outputs.formula == 'true'
         run: scripts/ci/validate-formulas.sh
+
+      - name: Skip validation (no formula changes)
+        if: needs.changes.outputs.formula != 'true'
+        run: echo "No formula/script changes; formula validation not required."
