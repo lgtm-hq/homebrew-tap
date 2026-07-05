@@ -94,8 +94,8 @@ read_config_value() {
 ARM64_SHA=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('arm64-sha', ''))" "$BINARY_ASSETS")
 X86_SHA=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('x86-sha', ''))" "$BINARY_ASSETS")
 
-if [[ -z "$ARM64_SHA" || -z "$X86_SHA" ]]; then
-	log_error "binary-assets must include arm64-sha and x86-sha"
+if [[ ! "$ARM64_SHA" =~ ^[0-9a-f]{64}$ || ! "$X86_SHA" =~ ^[0-9a-f]{64}$ ]]; then
+	log_error "binary-assets arm64-sha and x86-sha must be 64-character lowercase hex sha256 values"
 	exit 1
 fi
 
