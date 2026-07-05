@@ -124,6 +124,47 @@ build_binary_url() {
 ARM64_URL=$(build_binary_url "arm64")
 X86_URL=$(build_binary_url "x86_64")
 
+verify_asset_sha() {
+	local label="$1"
+	local formula_url="$2"
+	local expected_sha="$3"
+
+	# Formula URLs embed the literal Ruby token '#{version}'; substitute the
+	# concrete version so the asset can actually be downloaded.
+	local download_url="${formula_url//\#\{version\}/$VERSION}"
+
+	local asset_file
+	asset_file="$(mktemp "$TMPDIR/asset.XXXXXX")"
+
+	log_info "Verifying ${label} asset sha256 from ${download_url}"
+	if ! curl -sSfL "$download_url" -o "$asset_file"; then
+		log_error "Failed to download ${label} asset from ${download_url}"
+		exit 1
+	fi
+
+	local actual_sha
+	if command -v sha256sum &>/dev/null; then
+		actual_sha=$(sha256sum "$asset_file" | cut -d' ' -f1)
+	else
+		actual_sha=$(shasum -a 256 "$asset_file" | cut -d' ' -f1)
+	fi
+
+	if [[ "$actual_sha" != "$expected_sha" ]]; then
+		log_error "SHA256 mismatch for ${label} asset! Expected: ${expected_sha}, Got: ${actual_sha}"
+		exit 1
+	fi
+	log_info "${label} asset sha256 verified"
+}
+
+if [[ -n "${SKIP_ASSET_VERIFY:-}" ]]; then
+	log_info "SKIP_ASSET_VERIFY set; skipping live asset sha256 verification"
+else
+	TMPDIR=$(mktemp -d)
+	trap 'rm -rf "$TMPDIR"' EXIT
+	verify_asset_sha "arm64" "$ARM64_URL" "$ARM64_SHA"
+	verify_asset_sha "x86_64" "$X86_URL" "$X86_SHA"
+fi
+
 log_info "Generating binary formula '${FORMULA_KEY}' for version ${VERSION}"
 
 CAVEATS_TEXT=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('caveats', ''))" "$CONFIG_JSON")
