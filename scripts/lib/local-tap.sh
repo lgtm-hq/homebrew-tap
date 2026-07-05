@@ -20,7 +20,11 @@ get_tap_dir() {
 	echo "$(brew --repository)/Library/Taps/local/homebrew-test-tap"
 }
 
-# Set up local tap by symlinking repository
+# Set up local tap as a real git repository.
+#
+# Recent Homebrew refuses to load formulae from a symlinked tap
+# ("Refusing to load formula ... from untrusted tap"). Copy the tap contents
+# into a real directory and initialise a git repo so Homebrew trusts it.
 # Usage: setup_local_tap "/path/to/repo"
 setup_local_tap() {
 	local repo_root="$1"
@@ -28,9 +32,18 @@ setup_local_tap() {
 	LOCAL_TAP_DIR=$(get_tap_dir)
 	log_info "Setting up local tap at $LOCAL_TAP_DIR"
 
-	mkdir -p "$(dirname "$LOCAL_TAP_DIR")"
 	rm -rf "$LOCAL_TAP_DIR"
-	ln -sf "$repo_root" "$LOCAL_TAP_DIR"
+	mkdir -p "$LOCAL_TAP_DIR/Formula"
+	cp "$repo_root"/Formula/*.rb "$LOCAL_TAP_DIR/Formula/"
+
+	# A real (non-symlink) git repo is required for Homebrew to trust the tap.
+	git -C "$LOCAL_TAP_DIR" init --quiet
+	git -C "$LOCAL_TAP_DIR" add -A
+	git -C "$LOCAL_TAP_DIR" \
+		-c user.email="ci@local.test" \
+		-c user.name="Local Tap CI" \
+		-c commit.gpgsign=false \
+		commit --quiet -m "Local test tap"
 
 	log_success "Local tap created: $LOCAL_TAP_NAME"
 }
