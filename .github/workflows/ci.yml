@@ -16,7 +16,7 @@ jobs:
       contents: read  # checkout repository code
       packages: read  # pull py-lintro container image
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality-lint.yml@6a80f4a55e4080272b2d93b30cc292d618f5dd5a  # v0.45.0
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality-lint.yml@4aaefe64763b7841b6d92d94dc47185083d34c9a  # v0.46.0
     with:
       tooling-ref: "6a80f4a55e4080272b2d93b30cc292d618f5dd5a"
       job-name: "Lintro Quality Checks"
@@ -34,7 +34,7 @@ jobs:
       contents: read  # read quality job outputs and artifacts
       pull-requests: write  # post lint summary to PR
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-publish-quality-summary.yml@6a80f4a55e4080272b2d93b30cc292d618f5dd5a  # v0.45.0
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-publish-quality-summary.yml@4aaefe64763b7841b6d92d94dc47185083d34c9a  # v0.46.0
     with:
       tooling-ref: "6a80f4a55e4080272b2d93b30cc292d618f5dd5a"
       # yamllint disable-line rule:line-length
@@ -48,7 +48,7 @@ jobs:
       contents: read  # checkout repository code
       pull-requests: write  # post test results/coverage to PR
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-test-shell.yml@6a80f4a55e4080272b2d93b30cc292d618f5dd5a  # v0.45.0
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-test-shell.yml@4aaefe64763b7841b6d92d94dc47185083d34c9a  # v0.46.0
     with:
       tooling-ref: "6a80f4a55e4080272b2d93b30cc292d618f5dd5a"
       test-path: tests/bats
