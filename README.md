@@ -93,6 +93,12 @@ Formulae are updated tap-side when caller repos send a `repository_dispatch`
 event. The tap generates formulas, opens a PR, validates them, and auto-merges
 after CI passes.
 
+> **Note:** the update PR is opened by the `homebrew-tap-release-bot` GitHub App,
+> not `GITHUB_TOKEN`. PRs opened with `GITHUB_TOKEN` do not trigger `pull_request`
+> CI, so required checks never run and auto-merge never fires — see
+> [#80](https://github.com/lgtm-hq/homebrew-tap/issues/80). Keep the App token on
+> the PR-creation step.
+
 ### CI token architecture
 
 Automated formula PRs use three credential roles. Org secrets are shared across
@@ -211,8 +217,10 @@ consistent typing across PyPI and binary templates.
 
 Tap scripts reuse [lgtm-ci](https://github.com/lgtm-hq/lgtm-ci) for PyPI
 registry helpers (`wait_for_package`, `get_pypi_download_url`, `get_pypi_sha256`).
-CI workflows sparse-checkout lgtm-ci at the same ref as `reusable-quality`
-(`6a80f4a55e4080272b2d93b30cc292d618f5dd5a`, v0.45.0).
+CI workflows sparse-checkout lgtm-ci at the same ref as the reusable quality
+workflows (`4aaefe64763b7841b6d92d94dc47185083d34c9a`, v0.46.0). The `uses:`
+refs and the `tooling-ref` / `LGTM_CI_TOOLING_REF` inputs are kept in lockstep;
+bump them together.
 
 For local development and tests:
 
