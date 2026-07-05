@@ -20,6 +20,13 @@ class Lintro < Formula
     end
   end
 
+  # Match only proper semver release tags (e.g. v0.64.4) so livecheck
+  # ignores stray single-component tags such as "v1".
+  livecheck do
+    url :stable
+    regex(/^v?(\d+\.\d+\.\d+)$/i)
+  end
+
   def install
     if Hardware::CPU.arm?
       bin.install "lintro-macos-arm64" => "lintro"
