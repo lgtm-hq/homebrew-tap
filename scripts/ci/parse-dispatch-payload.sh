@@ -48,6 +48,21 @@ validate_single_line version "$version"
 validate_single_line pypi-package "$pypi_package"
 validate_single_line binary-assets "$binary_assets"
 
+validate_sha() {
+	local name="$1"
+	local value="$2"
+	if [[ -n "$value" && ! "$value" =~ ^[0-9a-f]{64}$ ]]; then
+		echo "Invalid ${name}: must be a 64-character lowercase hex sha256" >&2
+		exit 1
+	fi
+}
+
+arm64_sha=$(printf '%s' "$binary_assets" | jq -r '."arm64-sha" // empty')
+x86_sha=$(printf '%s' "$binary_assets" | jq -r '."x86-sha" // empty')
+
+validate_sha arm64-sha "$arm64_sha"
+validate_sha x86-sha "$x86_sha"
+
 {
 	printf 'formula=%s\n' "$formula"
 	printf 'version=%s\n' "$version"
