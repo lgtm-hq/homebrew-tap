@@ -82,6 +82,7 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-contents: write
+          permission-pull-requests: write
 
       - name: Generate formulas and open PR
         env:
@@ -89,7 +90,9 @@ jobs:
           DISPATCH_VERSION: ${{ steps.payload.outputs.version }}
           DISPATCH_PYPI_PACKAGE: ${{ steps.payload.outputs.pypi-package }}
           DISPATCH_BINARY_ASSETS: ${{ steps.payload.outputs.binary-assets }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Open the PR as the App (not GITHUB_TOKEN) so pull_request CI
+          # runs and the release-bot PR can auto-merge. See #80.
+          GH_TOKEN: ${{ steps.homebrew-app-token.outputs.token }}
           PUSH_TOKEN: ${{ steps.homebrew-app-token.outputs.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           LGTM_CI_TOOLING_DIR: ${{ github.workspace }}/.lgtm-ci-tooling
