@@ -201,10 +201,13 @@ class ${CLASS_NAME} < Formula
   version "${VERSION}"
   license "${LICENSE}"
 
-  # Match only proper semver release tags (e.g. v0.64.4) so livecheck
-  # ignores stray single-component tags such as "v1".
+  # Track the latest GitHub release via the releases API rather than scanning all
+  # tags, so the stray single-component "v1" tag is ignored. url :stable is
+  # required by FormulaAudit/LivecheckUrlSymbol; github_latest derives the repo
+  # from it, and the semver regex is a defensive filter on the release tag.
   livecheck do
     url :stable
+    strategy :github_latest
     regex(/^v?(\d+\.\d+\.\d+)\$/i)
   end
 
