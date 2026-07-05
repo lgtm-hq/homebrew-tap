@@ -3,7 +3,7 @@ name: PR - Auto Assign
 
 "on":
   pull_request_target:
-    types: [opened]
+    types: [opened, reopened]
 
 permissions: {}
 
