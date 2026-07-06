@@ -10,6 +10,7 @@ name: Quality Check - Homebrew Formula Validation (Tap)
   workflow_dispatch:
   pull_request:
     branches: [main]
+  merge_group:
   push:
     branches: [main]
 
@@ -34,8 +35,13 @@ jobs:
       - name: Detect formula-related changes
         id: detect
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # merge_group has no pull_request context; fall back to its SHAs
+          # so queue entries keep the cheap early-exit path for non-formula
+          # changes.
+          # yamllint disable rule:line-length
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          # yamllint enable rule:line-length
         run: bash scripts/ci/detect-formula-changes.sh
 
   validate-formula:
