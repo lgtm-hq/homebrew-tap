@@ -1,0 +1,99 @@
+---
+name: Deploy - GitHub Pages
+
+concurrency:
+  group: deploy-pages-${{ github.repository }}
+  cancel-in-progress: false
+
+"on":
+  push:
+    branches: [main]
+    paths:
+      - "Formula/**"
+      - "formulas/**"
+      - "scripts/ci/build_pages.py"
+      - "scripts/ci/templates/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      LGTM_CI_TOOLING_REF: 4aaefe64763b7841b6d92d94dc47185083d34c9a
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Checkout lgtm-ci tooling
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          repository: lgtm-hq/lgtm-ci
+          path: .lgtm-ci-tooling
+          ref: ${{ env.LGTM_CI_TOOLING_REF }}
+          sparse-checkout: |
+            .github/actions/harden-runner
+            .github/actions/resolve-egress-allowlist
+            .github/actions/setup-python
+          sparse-checkout-cone-mode: true
+          persist-credentials: false
+
+      - name: Resolve egress allowlist
+        id: egress
+        uses: ./.lgtm-ci-tooling/.github/actions/resolve-egress-allowlist
+        with:
+          egress-policy: block
+          egress-preset: pypi
+
+      - name: Harden runner
+        uses: ./.lgtm-ci-tooling/.github/actions/harden-runner
+        with:
+          egress-policy: block
+          allowed-endpoints: ${{ steps.egress.outputs['allowed-endpoints'] }}
+
+      - name: Set up Python
+        uses: ./.lgtm-ci-tooling/.github/actions/setup-python
+        with:
+          python-version: "3.13"
+          install-dependencies: "false"
+          cache: "false"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-test.txt
+
+      - name: Build landing page
+        run: python scripts/ci/build_pages.py --output _site/index.html
+
+      - name: Upload Pages artifact
+        # yamllint disable-line rule:line-length
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write  # deploy to GitHub Pages
+      id-token: write  # verify deployment origin (OIDC)
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        # yamllint disable-line rule:line-length
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128  # v5.0.0
