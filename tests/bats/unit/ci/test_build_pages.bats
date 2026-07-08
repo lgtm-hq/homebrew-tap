@@ -7,6 +7,7 @@ load "../../../helpers/common"
 setup() {
 	setup_temp_dir
 	REPO_ROOT="$(repo_root)"
+	ensure_test_python_deps "$REPO_ROOT"
 	OUT="$TEST_TEMP_DIR/index.html"
 }
 

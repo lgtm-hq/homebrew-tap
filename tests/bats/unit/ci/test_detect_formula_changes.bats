@@ -44,7 +44,7 @@ teardown() {
 }
 
 @test "detect-formula-changes: docs-only change skips validation" {
-	export CHANGED_FILES=$'README.md\nrequirements-test.txt'
+	export CHANGED_FILES=$'README.md\npyproject.toml'
 	run bash "$REPO_ROOT/scripts/ci/detect-formula-changes.sh"
 	[ "$status" -eq 0 ]
 	grep -q '^formula=false$' "$GITHUB_OUTPUT"

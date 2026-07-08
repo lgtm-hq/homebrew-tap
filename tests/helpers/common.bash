@@ -3,22 +3,10 @@
 
 ensure_test_python_deps() {
 	local repo_root="$1"
-	local venv="$repo_root/.test-venv"
-	local sentinel="$venv/.deps-installed"
 
-	if [[ ! -d "$venv" ]]; then
-		python3 -m venv "$venv"
-	fi
+	(cd "$repo_root" && uv sync --quiet)
 	# shellcheck disable=SC1091
-	source "$venv/bin/activate"
-
-	if [[ -f "$sentinel" ]]; then
-		return 0
-	fi
-
-	python -m pip install --quiet --upgrade pip
-	python -m pip install --quiet -r "$repo_root/requirements-test.txt"
-	touch "$sentinel"
+	source "$repo_root/.venv/bin/activate"
 }
 
 bootstrap_test_env() {
