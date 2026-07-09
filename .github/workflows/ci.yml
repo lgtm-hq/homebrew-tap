@@ -60,7 +60,6 @@ jobs:
       # uv sync needs astral hosts; reusable-test-shell does not install uv.
       allowed-endpoints-mode: append
       allowed-endpoints: |
-        astral.sh:443
-        releases.astral.sh:443
+        release-assets.githubusercontent.com:443
         pypi.org:443
         files.pythonhosted.org:443
