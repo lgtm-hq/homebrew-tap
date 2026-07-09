@@ -1,24 +1,55 @@
 #!/usr/bin/env bash
 # Common helpers for homebrew-tap BATS tests.
 
-ensure_test_python_deps() {
-	local repo_root="$1"
-	local venv="$repo_root/.test-venv"
-	local sentinel="$venv/.deps-installed"
-
-	if [[ ! -d "$venv" ]]; then
-		python3 -m venv "$venv"
-	fi
-	# shellcheck disable=SC1091
-	source "$venv/bin/activate"
-
-	if [[ -f "$sentinel" ]]; then
+ensure_uv() {
+	if command -v uv >/dev/null 2>&1; then
 		return 0
 	fi
 
-	python -m pip install --quiet --upgrade pip
-	python -m pip install --quiet -r "$repo_root/requirements-test.txt"
-	touch "$sentinel"
+	# CI shell-tests do not run setup-python. Install a pinned uv release binary
+	# (not curl|sh) so the download is version-locked and fails closed on HTTP errors.
+	local uv_version="0.9.26"
+	local arch
+	case "$(uname -m)" in
+	arm64 | aarch64) arch="aarch64" ;;
+	x86_64 | amd64) arch="x86_64" ;;
+	*)
+		echo "ensure_uv: unsupported architecture: $(uname -m)" >&2
+		return 1
+		;;
+	esac
+
+	local os
+	case "$(uname -s)" in
+	Darwin) os="apple-darwin" ;;
+	Linux) os="unknown-linux-gnu" ;;
+	*)
+		echo "ensure_uv: unsupported OS: $(uname -s)" >&2
+		return 1
+		;;
+	esac
+
+	local bindir="${HOME}/.local/bin"
+	local tarball="uv-${arch}-${os}.tar.gz"
+	local url="https://github.com/astral-sh/uv/releases/download/${uv_version}/${tarball}"
+	local tmp
+	tmp="$(mktemp -d)"
+	mkdir -p "$bindir"
+	curl -fsSL "$url" -o "${tmp}/${tarball}"
+	tar -xzf "${tmp}/${tarball}" -C "$tmp"
+	install -m 0755 "${tmp}/uv-${arch}-${os}/uv" "${bindir}/uv"
+	rm -rf "$tmp"
+	export PATH="${bindir}:${PATH}"
+	command -v uv >/dev/null 2>&1
+}
+
+ensure_test_python_deps() {
+	local repo_root="$1"
+
+	ensure_uv || return 1
+	(cd "$repo_root" && uv sync --quiet) || return 1
+	# shellcheck disable=SC1091
+	source "$repo_root/.venv/bin/activate"
 }
 
 bootstrap_test_env() {

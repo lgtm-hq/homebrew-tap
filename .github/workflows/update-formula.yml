@@ -58,13 +58,8 @@ jobs:
         uses: ./.lgtm-ci-tooling/.github/actions/setup-python
         with:
           python-version: "3.13"
-          install-dependencies: "false"
+          install-dependencies: "true"
           cache: "false"
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-test.txt
 
       - name: Parse dispatch payload
         id: payload
@@ -96,4 +91,4 @@ jobs:
           PUSH_TOKEN: ${{ steps.homebrew-app-token.outputs.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           LGTM_CI_TOOLING_DIR: ${{ github.workspace }}/.lgtm-ci-tooling
-        run: bash scripts/ci/update-formula.sh
+        run: uv run bash scripts/ci/update-formula.sh

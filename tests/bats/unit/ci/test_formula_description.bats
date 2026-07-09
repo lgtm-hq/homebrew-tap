@@ -6,6 +6,7 @@ load "../../../helpers/common"
 
 setup() {
 	REPO_ROOT="$(repo_root)"
+	ensure_test_python_deps "$REPO_ROOT"
 	SCRIPTS_DIR="$REPO_ROOT/scripts/ci"
 }
 

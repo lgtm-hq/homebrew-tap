@@ -57,3 +57,9 @@ jobs:
       coverage-threshold: 0
       upload-coverage: false
       egress-preset: github-tooling
+      # uv sync needs astral hosts; reusable-test-shell does not install uv.
+      allowed-endpoints-mode: append
+      allowed-endpoints: |
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443

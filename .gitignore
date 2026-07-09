@@ -1,5 +1,6 @@
 .lintro/
 .test-venv/
+.venv/
 .lgtm-ci-tooling/
 coverage/
 __pycache__/
