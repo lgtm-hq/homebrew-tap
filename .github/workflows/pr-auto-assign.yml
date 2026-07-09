@@ -13,8 +13,8 @@ jobs:
       contents: read  # read CODEOWNERS file
       pull-requests: write  # set assignee and request review
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-pr-auto-assign.yml@4aaefe64763b7841b6d92d94dc47185083d34c9a  # v0.46.0
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-pr-auto-assign.yml@248b375cb84e7404874bb732fbc7ec06bf9defc6  # v0.48.2
     with:
-      tooling-ref: "4aaefe64763b7841b6d92d94dc47185083d34c9a"
+      tooling-ref: "248b375cb84e7404874bb732fbc7ec06bf9defc6"
       codeowners-path: .github/CODEOWNERS
       egress-preset: github-tooling
