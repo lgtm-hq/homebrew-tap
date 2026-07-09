@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
 # Common helpers for homebrew-tap BATS tests.
 
+ensure_uv() {
+	if command -v uv >/dev/null 2>&1; then
+		return 0
+	fi
+
+	# CI shell-tests do not run setup-python; install uv the same way astral documents.
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+	export PATH="${HOME}/.local/bin:${PATH}"
+	command -v uv >/dev/null 2>&1
+}
+
 ensure_test_python_deps() {
 	local repo_root="$1"
 
+	ensure_uv
 	(cd "$repo_root" && uv sync --quiet)
 	# shellcheck disable=SC1091
 	source "$repo_root/.venv/bin/activate"
