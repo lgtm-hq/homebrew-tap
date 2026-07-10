@@ -9,8 +9,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/53/af/1c652ded8e14bb4a25f41f5a1f977a408a129401ad1a4a04ec6427118a9f/lintro-0.70.2.tar.gz"
-  sha256 "b4029f1235f90b1708c4d211140719620db37c2de8a09ecb60be408a98473320"
+  url "https://files.pythonhosted.org/packages/e1/f5/bbe5bf5584347c49ba94139d688d44aba4d025096943d84afa9c70c1c97d/lintro-0.73.0.tar.gz"
+  sha256 "1362ceba7d92c16c2c7c57f5e736a590189a14a19c8799c4a60f6308f44a6a10"
   license "MIT"
 
   livecheck do
@@ -22,6 +22,7 @@ class LintroFull < Formula
   depends_on "actionlint"
   depends_on "bandit"
   depends_on "black"
+  depends_on "commitlint"
   depends_on "gitleaks"
   depends_on "hadolint"
   depends_on "libyaml"
@@ -38,6 +39,7 @@ class LintroFull < Formula
   depends_on "shfmt"
   depends_on "sqlfluff"
   depends_on "taplo"
+  depends_on "vale"
   depends_on "yamllint"
 
   # Pure Python library dependencies
@@ -195,9 +197,11 @@ class LintroFull < Formula
       YAML / TOML:      yamllint, taplo
       Shell:            shellcheck, shfmt
       Markdown:         markdownlint-cli2
+      Prose / docs:     vale
       JS / TS:          oxlint, oxfmt, prettier
       Dockerfiles:      hadolint
       GitHub Actions:   actionlint
+      Git commits:      commitlint
       Security:         gitleaks, semgrep
       Rust:             clippy, rustfmt (via rust)
       SQL:              sqlfluff
