@@ -9,8 +9,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/53/af/1c652ded8e14bb4a25f41f5a1f977a408a129401ad1a4a04ec6427118a9f/lintro-0.70.2.tar.gz"
-  sha256 "b4029f1235f90b1708c4d211140719620db37c2de8a09ecb60be408a98473320"
+  url "https://files.pythonhosted.org/packages/f8/a9/2b964cbce1b0c14a9930e12489c100e7489090328da9a527da1b974445ee/lintro-0.72.0.tar.gz"
+  sha256 "9e46410b8fef5b85c37b77d55b7b51d8624cc0b76ed0e465b23ebad2345ed1fe"
   license "MIT"
 
   livecheck do
@@ -38,6 +38,7 @@ class LintroFull < Formula
   depends_on "shfmt"
   depends_on "sqlfluff"
   depends_on "taplo"
+  depends_on "vale"
   depends_on "yamllint"
 
   # Pure Python library dependencies
@@ -195,6 +196,7 @@ class LintroFull < Formula
       YAML / TOML:      yamllint, taplo
       Shell:            shellcheck, shfmt
       Markdown:         markdownlint-cli2
+      Prose / docs:     vale
       JS / TS:          oxlint, oxfmt, prettier
       Dockerfiles:      hadolint
       GitHub Actions:   actionlint
