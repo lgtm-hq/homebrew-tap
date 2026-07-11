@@ -45,6 +45,7 @@ jobs:
         run: bash scripts/ci/detect-formula-changes.sh
 
   validate-formula:
+    name: 🍺 Validate Formula
     needs: changes
     # macOS/Homebrew when formula files change; cheap Ubuntu no-op otherwise.
     runs-on: ${{ needs.changes.outputs.runner }}

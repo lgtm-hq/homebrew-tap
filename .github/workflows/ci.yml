@@ -20,7 +20,7 @@ jobs:
     uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality-lint.yml@66cad82ead0e5d119928c895c7d7da9c837989e5  # v0.52.3
     with:
       tooling-ref: "66cad82ead0e5d119928c895c7d7da9c837989e5"
-      job-name: "Lintro Quality Checks"
+      job-name: "🛠️ Lintro Code Quality"
       egress-policy: block
       egress-preset: quality
       runner-image: ubuntu-24.04
@@ -52,6 +52,7 @@ jobs:
     uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-test-shell.yml@66cad82ead0e5d119928c895c7d7da9c837989e5  # v0.52.3
     with:
       tooling-ref: "66cad82ead0e5d119928c895c7d7da9c837989e5"
+      job-name: "🐚 Shell Tests"
       test-path: tests/bats
       coverage: true
       coverage-threshold: 0
