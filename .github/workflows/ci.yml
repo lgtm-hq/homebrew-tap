@@ -58,13 +58,16 @@ jobs:
       upload-coverage: false
       egress-preset: github-tooling
       # Since lgtm-ci v0.50.0 the reusable feeds allowed-endpoints directly to
-      # the job-start step-security/harden-runner step (pre-hook enforcement),
-      # so a non-empty value REPLACES the reusable's default baseline instead
-      # of appending to it. The list must therefore be complete: the default
-      # GitHub + Ubuntu archive endpoints plus our extras (release assets for
-      # bats/kcov downloads; PyPI hosts for uv sync).
+      # the job-start step-security/harden-runner step (pre-hook enforcement):
+      # a non-empty value REPLACES the reusable's default baseline instead of
+      # appending to it, so the list must be complete (default GitHub + Ubuntu
+      # archive endpoints plus our extras: release assets for bats/kcov
+      # downloads; PyPI hosts for uv sync). It must also be space-separated
+      # (YAML folded scalar) — the harden-runner agent splits on spaces, so a
+      # newline-separated literal block is parsed as a single bogus endpoint
+      # and everything gets blocked.
       allowed-endpoints-mode: append
-      allowed-endpoints: |
+      allowed-endpoints: >-
         github.com:443
         api.github.com:443
         codeload.github.com:443
