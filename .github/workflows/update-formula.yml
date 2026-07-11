@@ -24,7 +24,7 @@ jobs:
       # removed in v0.50.0 (lgtm-ci#467), and GitHub skips pre hooks for
       # workspace-local actions anyway. The allowlist must be a literal,
       # space-separated folded scalar (replace semantics): the pypi preset
-      # equivalent plus setup-uv download endpoints.
+      # equivalent plus setup-uv/astral download endpoints.
       - name: Harden runner
         # yamllint disable-line rule:line-length
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920  # v2.20.0
@@ -39,6 +39,8 @@ jobs:
             actions.githubusercontent.com:443
             release-assets.githubusercontent.com:443
             pipelines.actions.githubusercontent.com:443
+            releases.astral.sh:443
+            astral.sh:443
             pypi.org:443
             files.pythonhosted.org:443
             test.pypi.org:443
