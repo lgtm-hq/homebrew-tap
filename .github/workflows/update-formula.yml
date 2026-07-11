@@ -20,6 +20,31 @@ jobs:
     env:
       LGTM_CI_TOOLING_REF: 66cad82ead0e5d119928c895c7d7da9c837989e5  # v0.52.3
     steps:
+      # Direct remote harden-runner step: the lgtm-ci local composite was
+      # removed in v0.50.0 (lgtm-ci#467), and GitHub skips pre hooks for
+      # workspace-local actions anyway. The allowlist must be a literal,
+      # space-separated folded scalar (replace semantics): the pypi preset
+      # equivalent plus setup-uv download endpoints.
+      - name: Harden runner
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920  # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >-
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            actions.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            pipelines.actions.githubusercontent.com:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            test.pypi.org:443
+            upload.pypi.org:443
+            upload.test.pypi.org:443
+
       - name: Checkout
         # yamllint disable-line rule:line-length
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -34,25 +59,10 @@ jobs:
           path: .lgtm-ci-tooling
           ref: ${{ env.LGTM_CI_TOOLING_REF }}
           sparse-checkout: |
-            .github/actions/harden-runner
-            .github/actions/resolve-egress-allowlist
             .github/actions/setup-python
             scripts/ci/
           sparse-checkout-cone-mode: true
           persist-credentials: false
-
-      - name: Resolve egress allowlist
-        id: egress
-        uses: ./.lgtm-ci-tooling/.github/actions/resolve-egress-allowlist
-        with:
-          egress-policy: block
-          egress-preset: pypi
-
-      - name: Harden runner
-        uses: ./.lgtm-ci-tooling/.github/actions/harden-runner
-        with:
-          egress-policy: block
-          allowed-endpoints: ${{ steps.egress.outputs['allowed-endpoints'] }}
 
       - name: Set up Python
         uses: ./.lgtm-ci-tooling/.github/actions/setup-python
