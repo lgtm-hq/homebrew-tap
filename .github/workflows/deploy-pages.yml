@@ -70,6 +70,7 @@ jobs:
           ref: ${{ env.LGTM_CI_TOOLING_REF }}
           sparse-checkout: |
             .github/actions/setup-python
+            scripts/ci/
           sparse-checkout-cone-mode: true
           persist-credentials: false
 
