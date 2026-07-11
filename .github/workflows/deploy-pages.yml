@@ -26,7 +26,7 @@ jobs:
     permissions:
       contents: read
     env:
-      LGTM_CI_TOOLING_REF: 4aaefe64763b7841b6d92d94dc47185083d34c9a
+      LGTM_CI_TOOLING_REF: 66cad82ead0e5d119928c895c7d7da9c837989e5  # v0.52.3
     steps:
       - name: Checkout
         # yamllint disable-line rule:line-length
