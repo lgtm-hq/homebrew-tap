@@ -6,7 +6,7 @@
 class Lintro < Formula
   desc "Unified CLI for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  version "0.77.0"
+  version "0.77.4"
   license "MIT"
 
   # Track the latest GitHub release via the releases API rather than scanning all
@@ -22,13 +22,16 @@ class Lintro < Formula
   on_macos do
     on_arm do
       url "https://github.com/lgtm-hq/py-lintro/releases/download/v#{version}/lintro-macos-arm64"
-      sha256 "4f3748d6824dbae0e76f3e288c3285c92c63710885a469f16ee7e65f4214803b"
+      sha256 "cf6898ceb0dd5c49667f49207d209d353fab973b719f01c8edcde679128c4f7b"
     end
     on_intel do
       url "https://github.com/lgtm-hq/py-lintro/releases/download/v#{version}/lintro-macos-x86_64"
-      sha256 "11cbd2bf5a18adb26f852d61fda306b14b89b4c30bcc1e9ca191978b85b608f6"
+      sha256 "69595df718e5e3f19e5d994bf7424d55b852c392421233d20b7d15e397b40564"
     end
   end
+
+  # Shares the "lintro" binary with the PyPI-based full formula.
+  conflicts_with "lintro-full", because: "both provide the lintro binary"
 
   def install
     if Hardware::CPU.arm?
@@ -53,5 +56,9 @@ class Lintro < Formula
 
   test do
     assert_match version.to_s, shell_output("#{bin}/lintro --version")
+    assert_match "Usage:", shell_output("#{bin}/lintro --help")
+    # `lintro doctor` exits non-zero when optional tools are missing (expected
+    # inside the sandboxed test environment), so accept exit status 1.
+    assert_match "Lintro Doctor", shell_output("#{bin}/lintro doctor", 1)
   end
 end
