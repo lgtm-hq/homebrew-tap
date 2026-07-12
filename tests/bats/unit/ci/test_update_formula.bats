@@ -1,69 +1,111 @@
 #!/usr/bin/env bats
 # SPDX-License-Identifier: MIT
-# Purpose: Tests for update-formula.sh App token push configuration.
+# Purpose: Tests for update-formula.sh remote-state helper functions.
 
 load "../../../helpers/common"
+load "../../../helpers/mocks"
+
+extract_function() {
+	local name="$1"
+	local extracted
+	extracted="$(sed -n "/^${name}() {/,/^}/p" \
+		"$REPO_ROOT/scripts/ci/update-formula.sh")"
+	if [[ -z "$extracted" ]]; then
+		echo "failed to extract ${name} from update-formula.sh" >&2
+		return 1
+	fi
+	eval "$extracted"
+	type "$name" >/dev/null 2>&1
+}
 
 setup() {
 	setup_temp_dir
 	REPO_ROOT="$(repo_root)"
-	export SCRIPT_DIR="$REPO_ROOT/scripts/ci"
 	# shellcheck source=../../../scripts/lib/common.sh disable=SC1091
 	source "$REPO_ROOT/scripts/lib/common.sh"
-
-	local extracted
-	extracted="$(sed -n '/^configure_git_push_remote() {/,/^}/p' \
-		"$REPO_ROOT/scripts/ci/update-formula.sh")"
-	if [[ -z "$extracted" ]]; then
-		echo "failed to extract configure_git_push_remote from update-formula.sh" >&2
-		return 1
-	fi
-	eval "$extracted"
-	if ! type configure_git_push_remote >/dev/null 2>&1; then
-		echo "configure_git_push_remote not defined after eval" >&2
-		return 1
-	fi
+	extract_function "remote_main_oid"
+	extract_function "remote_file_at_ref"
+	extract_function "remote_blob_sha_at_ref"
+	extract_function "previous_formula_version"
+	mock_gh_recording "$TEST_TEMP_DIR/mock-bin"
+	export GITHUB_REPOSITORY="lgtm-hq/homebrew-tap"
 }
 
 teardown() {
 	teardown_temp_dir
 }
 
-@test "configure_git_push_remote: sets origin URL with App token" {
-	cd "$TEST_TEMP_DIR"
-	git init -q
-	git remote add origin "https://github.com/lgtm-hq/homebrew-tap.git"
+@test "remote_main_oid: returns current main head sha" {
+	export MOCK_MAIN_OID="abc123abc123abc123abc123abc123abc123abc1"
 
-	export PUSH_TOKEN="app-installation-token"
-	export GITHUB_REPOSITORY="lgtm-hq/homebrew-tap"
-	configure_git_push_remote
-
-	remote_url="$(git remote get-url origin)"
-	[[ "$remote_url" == \
-		"https://x-access-token:app-installation-token@github.com/lgtm-hq/homebrew-tap.git" ]]
+	run remote_main_oid
+	[ "$status" -eq 0 ]
+	[ "$output" = "abc123abc123abc123abc123abc123abc123abc1" ]
 }
 
-@test "configure_git_push_remote: requires GITHUB_REPOSITORY when token set" {
-	cd "$TEST_TEMP_DIR"
-	git init -q
-	git remote add origin "https://github.com/lgtm-hq/homebrew-tap.git"
+@test "remote_file_at_ref: returns file content at ref" {
+	export MOCK_REMOTE_FILE="$TEST_TEMP_DIR/remote-formula.rb"
+	printf 'class LintroFull < Formula\nend\n' >"$MOCK_REMOTE_FILE"
 
-	export PUSH_TOKEN="app-installation-token"
-	unset GITHUB_REPOSITORY
+	run remote_file_at_ref "Formula/lintro-full.rb" "abc123"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"class LintroFull < Formula"* ]]
+}
 
-	run configure_git_push_remote
+@test "remote_file_at_ref: empty output for missing file" {
+	unset MOCK_REMOTE_FILE
+
+	run remote_file_at_ref "Formula/nope.rb" "abc123"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "remote_file_at_ref: fails loudly on non-404 API errors" {
+	export MOCK_CONTENTS_ERROR="gh: You have exceeded a secondary rate limit (HTTP 403)"
+
+	run remote_file_at_ref "Formula/lintro.rb" "abc123"
 	[ "$status" -eq 1 ]
-	[[ "$output" == *"GITHUB_REPOSITORY is required"* ]]
+	[[ "$output" == *"Failed to fetch Formula/lintro.rb@abc123"* ]]
 }
 
-@test "configure_git_push_remote: no-op when PUSH_TOKEN unset" {
-	cd "$TEST_TEMP_DIR"
-	git init -q
-	git remote add origin "https://github.com/lgtm-hq/homebrew-tap.git"
+@test "remote_blob_sha_at_ref: fails loudly on non-404 API errors" {
+	export MOCK_CONTENTS_ERROR="gh: You have exceeded a secondary rate limit (HTTP 403)"
 
-	unset PUSH_TOKEN
-	configure_git_push_remote
+	run remote_blob_sha_at_ref "Formula/lintro.rb" "abc123"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Failed to fetch blob sha for Formula/lintro.rb@abc123"* ]]
+}
 
-	remote_url="$(git remote get-url origin)"
-	[[ "$remote_url" == "https://github.com/lgtm-hq/homebrew-tap.git" ]]
+@test "remote_blob_sha_at_ref: returns blob sha and empty on 404" {
+	export MOCK_REMOTE_BLOB_SHA="feedfacefeedfacefeedfacefeedfacefeedface"
+	run remote_blob_sha_at_ref "Formula/lintro.rb" "abc123"
+	[ "$status" -eq 0 ]
+	[ "$output" = "feedfacefeedfacefeedfacefeedfacefeedface" ]
+
+	unset MOCK_REMOTE_BLOB_SHA
+	run remote_blob_sha_at_ref "Formula/nope.rb" "abc123"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "previous_formula_version: parses sdist version from url stanza" {
+	previous_formula_version <<'EOF' >"$TEST_TEMP_DIR/version.txt"
+class LintroFull < Formula
+  url "https://files.pythonhosted.org/packages/ab/cd/lintro-0.77.0.tar.gz"
+  sha256 "abc"
+end
+EOF
+
+	[ "$(cat "$TEST_TEMP_DIR/version.txt")" = "0.77.0" ]
+}
+
+@test "previous_formula_version: empty for binary formulas without sdist url" {
+	previous_formula_version <<'EOF' >"$TEST_TEMP_DIR/version.txt"
+class Lintro < Formula
+  version "0.77.0"
+  url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.77.0/lintro-macos-arm64"
+end
+EOF
+
+	[ -z "$(cat "$TEST_TEMP_DIR/version.txt")" ]
 }

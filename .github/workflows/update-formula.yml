@@ -98,9 +98,10 @@ jobs:
           DISPATCH_PYPI_PACKAGE: ${{ steps.payload.outputs.pypi-package }}
           DISPATCH_BINARY_ASSETS: ${{ steps.payload.outputs.binary-assets }}
           # Open the PR as the App (not GITHUB_TOKEN) so pull_request CI
-          # runs and the release-bot PR can auto-merge. See #80.
+          # runs and the release-bot PR can auto-merge. See #80. Commits are
+          # created via GraphQL createCommitOnBranch with this token, so they
+          # are GitHub-signed (required_signatures). See #129.
           GH_TOKEN: ${{ steps.homebrew-app-token.outputs.token }}
-          PUSH_TOKEN: ${{ steps.homebrew-app-token.outputs.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           LGTM_CI_TOOLING_DIR: ${{ github.workspace }}/.lgtm-ci-tooling
         run: uv run bash scripts/ci/update-formula.sh
