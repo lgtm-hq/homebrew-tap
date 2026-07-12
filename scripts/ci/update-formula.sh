@@ -18,23 +18,42 @@ Environment:
   DISPATCH_VERSION       Release version (with or without v prefix)
   DISPATCH_PYPI_PACKAGE  Optional PyPI package override
   DISPATCH_BINARY_ASSETS Optional JSON with arm64-sha and x86-sha
-  GH_TOKEN               GitHub token for PR creation (default GITHUB_TOKEN)
-  PUSH_TOKEN             Optional App installation token for git push
-  GITHUB_REPOSITORY      Required when PUSH_TOKEN is set (owner/repo)
+  GH_TOKEN               GitHub App token (contents + pull-requests write)
+  GITHUB_REPOSITORY      Target repository (owner/repo)
+
+Commits are created via the GraphQL createCommitOnBranch API (see
+scripts/ci/create-signed-commit.sh) so they are GitHub-signed and satisfy
+the org main ruleset's required_signatures rule. The bump branch is created
+from the CURRENT origin/main head at run time, not the workflow checkout,
+so a stale checkout cannot produce conflicting PRs.
 EOF
 }
 
-# BATS tests extract this function via sed (/^configure_git_push_remote() {/,/^}/).
-# Keep the signature on one line and avoid nested blocks with `}` at column 0
-# (here-docs, case arms) inside this function — they break test extraction.
-configure_git_push_remote() {
-	if [[ -z "${PUSH_TOKEN:-}" ]]; then
-		return 0
-	fi
+# BATS tests extract these functions via sed (/^<name>() {/,/^}/).
+# Keep signatures on one line and avoid nested blocks with `}` at column 0
+# (here-docs, case arms) inside them — they break test extraction.
+remote_main_oid() {
+	gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha'
+}
 
-	: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required when PUSH_TOKEN is set}"
-	git remote set-url origin \
-		"https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+remote_file_at_ref() {
+	local path="$1"
+	local ref="$2"
+	gh api -H "Accept: application/vnd.github.raw+json" \
+		"repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${ref}" 2>/dev/null || true
+}
+
+remote_blob_sha_at_ref() {
+	local path="$1"
+	local ref="$2"
+	gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${ref}" \
+		--jq '.sha' 2>/dev/null || true
+}
+
+previous_formula_version() {
+	# Reads formula content on stdin; prints the sdist version from the
+	# `url ".../<pkg>-<version>.tar.gz"` stanza, or nothing if absent.
+	sed -nE 's/^[[:space:]]*url ".*-([0-9][^"-]*)\.tar\.gz"$/\1/p' | head -n 1
 }
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
@@ -83,6 +102,14 @@ else
 	log_info "Skipping PyPI wait: no pypi formulas in ${CONFIG_PATH}"
 fi
 
+: "${GH_TOKEN:?GH_TOKEN is required}"
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+
+# Staleness guard: everything below is anchored on the CURRENT origin/main
+# head at run time, not the (possibly stale) workflow checkout.
+MAIN_OID="$(remote_main_oid)"
+log_info "Current origin/main head: ${MAIN_OID}"
+
 mapfile -t FORMULA_KEYS < <(
 	python3 "$SCRIPT_DIR/read_formula_config.py" "$CONFIG_PATH" --list-formulas
 )
@@ -98,6 +125,41 @@ print(cfg['formulas']['${formula_key}']['type'])
 
 	case "$formula_type" in
 	pypi)
+		# Resource-drift guard: compare Requires-Dist of the new version
+		# against the version currently on origin/main. Formulas with
+		# generate-resources regenerate stanzas from live PyPI metadata on
+		# every run, so drift is informational (warn); otherwise drift means
+		# stale stanzas and the run must fail loudly.
+		pypi_package=$(python3 -c "
+import yaml
+cfg = yaml.safe_load(open('${CONFIG_PATH}'))
+entry = cfg['formulas']['${formula_key}']
+print(entry.get('package') or cfg.get('package') or '')
+")
+		pypi_package="${PYPI_PACKAGE_OVERRIDE:-$pypi_package}"
+		generates_resources=$(python3 -c "
+import yaml
+cfg = yaml.safe_load(open('${CONFIG_PATH}'))
+print('true' if cfg['formulas']['${formula_key}'].get('generate-resources') else 'false')
+")
+		previous_version="$(
+			remote_file_at_ref "Formula/${formula_key}.rb" "$MAIN_OID" |
+				previous_formula_version
+		)"
+		if [[ -n "$pypi_package" && -n "$previous_version" &&
+			"$previous_version" != "$VERSION" ]]; then
+			drift_mode="fail"
+			if [[ "$generates_resources" == "true" ]]; then
+				drift_mode="warn"
+			fi
+			python3 "$SCRIPT_DIR/check_resource_drift.py" "$pypi_package" \
+				--previous-version "$previous_version" \
+				--new-version "$VERSION" \
+				--mode "$drift_mode"
+		else
+			log_info "Skipping resource-drift check for ${formula_key} (no distinct previous sdist version on main)"
+		fi
+
 		pypi_args=(
 			--config "$CONFIG_PATH"
 			--formula-key "$formula_key"
@@ -132,25 +194,36 @@ PR_BODY="Automated formula update triggered by repository_dispatch for ${PRODUCT
 
 cd "$REPO_ROOT"
 
-: "${GH_TOKEN:?GH_TOKEN is required}"
+# Change detection against CURRENT origin/main (not the workflow checkout):
+# compare each generated file's git blob sha with the blob on main.
+COMMIT_FILES=()
+for changed_file in "${CHANGED_FILES[@]}"; do
+	rel_path="${changed_file#"$REPO_ROOT"/}"
+	local_sha="$(git hash-object "$changed_file")"
+	remote_sha="$(remote_blob_sha_at_ref "$rel_path" "$MAIN_OID")"
+	if [[ "$local_sha" == "$remote_sha" ]]; then
+		log_info "No changes in ${rel_path} vs origin/main"
+		continue
+	fi
+	COMMIT_FILES+=("$rel_path")
+done
 
-git config user.name "github-actions[bot]"
-git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-log_info "Staging formula changes..."
-git add -- "${CHANGED_FILES[@]}"
-
-if git diff --staged --quiet; then
+if [[ ${#COMMIT_FILES[@]} -eq 0 ]]; then
 	log_info "No formula changes detected"
 	exit 0
 fi
 
-git checkout -B "$PR_BRANCH"
-git commit -m "$PR_TITLE"
-
-log_info "Pushing branch ${PR_BRANCH}"
-configure_git_push_remote
-git push --force-with-lease origin "HEAD:${PR_BRANCH}"
+# Create the bump branch from the current main head and commit via the
+# GraphQL API so the commit is GitHub-signed (required_signatures).
+create_commit_args=(
+	--branch "$PR_BRANCH"
+	--base-oid "$MAIN_OID"
+	--message "$PR_TITLE"
+)
+for rel_path in "${COMMIT_FILES[@]}"; do
+	create_commit_args+=(--file "$rel_path")
+done
+bash "$SCRIPT_DIR/create-signed-commit.sh" "${create_commit_args[@]}"
 
 existing_pr="$(
 	gh pr list \
@@ -163,6 +236,7 @@ existing_pr="$(
 
 if [[ -n "$existing_pr" ]]; then
 	log_info "Using existing PR #${existing_pr}"
+	pr_number="$existing_pr"
 else
 	log_info "Creating pull request"
 	gh pr create \
@@ -170,6 +244,23 @@ else
 		--head "$PR_BRANCH" \
 		--title "$PR_TITLE" \
 		--body "$PR_BODY"
+	pr_number="$(
+		gh pr list \
+			--head "$PR_BRANCH" \
+			--base main \
+			--state open \
+			--json number \
+			--jq '.[0].number // ""'
+	)"
+fi
+
+# Close older bump PRs for the same product; only the latest is relevant.
+if [[ -n "$pr_number" ]]; then
+	bash "$SCRIPT_DIR/supersede-formula-prs.sh" \
+		--product "$PRODUCT" \
+		--current-pr "$pr_number"
+else
+	log_warning "Could not resolve PR number for ${PR_BRANCH}; skipping supersede sweep"
 fi
 
 log_success "Formula update PR ready for ${PRODUCT} ${VERSION}"
