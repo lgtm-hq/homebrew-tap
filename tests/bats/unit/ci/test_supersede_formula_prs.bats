@@ -22,6 +22,7 @@ teardown() {
 	export MOCK_OPEN_PRS='[
 		{"number": 134, "headRefName": "homebrew/lintro-0.77.2"},
 		{"number": 120, "headRefName": "homebrew/lintro-0.76.0"},
+		{"number": 119, "headRefName": "homebrew/lintro-0.76.1-rc.1"},
 		{"number": 118, "headRefName": "homebrew/lintro-0.75.1"}
 	]'
 
@@ -30,6 +31,9 @@ teardown() {
 	[ "$status" -eq 0 ]
 	grep -q \
 		"pr close 120 --repo lgtm-hq/homebrew-tap --comment Superseded by #134. --delete-branch" \
+		"$MOCK_GH_LOG"
+	grep -q \
+		"pr close 119 --repo lgtm-hq/homebrew-tap --comment Superseded by #134. --delete-branch" \
 		"$MOCK_GH_LOG"
 	grep -q \
 		"pr close 118 --repo lgtm-hq/homebrew-tap --comment Superseded by #134. --delete-branch" \

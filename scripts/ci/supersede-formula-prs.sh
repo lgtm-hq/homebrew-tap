@@ -41,14 +41,17 @@ supersede_formula_prs() {
 			continue
 		fi
 		# Glob prefix match (product chars are literal in globs, unlike
-		# regexes), then anchor the suffix to a version shape (leading digit,
-		# no hyphens) so a `lintro` sweep cannot match a sibling product's
-		# branches such as homebrew/lintro-full-0.1.0.
+		# regexes), then anchor the suffix to a version shape mirroring the
+		# dispatch payload validation (^v?[0-9]+(\.[0-9]+)*(-[A-Za-z0-9._-]+)?$
+		# in parse-dispatch-payload.sh): the leading digit keeps a `lintro`
+		# sweep from matching sibling-product branches such as
+		# homebrew/lintro-full-0.1.0, while hyphenated pre-release versions
+		# (homebrew/lintro-1.2.3-rc.1) still match.
 		if [[ "$head_ref" != "homebrew/${product}-"* ]]; then
 			continue
 		fi
 		suffix="${head_ref#"homebrew/${product}-"}"
-		if [[ ! "$suffix" =~ ^[0-9][A-Za-z0-9.+]*$ ]]; then
+		if [[ ! "$suffix" =~ ^[0-9]+(\.[0-9]+)*(-[A-Za-z0-9._-]+)?$ ]]; then
 			continue
 		fi
 		log_info "Closing PR #${number} (${head_ref}): superseded by #${current_pr}"
