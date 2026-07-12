@@ -41,7 +41,8 @@ teardown() {
 	export MOCK_OPEN_PRS='[
 		{"number": 134, "headRefName": "homebrew/lintro-0.77.2"},
 		{"number": 99, "headRefName": "feature/unrelated"},
-		{"number": 98, "headRefName": "homebrew/winnow-0.0.2"}
+		{"number": 98, "headRefName": "homebrew/winnow-0.0.2"},
+		{"number": 97, "headRefName": "homebrew/lintro-full-0.1.0"}
 	]'
 
 	run bash "$SCRIPT" --product lintro --current-pr 134

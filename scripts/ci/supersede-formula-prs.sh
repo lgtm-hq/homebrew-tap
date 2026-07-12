@@ -35,13 +35,15 @@ EOF
 supersede_formula_prs() {
 	local product="$1"
 	local current_pr="$2"
-	local prefix="homebrew/${product}-"
 	local number head_ref
 	while IFS=$'\t' read -r number head_ref; do
 		if [[ -z "$number" || "$number" == "$current_pr" ]]; then
 			continue
 		fi
-		if [[ "$head_ref" != "$prefix"* ]]; then
+		# Anchor the suffix to a version shape (leading digit, no hyphens) so
+		# a `lintro` sweep cannot match a sibling product's branches such as
+		# homebrew/lintro-full-0.1.0.
+		if [[ ! "$head_ref" =~ ^homebrew/${product}-[0-9][A-Za-z0-9.+]*$ ]]; then
 			continue
 		fi
 		log_info "Closing PR #${number} (${head_ref}): superseded by #${current_pr}"
