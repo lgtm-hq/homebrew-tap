@@ -57,18 +57,28 @@ if [[ "$joined" == api\ -X\ PATCH\ repos/*/git/refs/heads/* ]]; then
 fi
 
 if [[ "$joined" == *contents/* && "$joined" == *"--jq .sha"* ]]; then
+	if [[ -n "${MOCK_CONTENTS_ERROR:-}" ]]; then
+		echo "$MOCK_CONTENTS_ERROR" >&2
+		exit 1
+	fi
 	if [[ -n "${MOCK_REMOTE_BLOB_SHA:-}" ]]; then
 		echo "$MOCK_REMOTE_BLOB_SHA"
 		exit 0
 	fi
+	echo "gh: Not Found (HTTP 404)" >&2
 	exit 1
 fi
 
 if [[ "$joined" == *contents/* ]]; then
+	if [[ -n "${MOCK_CONTENTS_ERROR:-}" ]]; then
+		echo "$MOCK_CONTENTS_ERROR" >&2
+		exit 1
+	fi
 	if [[ -n "${MOCK_REMOTE_FILE:-}" && -f "$MOCK_REMOTE_FILE" ]]; then
 		cat "$MOCK_REMOTE_FILE"
 		exit 0
 	fi
+	echo "gh: Not Found (HTTP 404)" >&2
 	exit 1
 fi
 

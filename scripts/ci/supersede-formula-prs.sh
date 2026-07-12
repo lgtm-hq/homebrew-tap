@@ -55,6 +55,7 @@ supersede_formula_prs() {
 		gh pr list \
 			--repo "$GITHUB_REPOSITORY" \
 			--state open \
+			--limit 100 \
 			--json number,headRefName \
 			--jq '.[] | [.number, .headRefName] | @tsv'
 	)

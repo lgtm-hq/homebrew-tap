@@ -60,6 +60,22 @@ teardown() {
 	[ -z "$output" ]
 }
 
+@test "remote_file_at_ref: fails loudly on non-404 API errors" {
+	export MOCK_CONTENTS_ERROR="gh: You have exceeded a secondary rate limit (HTTP 403)"
+
+	run remote_file_at_ref "Formula/lintro.rb" "abc123"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Failed to fetch Formula/lintro.rb@abc123"* ]]
+}
+
+@test "remote_blob_sha_at_ref: fails loudly on non-404 API errors" {
+	export MOCK_CONTENTS_ERROR="gh: You have exceeded a secondary rate limit (HTTP 403)"
+
+	run remote_blob_sha_at_ref "Formula/lintro.rb" "abc123"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Failed to fetch blob sha for Formula/lintro.rb@abc123"* ]]
+}
+
 @test "remote_blob_sha_at_ref: returns blob sha and empty on 404" {
 	export MOCK_REMOTE_BLOB_SHA="feedfacefeedfacefeedfacefeedfacefeedface"
 	run remote_blob_sha_at_ref "Formula/lintro.rb" "abc123"

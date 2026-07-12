@@ -37,17 +37,40 @@ remote_main_oid() {
 }
 
 remote_file_at_ref() {
+	# Prints the file content at ref; empty output if the file is absent
+	# (HTTP 404). Any other API failure is fatal so a transient error can
+	# never be mistaken for "file not found" and silently skip guards.
 	local path="$1"
 	local ref="$2"
-	gh api -H "Accept: application/vnd.github.raw+json" \
-		"repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${ref}" 2>/dev/null || true
+	local output
+	if output="$(gh api -H "Accept: application/vnd.github.raw+json" \
+		"repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${ref}" 2>&1)"; then
+		printf '%s\n' "$output"
+		return 0
+	fi
+	if [[ "$output" == *"HTTP 404"* || "$output" == *"Not Found"* ]]; then
+		return 0
+	fi
+	log_error "Failed to fetch ${path}@${ref}: ${output}"
+	return 1
 }
 
 remote_blob_sha_at_ref() {
+	# Prints the blob sha at ref; empty output if the file is absent
+	# (HTTP 404). Any other API failure is fatal (see remote_file_at_ref).
 	local path="$1"
 	local ref="$2"
-	gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${ref}" \
-		--jq '.sha' 2>/dev/null || true
+	local output
+	if output="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${ref}" \
+		--jq '.sha' 2>&1)"; then
+		printf '%s\n' "$output"
+		return 0
+	fi
+	if [[ "$output" == *"HTTP 404"* || "$output" == *"Not Found"* ]]; then
+		return 0
+	fi
+	log_error "Failed to fetch blob sha for ${path}@${ref}: ${output}"
+	return 1
 }
 
 previous_formula_version() {
@@ -130,18 +153,17 @@ print(cfg['formulas']['${formula_key}']['type'])
 		# generate-resources regenerate stanzas from live PyPI metadata on
 		# every run, so drift is informational (warn); otherwise drift means
 		# stale stanzas and the run must fail loudly.
-		pypi_package=$(python3 -c "
+		{
+			read -r pypi_package
+			read -r generates_resources
+		} < <(python3 -c "
 import yaml
 cfg = yaml.safe_load(open('${CONFIG_PATH}'))
 entry = cfg['formulas']['${formula_key}']
 print(entry.get('package') or cfg.get('package') or '')
+print('true' if entry.get('generate-resources') else 'false')
 ")
 		pypi_package="${PYPI_PACKAGE_OVERRIDE:-$pypi_package}"
-		generates_resources=$(python3 -c "
-import yaml
-cfg = yaml.safe_load(open('${CONFIG_PATH}'))
-print('true' if cfg['formulas']['${formula_key}'].get('generate-resources') else 'false')
-")
 		previous_version="$(
 			remote_file_at_ref "Formula/${formula_key}.rb" "$MAIN_OID" |
 				previous_formula_version
