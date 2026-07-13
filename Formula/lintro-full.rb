@@ -9,9 +9,15 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/1d/cf/3bb7139419275d4fcce1e7ea52044752ad199550533a406a1c76b6f22f87/lintro-0.78.1.tar.gz"
-  sha256 "4d5f4a8fb875a79acdfb295cf9468a337f3072e4cb1d2926c7af53e3d9ddc185"
+  url "https://files.pythonhosted.org/packages/aa/db/576e5dea849882c6736b7781677116310f3c27ff4d86117c2cf4faf91367/lintro-0.79.3.tar.gz"
+  sha256 "f915a07b15402ced8831d5ef6a566fcc58400d4b7949d10c093c556c68465fee"
   license "MIT"
+  head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
+
+  # No bottle block is declared here: bottles are pre-compiled binary packages
+  # whose SHA256 checksums are produced by the tap's brew test-bot after this
+  # formula is merged. They cannot be hardcoded in the source template, so the
+  # tap CI injects the `bottle do ... end` stanza when it builds bottles.
 
   livecheck do
     url :stable
@@ -23,6 +29,7 @@ class LintroFull < Formula
   depends_on "bandit"
   depends_on "black"
   depends_on "commitlint"
+  depends_on "dotenv-linter"
   depends_on "gitleaks"
   depends_on "hadolint"
   depends_on "libyaml"
@@ -42,6 +49,9 @@ class LintroFull < Formula
   depends_on "vale"
   depends_on "yamllint"
 
+  # Shares the "lintro" binary with the lightweight binary formula.
+  conflicts_with "lintro", because: "both provide the lintro binary"
+
   # Pure Python library dependencies
   resource "annotated-types" do
     url "https://files.pythonhosted.org/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz"
@@ -49,8 +59,8 @@ class LintroFull < Formula
   end
 
   resource "anyio" do
-    url "https://files.pythonhosted.org/packages/3b/72/5562aabb8dd7181e8e860622a38bea08d17842b99ecd4c91f84ac95251b0/anyio-4.14.1.tar.gz"
-    sha256 "8d648a3544c1a700e3ff78615cd679e4c5c3f149904287e73687b2596963629e"
+    url "https://files.pythonhosted.org/packages/61/cc/a381afa6efea9f496eff839d4a6a1aed3bfafc7b3ab4b0d1b243a12573dd/anyio-4.14.2.tar.gz"
+    sha256 "cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f"
   end
 
   resource "certifi" do
@@ -158,8 +168,8 @@ class LintroFull < Formula
     sha256 "685b4a1c3c852045e4523b61d9c3f789672dfab3a454fe51a9e346c9e21dfcdb"
   end
 
-  # pydantic_core requires Rust to build - use platform-specific wheels
-  resource "pydantic_core" do
+  # pydantic-core requires Rust to build - use platform-specific wheels
+  resource "pydantic-core" do
     on_arm do
       url "https://files.pythonhosted.org/packages/c1/81/4fa520eaffa8bd7d1525e644cd6d39e7d60b1592bc5b516693c7340b50f1/pydantic_core-2.46.4-cp313-cp313-macosx_11_0_arm64.whl"
       sha256 "c94f0688e7b8d0a67abf40e57a7eaaecd17cc9586706a31b76c031f63df052b4"
@@ -174,13 +184,13 @@ class LintroFull < Formula
     venv = virtualenv_create(libexec, "python3.13")
 
     # Install other resources first (this sets up pip in the venv)
-    other_resources = resources.reject { |r| r.name == "pydantic_core" }
+    other_resources = resources.reject { |r| r.name == "pydantic-core" }
     venv.pip_install other_resources
 
-    # Install pydantic_core wheel (requires special handling due to Rust build)
-    resource("pydantic_core").stage do
+    # Install pydantic-core wheel (requires special handling due to Rust build)
+    resource("pydantic-core").stage do
       wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
-      odie "pydantic_core wheel not found in staged resource" if wheel.nil?
+      odie "pydantic-core wheel not found in staged resource" if wheel.nil?
       system libexec/"bin/python", "-m", "pip",
              "install", "--no-deps", "--ignore-installed", wheel.to_s
     end
@@ -196,6 +206,7 @@ class LintroFull < Formula
       Python quality:   ruff, black, mypy, bandit, pydoclint (bundled)
       YAML / TOML:      yamllint, taplo
       Shell:            shellcheck, shfmt
+      Dotenv:           dotenv-linter
       Markdown:         markdownlint-cli2
       Prose / docs:     vale
       JS / TS:          oxlint, oxfmt, prettier
@@ -220,6 +231,10 @@ class LintroFull < Formula
   end
 
   test do
-    assert_match version.to_s, shell_output("\#{bin}/lintro --version")
+    assert_match version.to_s, shell_output("#{bin}/lintro --version")
+    assert_match "Usage:", shell_output("#{bin}/lintro --help")
+    # `lintro doctor` exits non-zero when optional tools are missing (expected
+    # inside the sandboxed test environment), so accept exit status 1.
+    assert_match "Lintro Doctor", shell_output("#{bin}/lintro doctor", 1)
   end
 end
