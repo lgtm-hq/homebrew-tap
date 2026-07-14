@@ -156,11 +156,12 @@ verify_asset_sha() {
 	log_info "${label} asset sha256 verified"
 }
 
+TMPDIR=$(mktemp -d)
+trap 'rm -rf "$TMPDIR"' EXIT
+
 if [[ -n "${SKIP_ASSET_VERIFY:-}" ]]; then
 	log_info "SKIP_ASSET_VERIFY set; skipping live asset sha256 verification"
 else
-	TMPDIR=$(mktemp -d)
-	trap 'rm -rf "$TMPDIR"' EXIT
 	verify_asset_sha "arm64" "$ARM64_URL" "$ARM64_SHA"
 	verify_asset_sha "x86_64" "$X86_URL" "$X86_SHA"
 fi
@@ -189,52 +190,29 @@ EOF
 	)
 fi
 
-cat >"$OUTPUT_FILE" <<EOF
-# typed: strict
-# frozen_string_literal: true
+# Values that may legitimately be empty (or span multiple lines) are passed
+# via --replace-file: render_formula.py rejects empty --replace values, and
+# files sidestep any shell-quoting/escaping of the content.
+printf '%s' "$CAVEATS_BLOCK" >"$TMPDIR/caveats_block.txt"
+printf '%s' "$TEST_ARGS" >"$TMPDIR/test_args.txt"
 
-# Homebrew formula for ${FORMULA_KEY} binary distribution
-# Auto-generated - do not edit manually
-class ${CLASS_NAME} < Formula
-  desc "${DESCRIPTION}"
-  homepage "${HOMEPAGE}"
-  version "${VERSION}"
-  license "${LICENSE}"
-
-  # Track the latest GitHub release via the releases API rather than scanning all
-  # tags, so the stray single-component "v1" tag is ignored. url :stable is
-  # required by FormulaAudit/LivecheckUrlSymbol; github_latest derives the repo
-  # from it, and the semver regex is a defensive filter on the release tag.
-  livecheck do
-    url :stable
-    strategy :github_latest
-    regex(/^v?(\d+\.\d+\.\d+)\$/i)
-  end
-
-  on_macos do
-    on_arm do
-      url "${ARM64_URL}"
-      sha256 "${ARM64_SHA}"
-    end
-    on_intel do
-      url "${X86_URL}"
-      sha256 "${X86_SHA}"
-    end
-  end
-
-  def install
-    if Hardware::CPU.arm?
-      bin.install "${ARM64_ASSET}" => "${INSTALL_NAME}"
-    else
-      bin.install "${X86_ASSET}" => "${INSTALL_NAME}"
-    end
-  end
-${CAVEATS_BLOCK}
-
-  test do
-    assert_match version.to_s, shell_output("#{bin}/${INSTALL_NAME} ${TEST_ARGS}")
-  end
-end
-EOF
+python3 "$SCRIPT_DIR/render_formula.py" \
+	--template "$SCRIPT_DIR/templates/binary.rb.template" \
+	--replace "FORMULA_KEY=${FORMULA_KEY}" \
+	--replace "CLASS_NAME=${CLASS_NAME}" \
+	--replace "DESCRIPTION=${DESCRIPTION}" \
+	--replace "HOMEPAGE=${HOMEPAGE}" \
+	--replace "VERSION=${VERSION}" \
+	--replace "LICENSE=${LICENSE}" \
+	--replace "ARM64_URL=${ARM64_URL}" \
+	--replace "ARM64_SHA=${ARM64_SHA}" \
+	--replace "X86_URL=${X86_URL}" \
+	--replace "X86_SHA=${X86_SHA}" \
+	--replace "ARM64_ASSET=${ARM64_ASSET}" \
+	--replace "X86_ASSET=${X86_ASSET}" \
+	--replace "INSTALL_NAME=${INSTALL_NAME}" \
+	--replace-file "TEST_ARGS=${TMPDIR}/test_args.txt" \
+	--replace-file "CAVEATS_BLOCK=${TMPDIR}/caveats_block.txt" \
+	--output "$OUTPUT_FILE"
 
 log_success "Formula written to ${OUTPUT_FILE}"
