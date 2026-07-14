@@ -16,6 +16,20 @@ formulas:
       x86_64: lintro-macos-x86_64
     install-name: lintro
     full-formula-ref: lintro-full
+    conflicts-with:
+      formula: lintro-full
+      because: both provide the lintro binary
+      comment: Shares the "lintro" binary with the PyPI-based full formula.
+    test-extra: |
+      # Help output renders emoji; brew test's ASCII locale crashes the
+      # binary with UnicodeEncodeError, so force UTF-8 inline (an ENV
+      # assignment does not reach the subprocess).
+      utf8 = "LC_ALL=en_US.UTF-8"
+      assert_match "Usage:", shell_output("#{utf8} #{bin}/lintro --help")
+      # `lintro doctor` reports tool status and may exit non-zero when optional
+      # tools are missing, so assert on its output rather than the exit status.
+      doctor_cmd = "#{utf8} #{bin}/lintro doctor 2>&1"
+      assert_match "Lintro Doctor", pipe_output(doctor_cmd)
     caveats: |
       lintro is a lightweight standalone binary (no Python required).
 
@@ -34,10 +48,28 @@ formulas:
     min-resource-count: 5
     class-name: LintroFull
     description: "Unified CLI for code quality (all tools included)"
+    head: true
+    bottle-comment: true
+    conflicts-with:
+      formula: lintro
+      because: both provide the lintro binary
+      comment: Shares the "lintro" binary with the lightweight binary formula.
+    test-extra: |
+      # Help output renders emoji; brew test's ASCII locale crashes the
+      # binary with UnicodeEncodeError, so force UTF-8 inline (an ENV
+      # assignment does not reach the subprocess).
+      utf8 = "LC_ALL=en_US.UTF-8"
+      assert_match "Usage:", shell_output("#{utf8} #{bin}/lintro --help")
+      # `lintro doctor` reports tool status and may exit non-zero when optional
+      # tools are missing, so assert on its output rather than the exit status.
+      doctor_cmd = "#{utf8} #{bin}/lintro doctor 2>&1"
+      assert_match "Lintro Doctor", pipe_output(doctor_cmd)
     homebrew-deps:
       - actionlint
       - bandit
       - black
+      - commitlint
+      - dotenv-linter
       - gitleaks
       - hadolint
       - libyaml
@@ -53,26 +85,30 @@ formulas:
       - shfmt
       - sqlfluff
       - taplo
+      - vale
       - yamllint
     wheel-only-packages:
       pydoclint:
         type: universal
         comment: "pydoclint - use wheel for consistency"
-      pydantic_core:
+      pydantic-core:
         type: platform
         resolve-version-from: pydantic-core
         comment: >-
-          pydantic_core requires Rust to build - use platform-specific wheels
+          pydantic-core requires Rust to build - use platform-specific wheels
     caveats: |
       Lintro is now installed (#{deps.count} Homebrew formulae included).
 
       Python quality:   ruff, black, mypy, bandit, pydoclint (bundled)
       YAML / TOML:      yamllint, taplo
       Shell:            shellcheck, shfmt
+      Dotenv:           dotenv-linter
       Markdown:         markdownlint-cli2
+      Prose / docs:     vale
       JS / TS:          oxlint, oxfmt, prettier
       Dockerfiles:      hadolint
       GitHub Actions:   actionlint
+      Git commits:      commitlint
       Security:         gitleaks, semgrep
       Rust:             clippy, rustfmt (via rust)
       SQL:              sqlfluff

@@ -42,6 +42,9 @@ class LintroFull < Formula
   depends_on "vale"
   depends_on "yamllint"
 
+  # Shares the "lintro" binary with the lightweight binary formula.
+  conflicts_with "lintro", because: "both provide the lintro binary"
+
   # Pure Python library dependencies
   resource "annotated-types" do
     url "https://files.pythonhosted.org/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz"
@@ -158,8 +161,8 @@ class LintroFull < Formula
     sha256 "685b4a1c3c852045e4523b61d9c3f789672dfab3a454fe51a9e346c9e21dfcdb"
   end
 
-  # pydantic_core requires Rust to build - use platform-specific wheels
-  resource "pydantic_core" do
+  # pydantic-core requires Rust to build - use platform-specific wheels
+  resource "pydantic-core" do
     on_arm do
       url "https://files.pythonhosted.org/packages/c1/81/4fa520eaffa8bd7d1525e644cd6d39e7d60b1592bc5b516693c7340b50f1/pydantic_core-2.46.4-cp313-cp313-macosx_11_0_arm64.whl"
       sha256 "c94f0688e7b8d0a67abf40e57a7eaaecd17cc9586706a31b76c031f63df052b4"
@@ -174,13 +177,13 @@ class LintroFull < Formula
     venv = virtualenv_create(libexec, "python3.13")
 
     # Install other resources first (this sets up pip in the venv)
-    other_resources = resources.reject { |r| r.name == "pydantic_core" }
+    other_resources = resources.reject { |r| r.name == "pydantic-core" }
     venv.pip_install other_resources
 
-    # Install pydantic_core wheel (requires special handling due to Rust build)
-    resource("pydantic_core").stage do
+    # Install pydantic-core wheel (requires special handling due to Rust build)
+    resource("pydantic-core").stage do
       wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
-      odie "pydantic_core wheel not found in staged resource" if wheel.nil?
+      odie "pydantic-core wheel not found in staged resource" if wheel.nil?
       system libexec/"bin/python", "-m", "pip",
              "install", "--no-deps", "--ignore-installed", wheel.to_s
     end
@@ -220,6 +223,15 @@ class LintroFull < Formula
   end
 
   test do
-    assert_match version.to_s, shell_output("\#{bin}/lintro --version")
+    assert_match version.to_s, shell_output("#{bin}/lintro --version")
+    # Help output renders emoji; brew test's ASCII locale crashes the
+    # binary with UnicodeEncodeError, so force UTF-8 inline (an ENV
+    # assignment does not reach the subprocess).
+    utf8 = "LC_ALL=en_US.UTF-8"
+    assert_match "Usage:", shell_output("#{utf8} #{bin}/lintro --help")
+    # `lintro doctor` reports tool status and may exit non-zero when optional
+    # tools are missing, so assert on its output rather than the exit status.
+    doctor_cmd = "#{utf8} #{bin}/lintro doctor 2>&1"
+    assert_match "Lintro Doctor", pipe_output(doctor_cmd)
   end
 end

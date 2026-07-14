@@ -96,6 +96,25 @@ install_local_formula() {
 	fi
 }
 
+# Run a formula's `test do` block via brew test
+# Catches broken test blocks (e.g. escaped interpolation) that a plain
+# --version smoke check misses (#145).
+# Usage: brew_test_formula "lintro"
+brew_test_formula() {
+	local formula="$1"
+	local full_name
+	full_name=$(get_local_formula_name "$formula")
+
+	log_info "Running brew test $full_name"
+	if brew test "$full_name"; then
+		log_success "$formula brew test passed"
+		return 0
+	else
+		log_error "brew test failed for $formula"
+		return 1
+	fi
+}
+
 # Uninstall a formula installed from the local tap
 # The tap's formulae may declare conflicts_with each other (lintro and
 # lintro-full both provide the lintro binary), so each formula must be

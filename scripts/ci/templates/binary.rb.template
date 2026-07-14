@@ -28,7 +28,7 @@ class {{CLASS_NAME}} < Formula
       url "{{X86_URL}}"
       sha256 "{{X86_SHA}}"
     end
-  end
+  end{{CONFLICTS_BLOCK}}
 
   def install
     if Hardware::CPU.arm?
@@ -40,6 +40,6 @@ class {{CLASS_NAME}} < Formula
 {{CAVEATS_BLOCK}}
 
   test do
-    assert_match version.to_s, shell_output("#{bin}/{{INSTALL_NAME}} {{TEST_ARGS}}")
+    assert_match version.to_s, shell_output("#{bin}/{{INSTALL_NAME}} {{TEST_ARGS}}"){{TEST_EXTRA_BLOCK}}
   end
 end

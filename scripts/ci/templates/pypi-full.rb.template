@@ -10,7 +10,7 @@ class {{CLASS_NAME}} < Formula
   homepage "{{HOMEPAGE}}"
   url "{{TARBALL_URL}}"
   sha256 "{{TARBALL_SHA}}"
-  license "{{LICENSE}}"
+  license "{{LICENSE}}"{{HEAD_BLOCK}}{{BOTTLE_COMMENT_BLOCK}}
 
   livecheck do
     url :stable
@@ -18,7 +18,7 @@ class {{CLASS_NAME}} < Formula
   end
 
   # CLI tools installed via Homebrew
-{{HOMEBREW_DEPS}}
+{{HOMEBREW_DEPS}}{{CONFLICTS_BLOCK}}
 
   # Pure Python library dependencies
 {{POET_RESOURCES}}
@@ -33,6 +33,6 @@ class {{CLASS_NAME}} < Formula
   end
 {{CAVEATS_BLOCK}}
   test do
-    assert_match version.to_s, shell_output("#{bin}/{{TEST_BINARY}} --version")
+    assert_match version.to_s, shell_output("#{bin}/{{TEST_BINARY}} --version"){{TEST_EXTRA_BLOCK}}
   end
 end

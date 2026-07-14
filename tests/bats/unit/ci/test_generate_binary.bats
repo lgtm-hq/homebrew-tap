@@ -55,6 +55,8 @@ committed_assets() {
 	grep -q "$arm" "$output_file"
 	grep -q "$x86" "$output_file"
 	grep -q 'lintro-macos-arm64' "$output_file"
+	grep -q 'conflicts_with "lintro-full"' "$output_file"
+	grep -q 'doctor_cmd = "#{utf8} #{bin}/lintro doctor 2>&1"' "$output_file"
 }
 
 @test "generate-binary-formula: rejects non-hex sha" {
