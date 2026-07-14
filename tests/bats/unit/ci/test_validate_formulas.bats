@@ -48,6 +48,17 @@ log_line_number() {
 	done
 }
 
+@test "validate-formulas: uninstalls formula even when verification fails" {
+	# lintro-full.rb sorts first; a failed verification must still uninstall
+	# it, or a retry hits the conflicts_with install refusal again.
+	export MOCK_BREW_BROKEN_VERIFY="lintro-full"
+
+	run bash "$REPO_ROOT/scripts/ci/validate-formulas.sh"
+
+	[ "$status" -ne 0 ]
+	grep -q "^uninstall --force lintro-full$" "$MOCK_BREW_LOG"
+}
+
 @test "validate-formulas: fails loudly when an uninstall fails" {
 	export MOCK_BREW_FAIL_UNINSTALL="lintro-full"
 

@@ -177,6 +177,7 @@ EOF
 #   MOCK_BREW_REPO           directory answered for `brew --repository`
 #   MOCK_BREW_CONFLICTS      space-separated a:b pairs of conflicting formulae
 #   MOCK_BREW_FAIL_UNINSTALL formula name whose uninstall fails
+#   MOCK_BREW_BROKEN_VERIFY  formula name whose installed binary fails --version
 mock_brew() {
 	local mock_dir="$1"
 	mkdir -p "$mock_dir"
@@ -222,7 +223,11 @@ install)
 		fi
 	done
 	mkdir -p "$state/opt/$name/bin"
-	printf '#!/usr/bin/env bash\necho "%s 0.0.0 (mock)"\n' "$name" >"$state/opt/$name/bin/$name"
+	if [[ "$name" == "${MOCK_BREW_BROKEN_VERIFY:-}" ]]; then
+		printf '#!/usr/bin/env bash\nexit 1\n' >"$state/opt/$name/bin/$name"
+	else
+		printf '#!/usr/bin/env bash\necho "%s 0.0.0 (mock)"\n' "$name" >"$state/opt/$name/bin/$name"
+	fi
 	chmod +x "$state/opt/$name/bin/$name"
 	exit 0
 	;;

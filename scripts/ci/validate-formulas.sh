@@ -58,7 +58,10 @@ log_info "Installing from source for smoke test..."
 for formula in "${formulas[@]}"; do
 	formula_name="$(basename "$formula" .rb)"
 	install_local_formula "$formula_name"
-	verify_formula "$formula_name" || exit 1
+	if ! verify_formula "$formula_name"; then
+		uninstall_local_formula "$formula_name" || true
+		exit 1
+	fi
 	uninstall_local_formula "$formula_name" || exit 1
 done
 echo ""
