@@ -1,17 +1,22 @@
 # typed: strict
 # frozen_string_literal: true
 
-# Homebrew formula for lintro
-# CLI tools (ruff, black, mypy, bandit) are installed as Homebrew dependencies
-# Python libraries are bundled as resources
+# Homebrew formula for lintro-full
+# CLI tools are installed as Homebrew dependencies; Python libraries are bundled
 class LintroFull < Formula
   include Language::Python::Virtualenv
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/1d/cf/3bb7139419275d4fcce1e7ea52044752ad199550533a406a1c76b6f22f87/lintro-0.78.1.tar.gz"
-  sha256 "4d5f4a8fb875a79acdfb295cf9468a337f3072e4cb1d2926c7af53e3d9ddc185"
+  url "https://files.pythonhosted.org/packages/f7/fb/cefa25d9d21371bb243320c5fe682ae5339e1a2de16afe68bbf3ba2f592e/lintro-0.80.1.tar.gz"
+  sha256 "80ced949eaf74c1527c798206fde9c5964950e18422ffb4c03289e8ecb9b39ed"
   license "MIT"
+  head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
+
+  # No bottle block is declared here: bottles are pre-compiled binary packages
+  # whose SHA256 checksums are produced by the tap's brew test-bot after this
+  # formula is merged. They cannot be hardcoded in the source template, so the
+  # tap CI injects the `bottle do ... end` stanza when it builds bottles.
 
   livecheck do
     url :stable
@@ -23,6 +28,7 @@ class LintroFull < Formula
   depends_on "bandit"
   depends_on "black"
   depends_on "commitlint"
+  depends_on "dotenv-linter"
   depends_on "gitleaks"
   depends_on "hadolint"
   depends_on "libyaml"
@@ -52,8 +58,8 @@ class LintroFull < Formula
   end
 
   resource "anyio" do
-    url "https://files.pythonhosted.org/packages/3b/72/5562aabb8dd7181e8e860622a38bea08d17842b99ecd4c91f84ac95251b0/anyio-4.14.1.tar.gz"
-    sha256 "8d648a3544c1a700e3ff78615cd679e4c5c3f149904287e73687b2596963629e"
+    url "https://files.pythonhosted.org/packages/61/cc/a381afa6efea9f496eff839d4a6a1aed3bfafc7b3ab4b0d1b243a12573dd/anyio-4.14.2.tar.gz"
+    sha256 "cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f"
   end
 
   resource "certifi" do
@@ -160,7 +166,6 @@ class LintroFull < Formula
     url "https://files.pythonhosted.org/packages/bc/35/e2fa913ba2d692ccefbf2e21337fe3fd44200efd9a6ee1ba65766eff7d14/pydoclint-0.9.1-py3-none-any.whl"
     sha256 "685b4a1c3c852045e4523b61d9c3f789672dfab3a454fe51a9e346c9e21dfcdb"
   end
-
   # pydantic-core requires Rust to build - use platform-specific wheels
   resource "pydantic-core" do
     on_arm do
@@ -172,7 +177,6 @@ class LintroFull < Formula
       sha256 "5d5902252db0d3cedf8d4a1bc68f70eeb430f7e4c7104c8c476753519b423008"
     end
   end
-
   def install
     venv = virtualenv_create(libexec, "python3.13")
 
@@ -188,7 +192,7 @@ class LintroFull < Formula
              "install", "--no-deps", "--ignore-installed", wheel.to_s
     end
 
-    # Install lintro itself
+    # Install the package itself
     venv.pip_install_and_link buildpath
   end
 
@@ -199,6 +203,7 @@ class LintroFull < Formula
       Python quality:   ruff, black, mypy, bandit, pydoclint (bundled)
       YAML / TOML:      yamllint, taplo
       Shell:            shellcheck, shfmt
+      Dotenv:           dotenv-linter
       Markdown:         markdownlint-cli2
       Prose / docs:     vale
       JS / TS:          oxlint, oxfmt, prettier
@@ -221,7 +226,6 @@ class LintroFull < Formula
         lintro doctor         # Check which tools are available
     EOS
   end
-
   test do
     assert_match version.to_s, shell_output("#{bin}/lintro --version")
     # Help output renders emoji; brew test's ASCII locale crashes the
