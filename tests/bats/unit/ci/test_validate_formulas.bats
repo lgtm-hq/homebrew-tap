@@ -62,7 +62,10 @@ log_line_number() {
 # =============================================================================
 
 @test "uninstall_local_formula: succeeds and logs" {
-	run bash -c "source '$REPO_ROOT/scripts/lib/local-tap.sh' && uninstall_local_formula lintro"
+	# shellcheck source=../../../../scripts/lib/local-tap.sh disable=SC1091
+	source "$REPO_ROOT/scripts/lib/local-tap.sh"
+
+	run uninstall_local_formula lintro
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"lintro uninstalled"* ]]
@@ -71,8 +74,10 @@ log_line_number() {
 
 @test "uninstall_local_formula: surfaces brew uninstall failure" {
 	export MOCK_BREW_FAIL_UNINSTALL="lintro"
+	# shellcheck source=../../../../scripts/lib/local-tap.sh disable=SC1091
+	source "$REPO_ROOT/scripts/lib/local-tap.sh"
 
-	run bash -c "source '$REPO_ROOT/scripts/lib/local-tap.sh' && uninstall_local_formula lintro"
+	run uninstall_local_formula lintro
 
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"Failed to uninstall lintro"* ]]
