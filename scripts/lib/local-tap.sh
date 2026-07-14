@@ -96,6 +96,25 @@ install_local_formula() {
 	fi
 }
 
+# Uninstall a formula installed from the local tap
+# The tap's formulae may declare conflicts_with each other (lintro and
+# lintro-full both provide the lintro binary), so each formula must be
+# uninstalled after verification or the next install is refused with
+# "Cannot install ... because conflicting formulae are installed".
+# Usage: uninstall_local_formula "lintro"
+uninstall_local_formula() {
+	local formula="$1"
+
+	log_info "Uninstalling $formula..."
+	if brew uninstall --force "$formula"; then
+		log_success "$formula uninstalled"
+		return 0
+	else
+		log_error "Failed to uninstall $formula"
+		return 1
+	fi
+}
+
 # Resolve the installed binary path for a formula
 # Some formulas install under a different binary name than the formula name
 # Returns the absolute path to the binary, or the formula name as fallback
