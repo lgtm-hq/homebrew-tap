@@ -41,10 +41,15 @@ log_line_number() {
 	[ -n "$install_lintro" ]
 	[ "$uninstall_full" -lt "$install_lintro" ]
 
-	# Every installed formula is uninstalled again (none left behind).
+	# Every installed formula is brew-tested while installed and
+	# uninstalled again afterwards (none left behind).
 	for formula in "$REPO_ROOT"/Formula/*.rb; do
 		name="$(basename "$formula" .rb)"
-		grep -q "^uninstall --force ${name}$" "$MOCK_BREW_LOG"
+		test_line="$(log_line_number "^test local/test-tap/${name}$")"
+		uninstall_line="$(log_line_number "^uninstall --force ${name}$")"
+		[ -n "$test_line" ]
+		[ -n "$uninstall_line" ]
+		[ "$test_line" -lt "$uninstall_line" ]
 	done
 }
 
@@ -56,6 +61,17 @@ log_line_number() {
 	run bash "$REPO_ROOT/scripts/ci/validate-formulas.sh"
 
 	[ "$status" -ne 0 ]
+	grep -q "^uninstall --force lintro-full$" "$MOCK_BREW_LOG"
+}
+
+@test "validate-formulas: fails when a formula's brew test fails" {
+	export MOCK_BREW_FAIL_TEST="lintro-full"
+
+	run bash "$REPO_ROOT/scripts/ci/validate-formulas.sh"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"brew test failed for lintro-full"* ]]
+	# A failed brew test must still uninstall the formula (conflicts_with).
 	grep -q "^uninstall --force lintro-full$" "$MOCK_BREW_LOG"
 }
 

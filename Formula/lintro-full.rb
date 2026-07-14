@@ -42,6 +42,9 @@ class LintroFull < Formula
   depends_on "vale"
   depends_on "yamllint"
 
+  # Shares the "lintro" binary with the lightweight binary formula.
+  conflicts_with "lintro", because: "both provide the lintro binary"
+
   # Pure Python library dependencies
   resource "annotated-types" do
     url "https://files.pythonhosted.org/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz"
@@ -220,6 +223,10 @@ class LintroFull < Formula
   end
 
   test do
-    assert_match version.to_s, shell_output("\#{bin}/lintro --version")
+    assert_match version.to_s, shell_output("#{bin}/lintro --version")
+    assert_match "Usage:", shell_output("#{bin}/lintro --help")
+    # `lintro doctor` reports tool status and may exit non-zero when optional
+    # tools are missing, so assert on its output rather than the exit status.
+    assert_match "Lintro Doctor", pipe_output("#{bin}/lintro doctor 2>&1")
   end
 end

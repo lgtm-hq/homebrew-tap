@@ -8,6 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=../lib/common.sh disable=SC1091
 source "$SCRIPT_DIR/../lib/common.sh"
+# shellcheck source=../lib/formula-blocks.sh disable=SC1091
+source "$SCRIPT_DIR/../lib/formula-blocks.sh"
 # shellcheck source=../lib/lgtm-ci-tooling.sh disable=SC1091
 source "$SCRIPT_DIR/../lib/lgtm-ci-tooling.sh"
 
@@ -254,22 +256,24 @@ EOF
 		CAVEATS_BLOCK=""
 	fi
 
-	HAS_PYDANTIC_CORE=false
-	if ((${#WHEEL_PKG_ARRAY[@]})) && printf '%s\n' "${WHEEL_PKG_ARRAY[@]}" | grep -qx "pydantic_core"; then
-		HAS_PYDANTIC_CORE=true
+	# pydantic-core (any -/_ spelling, per product config) needs its wheel
+	# installed out-of-band because building from source requires Rust.
+	PYDANTIC_CORE_KEY=""
+	if ((${#WHEEL_PKG_ARRAY[@]})); then
+		PYDANTIC_CORE_KEY=$(printf '%s\n' "${WHEEL_PKG_ARRAY[@]}" | grep -xE "pydantic[-_]core" | head -1 || true)
 	fi
 
-	if [[ "$HAS_PYDANTIC_CORE" == "true" ]]; then
+	if [[ -n "$PYDANTIC_CORE_KEY" ]]; then
 		INSTALL_RESOURCES=$(
-			cat <<'EOF'
+			cat <<EOF
     # Install other resources first (this sets up pip in the venv)
-    other_resources = resources.reject { |r| r.name == "pydantic_core" }
+    other_resources = resources.reject { |r| r.name == "${PYDANTIC_CORE_KEY}" }
     venv.pip_install other_resources
 
-    # Install pydantic_core wheel (requires special handling due to Rust build)
-    resource("pydantic_core").stage do
+    # Install ${PYDANTIC_CORE_KEY} wheel (requires special handling due to Rust build)
+    resource("${PYDANTIC_CORE_KEY}").stage do
       wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
-      odie "pydantic_core wheel not found in staged resource" if wheel.nil?
+      odie "${PYDANTIC_CORE_KEY} wheel not found in staged resource" if wheel.nil?
       system libexec/"bin/python", "-m", "pip",
              "install", "--no-deps", "--ignore-installed", wheel.to_s
     end
@@ -278,19 +282,43 @@ EOF
 	else
 		INSTALL_RESOURCES='    venv.pip_install resources'
 	fi
+
+	HEAD_ENABLED=$(python3 -c "import json, sys; print('true' if json.loads(sys.argv[1]).get('head') else 'false')" "$CONFIG_JSON")
+	HEAD_BLOCK=""
+	if [[ "$HEAD_ENABLED" == "true" ]]; then
+		SOURCE_REPO="$(read_config_value source-repo)"
+		HEAD_BRANCH="$(read_config_value head-branch)"
+		HEAD_BLOCK=$(build_head_block "$SOURCE_REPO" "${HEAD_BRANCH:-main}")
+	fi
+
+	BOTTLE_COMMENT_ENABLED=$(python3 -c "import json, sys; print('true' if json.loads(sys.argv[1]).get('bottle-comment') else 'false')" "$CONFIG_JSON")
+	BOTTLE_COMMENT_BLOCK=""
+	if [[ "$BOTTLE_COMMENT_ENABLED" == "true" ]]; then
+		BOTTLE_COMMENT_BLOCK=$(build_bottle_comment_block)
+	fi
+
+	CONFLICTS_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('conflicts-with') or {}))" "$CONFIG_JSON")
+	CONFLICTS_BLOCK=$(build_conflicts_block "$CONFLICTS_JSON")
+
+	TEST_EXTRA_RAW=$(read_config_value test-extra)
+	TEST_EXTRA_BLOCK=$(build_test_extra_block "$TEST_EXTRA_RAW")
+
 	printf '%s' "$INSTALL_RESOURCES" >"$TMPDIR/install_resources.txt"
 	printf '%s' "$CAVEATS_BLOCK" >"$TMPDIR/caveats_block.txt"
+	printf '%s' "$HEAD_BLOCK" >"$TMPDIR/head_block.txt"
+	printf '%s' "$BOTTLE_COMMENT_BLOCK" >"$TMPDIR/bottle_comment_block.txt"
+	printf '%s' "$CONFLICTS_BLOCK" >"$TMPDIR/conflicts_block.txt"
+	printf '%s' "$TEST_EXTRA_BLOCK" >"$TMPDIR/test_extra_block.txt"
 
-	{
-		for dep in ${HOMEBREW_PKG_ARRAY[@]+"${HOMEBREW_PKG_ARRAY[@]}"}; do
-			if [[ "$dep" == "rust" ]]; then
-				echo '  depends_on "rust" # provides clippy, rustfmt, and cargo for cargo-audit'
-			else
-				echo "  depends_on \"${dep}\""
-			fi
-		done
-		echo "  depends_on \"python@${PYTHON_VERSION}\""
-	} >"$TMPDIR/deps.txt"
+	# The python dependency sorts into the list alphabetically, matching the
+	# committed formulae (and brew audit's dependency-order expectations).
+	while IFS= read -r dep; do
+		if [[ "$dep" == "rust" ]]; then
+			echo '  depends_on "rust" # provides clippy, rustfmt, and cargo for cargo-audit'
+		else
+			echo "  depends_on \"${dep}\""
+		fi
+	done < <(printf '%s\n' ${HOMEBREW_PKG_ARRAY[@]+"${HOMEBREW_PKG_ARRAY[@]}"} "python@${PYTHON_VERSION}" | LC_ALL=C sort) >"$TMPDIR/deps.txt"
 
 	python3 "$SCRIPT_DIR/render_formula.py" \
 		--template "$SCRIPT_DIR/templates/pypi-full.rb.template" \
@@ -308,6 +336,10 @@ EOF
 		--replace-file "WHEEL_RESOURCES=${TMPDIR}/wheels.txt" \
 		--replace-file "INSTALL_RESOURCES=${TMPDIR}/install_resources.txt" \
 		--replace-file "CAVEATS_BLOCK=${TMPDIR}/caveats_block.txt" \
+		--replace-file "HEAD_BLOCK=${TMPDIR}/head_block.txt" \
+		--replace-file "BOTTLE_COMMENT_BLOCK=${TMPDIR}/bottle_comment_block.txt" \
+		--replace-file "CONFLICTS_BLOCK=${TMPDIR}/conflicts_block.txt" \
+		--replace-file "TEST_EXTRA_BLOCK=${TMPDIR}/test_extra_block.txt" \
 		--output "$OUTPUT_FILE"
 else
 	python3 "$SCRIPT_DIR/render_formula.py" \

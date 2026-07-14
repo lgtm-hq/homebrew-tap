@@ -7,6 +7,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/common.sh disable=SC1091
 source "$SCRIPT_DIR/../lib/common.sh"
+# shellcheck source=../lib/formula-blocks.sh disable=SC1091
+source "$SCRIPT_DIR/../lib/formula-blocks.sh"
 
 usage() {
 	cat <<'EOF'
@@ -190,11 +192,19 @@ EOF
 	)
 fi
 
+CONFLICTS_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('conflicts-with') or {}))" "$CONFIG_JSON")
+CONFLICTS_BLOCK=$(build_conflicts_block "$CONFLICTS_JSON")
+
+TEST_EXTRA_RAW=$(read_config_value test-extra)
+TEST_EXTRA_BLOCK=$(build_test_extra_block "$TEST_EXTRA_RAW")
+
 # Values that may legitimately be empty (or span multiple lines) are passed
 # via --replace-file: render_formula.py rejects empty --replace values, and
 # files sidestep any shell-quoting/escaping of the content.
 printf '%s' "$CAVEATS_BLOCK" >"$TMPDIR/caveats_block.txt"
 printf '%s' "$TEST_ARGS" >"$TMPDIR/test_args.txt"
+printf '%s' "$CONFLICTS_BLOCK" >"$TMPDIR/conflicts_block.txt"
+printf '%s' "$TEST_EXTRA_BLOCK" >"$TMPDIR/test_extra_block.txt"
 
 python3 "$SCRIPT_DIR/render_formula.py" \
 	--template "$SCRIPT_DIR/templates/binary.rb.template" \
@@ -213,6 +223,8 @@ python3 "$SCRIPT_DIR/render_formula.py" \
 	--replace "INSTALL_NAME=${INSTALL_NAME}" \
 	--replace-file "TEST_ARGS=${TMPDIR}/test_args.txt" \
 	--replace-file "CAVEATS_BLOCK=${TMPDIR}/caveats_block.txt" \
+	--replace-file "CONFLICTS_BLOCK=${TMPDIR}/conflicts_block.txt" \
+	--replace-file "TEST_EXTRA_BLOCK=${TMPDIR}/test_extra_block.txt" \
 	--output "$OUTPUT_FILE"
 
 log_success "Formula written to ${OUTPUT_FILE}"
