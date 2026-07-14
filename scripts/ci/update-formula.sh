@@ -79,6 +79,18 @@ previous_formula_version() {
 	sed -nE 's/^[[:space:]]*url ".*-([0-9][^"-]*)\.tar\.gz"$/\1/p' | head -n 1
 }
 
+resolve_binary_assets() {
+	# Prints DISPATCH_BINARY_ASSETS, defaulting to {} when unset/empty.
+	# Deliberately not ${VAR:-{}}: bash ends that expansion at the first
+	# `}`, appending a literal `}` to the JSON whenever the variable is
+	# set, which breaks generate-binary-formula.sh's JSON parsing.
+	local raw="${DISPATCH_BINARY_ASSETS:-}"
+	if [[ -z "$raw" ]]; then
+		raw="{}"
+	fi
+	printf '%s' "$raw"
+}
+
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
 	usage
 	exit 0
@@ -87,7 +99,7 @@ fi
 PRODUCT="${DISPATCH_FORMULA:?DISPATCH_FORMULA is required}"
 RAW_VERSION="${DISPATCH_VERSION:?DISPATCH_VERSION is required}"
 PYPI_PACKAGE_OVERRIDE="${DISPATCH_PYPI_PACKAGE:-}"
-BINARY_ASSETS="${DISPATCH_BINARY_ASSETS:-{}}"
+BINARY_ASSETS="$(resolve_binary_assets)"
 
 VERSION="${RAW_VERSION#v}"
 CONFIG_PATH="$REPO_ROOT/formulas/${PRODUCT}.yml"

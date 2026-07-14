@@ -109,3 +109,29 @@ EOF
 
 	[ -z "$(cat "$TEST_TEMP_DIR/version.txt")" ]
 }
+
+# =============================================================================
+# resolve_binary_assets
+# =============================================================================
+
+@test "resolve_binary_assets: passes dispatch JSON through unmodified" {
+	extract_function "resolve_binary_assets"
+	export DISPATCH_BINARY_ASSETS='{"arm64-sha":"aaa","x86-sha":"bbb"}'
+
+	run resolve_binary_assets
+
+	[ "$status" -eq 0 ]
+	[ "$output" = '{"arm64-sha":"aaa","x86-sha":"bbb"}' ]
+	# Regression: ${VAR:-{}} appended a literal `}` when the var was set.
+	echo "$output" | python3 -c "import json,sys; json.load(sys.stdin)"
+}
+
+@test "resolve_binary_assets: defaults to empty object when unset" {
+	extract_function "resolve_binary_assets"
+	unset DISPATCH_BINARY_ASSETS
+
+	run resolve_binary_assets
+
+	[ "$status" -eq 0 ]
+	[ "$output" = '{}' ]
+}
