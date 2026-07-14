@@ -50,12 +50,19 @@ setup_local_tap "$REPO_ROOT"
 register_tap_cleanup
 echo ""
 
-# Install and verify each formula
+# Install and verify each formula in an isolated install -> verify ->
+# uninstall sequence. lintro and lintro-full declare conflicts_with each
+# other (both provide the lintro binary), so a formula left installed makes
+# brew refuse the next install (#144).
 log_info "Installing from source for smoke test..."
 for formula in "${formulas[@]}"; do
 	formula_name="$(basename "$formula" .rb)"
 	install_local_formula "$formula_name"
-	verify_formula "$formula_name" || exit 1
+	if ! verify_formula "$formula_name"; then
+		uninstall_local_formula "$formula_name" || true
+		exit 1
+	fi
+	uninstall_local_formula "$formula_name" || exit 1
 done
 echo ""
 

@@ -167,3 +167,89 @@ EOF
 	chmod +x "$mock_dir/gh"
 	export PATH="$mock_dir:$PATH"
 }
+
+# Stateful brew mock for validate-formulas tests.
+# Tracks installed formulae under $MOCK_BREW_STATE/opt and refuses installs
+# when a conflicting formula is installed, mirroring real brew behavior for
+# formulae that declare conflicts_with. Logs every invocation (one line,
+# space-joined) to $MOCK_BREW_LOG and responds based on MOCK_* variables:
+#   MOCK_BREW_STATE          state directory (created by the mock as needed)
+#   MOCK_BREW_REPO           directory answered for `brew --repository`
+#   MOCK_BREW_CONFLICTS      space-separated a:b pairs of conflicting formulae
+#   MOCK_BREW_FAIL_UNINSTALL formula name whose uninstall fails
+#   MOCK_BREW_BROKEN_VERIFY  formula name whose installed binary fails --version
+mock_brew() {
+	local mock_dir="$1"
+	mkdir -p "$mock_dir"
+	cat >"$mock_dir/brew" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+joined="$*"
+if [[ -n "${MOCK_BREW_LOG:-}" ]]; then
+	echo "$joined" >>"$MOCK_BREW_LOG"
+fi
+
+state="${MOCK_BREW_STATE:?MOCK_BREW_STATE is required}"
+mkdir -p "$state/opt"
+
+case "${1:-}" in
+--version)
+	echo "Homebrew 4.0.0 (mock)"
+	exit 0
+	;;
+--repository)
+	echo "${MOCK_BREW_REPO:?MOCK_BREW_REPO is required}"
+	exit 0
+	;;
+--prefix)
+	echo "$state/opt/${2:?formula required}"
+	exit 0
+	;;
+style)
+	exit 0
+	;;
+install)
+	name="$(basename "${!#}")"
+	for pair in ${MOCK_BREW_CONFLICTS:-}; do
+		a="${pair%%:*}"
+		b="${pair##*:}"
+		other=""
+		[[ "$name" == "$a" ]] && other="$b"
+		[[ "$name" == "$b" ]] && other="$a"
+		if [[ -n "$other" && -d "$state/opt/$other/bin" ]]; then
+			echo "Error: Cannot install local/test-tap/$name because conflicting formulae are installed." >&2
+			exit 1
+		fi
+	done
+	mkdir -p "$state/opt/$name/bin"
+	if [[ "$name" == "${MOCK_BREW_BROKEN_VERIFY:-}" ]]; then
+		printf '#!/usr/bin/env bash\nexit 1\n' >"$state/opt/$name/bin/$name"
+	else
+		printf '#!/usr/bin/env bash\necho "%s 0.0.0 (mock)"\n' "$name" >"$state/opt/$name/bin/$name"
+	fi
+	chmod +x "$state/opt/$name/bin/$name"
+	exit 0
+	;;
+uninstall)
+	name="${!#}"
+	if [[ "$name" == "${MOCK_BREW_FAIL_UNINSTALL:-}" ]]; then
+		echo "Error: mock refuses to uninstall $name" >&2
+		exit 1
+	fi
+	rm -rf "$state/opt/$name"
+	exit 0
+	;;
+esac
+
+echo "unsupported brew invocation: $joined" >&2
+exit 1
+EOF
+	chmod +x "$mock_dir/brew"
+	export MOCK_BREW_STATE="${MOCK_BREW_STATE:-$mock_dir/state}"
+	export MOCK_BREW_REPO="${MOCK_BREW_REPO:-$mock_dir/brew-repo}"
+	export MOCK_BREW_LOG="${MOCK_BREW_LOG:-$mock_dir/brew.log}"
+	mkdir -p "$MOCK_BREW_REPO"
+	: >"$MOCK_BREW_LOG"
+	export PATH="$mock_dir:$PATH"
+}
