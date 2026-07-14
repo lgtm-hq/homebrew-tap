@@ -57,11 +57,10 @@ class Lintro < Formula
   test do
     assert_match version.to_s, shell_output("#{bin}/lintro --version")
     assert_match "Usage:", shell_output("#{bin}/lintro --help")
-    # Doctor output includes emoji; force UTF-8 stdio so the ASCII locale
-    # of `brew test` CI runners doesn't crash it with UnicodeEncodeError.
-    ENV["PYTHONIOENCODING"] = "utf-8"
     # `lintro doctor` reports tool status and may exit non-zero when optional
     # tools are missing, so assert on its output rather than the exit status.
-    assert_match "Lintro Doctor", pipe_output("#{bin}/lintro doctor 2>&1")
+    # Doctor prints emoji: the inline PYTHONIOENCODING survives brew test's
+    # scrubbed ASCII environment where an ENV assignment does not.
+    assert_match "Lintro Doctor", pipe_output("PYTHONIOENCODING=utf-8 #{bin}/lintro doctor 2>&1")
   end
 end
