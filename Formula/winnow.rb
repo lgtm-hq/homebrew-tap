@@ -8,8 +8,8 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  url "https://files.pythonhosted.org/packages/3c/13/057d2191d5cfa95f257707acf7a4badcf23cc38a63ba5629092a1c5b7bb1/winnow_media-0.5.0.tar.gz"
-  sha256 "c6bf41c527f01346a4ab4ca05c3b4acce02a6a6c6f7c33e82fa39d7d76644939"
+  url "https://files.pythonhosted.org/packages/cc/a6/33d9c44c481cc6f5e0bce083e4dfead793fb67fa50185197046a2f0e3a5d/winnow_media-0.6.0.tar.gz"
+  sha256 "d983f1f480217fd00b6be196b9840e3e51bae8a637ee1b877aefb1fd51aa4e14"
   license "MIT"
 
   livecheck do
@@ -29,6 +29,11 @@ class Winnow < Formula
   resource "click" do
     url "https://files.pythonhosted.org/packages/76/d4/81420972a676e8ffea40450d8c8c92943e7218a78fe9b64359836cc9876b/click-8.4.2.tar.gz"
     sha256 "9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6"
+  end
+
+  resource "dynaconf" do
+    url "https://files.pythonhosted.org/packages/2e/fa/351d165f6f9fe493a92a2e155f3097a4379dbe23e731b68543ce9988ee19/dynaconf-3.3.2.tar.gz"
+    sha256 "3b50232b774142702c3d4623633bcd76bb9951abf8567b7f1340d73a30a80899"
   end
 
   resource "loguru" do
