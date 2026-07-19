@@ -8,8 +8,8 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  url "https://files.pythonhosted.org/packages/c5/cb/747d42d77db480c57842e82f9e988eadf47a586d2316c4a0707ae4b71e4e/winnow_media-0.17.0.tar.gz"
-  sha256 "74c9ac5b5708609f0e90ea096fe092a6d2beaafd9e0c3a26317ddc263d3acd08"
+  url "https://files.pythonhosted.org/packages/3b/d1/5a5475386a599f2378475055fa68bc6269b7d4c1f5326620db1e8b6b6c8e/winnow_media-0.18.0.tar.gz"
+  sha256 "f9348f9a7da166013d2381f994f77ee6ab9a7714b7e2cb10cc1f5ca6c1ec0f4d"
   license "MIT"
 
   livecheck do
@@ -64,6 +64,11 @@ class Winnow < Formula
   resource "mutagen" do
     url "https://files.pythonhosted.org/packages/df/70/1675da133ea92227da41bf5b24e1c66be597ff736a1533ade41da986852f/mutagen-1.48.1.tar.gz"
     sha256 "8f95637ab9f6f305cec6bd1294e197debe207998e3e068596563c74f86b0a173"
+  end
+
+  resource "puremagic" do
+    url "https://files.pythonhosted.org/packages/24/74/ce5987ab9b8aec4ced06e2723ebb604205c9eb58abdad91453da93166380/puremagic-2.2.0.tar.gz"
+    sha256 "eb4bddf07c177c4b434554b92165b67449f5a51e152b976202d6254498810eef"
   end
 
   resource "pydantic" do
