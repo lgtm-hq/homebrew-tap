@@ -215,6 +215,7 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 
 	log_info "Generating wheel resources..."
 	: >"$TMPDIR/wheels.txt"
+	EMITTED_WHEELS=()
 	if ((${#WHEEL_PKG_ARRAY[@]})); then
 		while IFS= read -r wheel_pkg; do
 			[[ -z "$wheel_pkg" ]] && continue
@@ -222,14 +223,33 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 			wheel_comment=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('comment', ''))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
 			resolve_from=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('resolve-version-from', ''))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
 
+			# A configured wheel package may be absent from this release's
+			# dependency tree; skip it rather than failing the generation.
+			# Any other probe failure is fatal so a broken probe cannot
+			# silently drop a wheel resource from the formula.
+			probe_name="${resolve_from:-$wheel_pkg}"
+			probe_status=0
+			wheel_version=$("$ANALYSIS_VENV/bin/python" \
+				"$SCRIPT_DIR/probe_dist_version.py" "$probe_name") || probe_status=$?
+			if [[ "$probe_status" -eq 3 ]]; then
+				log_info "Skipping wheel package ${wheel_pkg}: not in the dependency tree"
+				continue
+			elif [[ "$probe_status" -ne 0 ]]; then
+				log_error "Failed to probe installed version for ${wheel_pkg} (probe name: ${probe_name})"
+				exit 1
+			fi
+
 			wheel_args=(--type "$wheel_type" --comment "$wheel_comment" --python-version "${PYTHON_VERSION_NODOT}")
-			if [[ "$wheel_type" == "platform" && -n "$resolve_from" ]]; then
-				wheel_version=$("$ANALYSIS_VENV/bin/python" -c \
-					"from importlib.metadata import version; print(version('${resolve_from}'))")
+			if [[ "$wheel_type" == "platform" ]]; then
 				wheel_args+=(--version "$wheel_version")
 			fi
 
 			python3 "$SCRIPT_DIR/fetch_wheel_info.py" "$wheel_pkg" "${wheel_args[@]}" >>"$TMPDIR/wheels.txt"
+			# Platform wheels are installed out-of-band in the formula;
+			# universal wheels go through venv.pip_install like sdists.
+			if [[ "$wheel_type" == "platform" ]]; then
+				EMITTED_WHEELS+=("$wheel_pkg")
+			fi
 		done <<<"$(printf '%s\n' "${WHEEL_PKG_ARRAY[@]}")"
 	fi
 
@@ -256,26 +276,28 @@ EOF
 		CAVEATS_BLOCK=""
 	fi
 
-	# pydantic-core (any -/_ spelling, per product config) needs its wheel
-	# installed out-of-band because building from source requires Rust.
-	PYDANTIC_CORE_KEY=""
-	if ((${#WHEEL_PKG_ARRAY[@]})); then
-		PYDANTIC_CORE_KEY=$(printf '%s\n' "${WHEEL_PKG_ARRAY[@]}" | grep -xE "pydantic[-_]core" | head -1 || true)
-	fi
-
-	if [[ -n "$PYDANTIC_CORE_KEY" ]]; then
+	# Platform-wheel packages (pydantic-core needs Rust; scipy/numpy need
+	# native toolchains) are installed out-of-band from their prebuilt
+	# wheels instead of letting venv.pip_install build them from source.
+	if ((${#EMITTED_WHEELS[@]})); then
+		WHEEL_NAMES_RUBY=$(printf '"%s", ' "${EMITTED_WHEELS[@]}")
+		WHEEL_NAMES_RUBY="[${WHEEL_NAMES_RUBY%, }]"
 		INSTALL_RESOURCES=$(
 			cat <<EOF
     # Install other resources first (this sets up pip in the venv)
-    other_resources = resources.reject { |r| r.name == "${PYDANTIC_CORE_KEY}" }
+    wheel_only = ${WHEEL_NAMES_RUBY}
+    other_resources = resources.reject { |r| wheel_only.include?(r.name) }
     venv.pip_install other_resources
 
-    # Install ${PYDANTIC_CORE_KEY} wheel (requires special handling due to Rust build)
-    resource("${PYDANTIC_CORE_KEY}").stage do
-      wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
-      odie "${PYDANTIC_CORE_KEY} wheel not found in staged resource" if wheel.nil?
-      system libexec/"bin/python", "-m", "pip",
-             "install", "--no-deps", "--ignore-installed", wheel.to_s
+    # Install prebuilt platform wheels out-of-band: building these from
+    # source needs heavy native toolchains (Rust, C/Fortran).
+    wheel_only.each do |name|
+      resource(name).stage do
+        wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
+        odie "#{name} wheel not found in staged resource" if wheel.nil?
+        system libexec/"bin/python", "-m", "pip",
+               "install", "--no-deps", "--ignore-installed", wheel.to_s
+      end
     end
 EOF
 		)

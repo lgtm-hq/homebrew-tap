@@ -12,8 +12,25 @@ formulas:
     python-version: "3.13"
     test-command: "winnow --version"
     wheel-only-packages:
+      numpy:
+        type: platform
+        comment: >-
+          numpy requires native compilation - use platform-specific wheels
+      pillow:
+        type: platform
+        comment: >-
+          pillow requires native compilation - use platform-specific wheels
       pydantic_core:
         type: platform
         resolve-version-from: pydantic-core
         comment: >-
           pydantic_core requires Rust to build - use platform-specific wheels
+      pywavelets:
+        type: platform
+        comment: >-
+          pywavelets requires native compilation - use platform-specific wheels
+      scipy:
+        type: platform
+        comment: >-
+          scipy requires native (C/Fortran) compilation - use
+          platform-specific wheels
