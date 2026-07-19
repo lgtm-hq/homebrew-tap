@@ -8,8 +8,8 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  url "https://files.pythonhosted.org/packages/58/b1/3455a7c6788beafef780e44f15980632765d8b6a2439bd87d75cca222433/winnow_media-0.7.0.tar.gz"
-  sha256 "40ba3f97ce02961af3f2d0e665fb0ee2099b98efcd00bd95c3804cac4b53206b"
+  url "https://files.pythonhosted.org/packages/f5/73/f8b6293789e8e87e7eb6ee1ad79c78de7d305f1bb387e38773e2e0d5b486/winnow_media-0.9.0.tar.gz"
+  sha256 "a77d00442c508b234b1e870e690c97d0a68224e2e458df0fa249b1e9073ffa8e"
   license "MIT"
 
   livecheck do
@@ -34,6 +34,11 @@ class Winnow < Formula
   resource "dynaconf" do
     url "https://files.pythonhosted.org/packages/2e/fa/351d165f6f9fe493a92a2e155f3097a4379dbe23e731b68543ce9988ee19/dynaconf-3.3.2.tar.gz"
     sha256 "3b50232b774142702c3d4623633bcd76bb9951abf8567b7f1340d73a30a80899"
+  end
+
+  resource "imagehash" do
+    url "https://files.pythonhosted.org/packages/cd/de/5c0189b0582e21583c2a213081c35a2501c0f9e51f21f6a52f55fbb9a4ff/ImageHash-4.3.2.tar.gz"
+    sha256 "e54a79805afb82a34acde4746a16540503a9636fd1ffb31d8e099b29bbbf8156"
   end
 
   resource "loguru" do
@@ -66,6 +71,11 @@ class Winnow < Formula
     sha256 "edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36"
   end
 
+  resource "ruamel-yaml" do
+    url "https://files.pythonhosted.org/packages/c7/3b/ebda527b56beb90cb7652cb1c7e4f91f48649fbcd8d2eb2fb6e77cd3329b/ruamel_yaml-0.19.1.tar.gz"
+    sha256 "53eb66cd27849eff968ebf8f0bf61f46cdac2da1d1f3576dd4ccee9b25c31993"
+  end
+
   resource "typing-extensions" do
     url "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz"
     sha256 "dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"
@@ -74,6 +84,28 @@ class Winnow < Formula
   resource "typing-inspection" do
     url "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac53367ae42139cf4b1ca5f36bb3dc6c9d33acdb43655/typing_inspection-0.4.2.tar.gz"
     sha256 "ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"
+  end
+  # numpy requires native compilation - use platform-specific wheels
+  resource "numpy" do
+    on_arm do
+      url "https://files.pythonhosted.org/packages/ab/ab/ddb499fc4f8780354395face5b65c7fd107bcd6e1d667a5f07d046956f6f/numpy-2.5.1-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "30b44a6b53a7ae63c54c089a8726e5563ed302716c5b7ccc85afade40b0e7ff6"
+    end
+    on_intel do
+      url "https://files.pythonhosted.org/packages/eb/07/ec2a3f0c91761581d4b7104a740791800025983f9a4dc4e73f91a99aeac4/numpy-2.5.1-cp313-cp313-macosx_10_13_x86_64.whl"
+      sha256 "0bfebd8695f9863592fe744be833a258120b14a9f39da255e8aa8fade2c0ddd1"
+    end
+  end
+  # pillow requires native compilation - use platform-specific wheels
+  resource "pillow" do
+    on_arm do
+      url "https://files.pythonhosted.org/packages/10/76/8803c13605b763d33d156c4678fc77f8443389c0c51c8aef707bb02015f4/pillow-12.3.0-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "d69141514cc30b774ceea5e3ed3a6635c8d8a96edf664689b890f4089111fb35"
+    end
+    on_intel do
+      url "https://files.pythonhosted.org/packages/42/92/2fc3ffad878ae8dd5469ec1bc8eb83b71f48e13efdf68f02709003982a32/pillow-12.3.0-cp313-cp313-macosx_10_13_x86_64.whl"
+      sha256 "7a743ff716f746fc19a9557f60dab1600d4613255f8a7aeb3cdde4db7eb15a66"
+    end
   end
   # pydantic_core requires Rust to build - use platform-specific wheels
   resource "pydantic_core" do
@@ -86,19 +118,45 @@ class Winnow < Formula
       sha256 "5d5902252db0d3cedf8d4a1bc68f70eeb430f7e4c7104c8c476753519b423008"
     end
   end
+  # pywavelets requires native compilation - use platform-specific wheels
+  resource "pywavelets" do
+    on_arm do
+      url "https://files.pythonhosted.org/packages/aa/0c/b54b86596c0df68027e48c09210e907e628435003e77048384a2dd6767e3/pywavelets-1.9.0-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "c50320fe0a4a23ddd8835b3dc9b53b09ee05c7cc6c56b81d0916f04fc1649070"
+    end
+    on_intel do
+      url "https://files.pythonhosted.org/packages/db/a7/dec4e450675d62946ad975f5b4d924437df42d2fae46e91dfddda2de0f5a/pywavelets-1.9.0-cp313-cp313-macosx_10_13_x86_64.whl"
+      sha256 "74f8455c143818e4b026fc67b27fd82f38e522701b94b8a6d1aaf3a45fcc1a25"
+    end
+  end
+  # scipy requires native (C/Fortran) compilation - use platform-specific wheels
+  resource "scipy" do
+    on_arm do
+      url "https://files.pythonhosted.org/packages/02/73/0291a64843270f4efb86cdcf2ee0f2048631b65ec6b405398b2b4dbf11bf/scipy-1.18.0-cp313-cp313-macosx_12_0_arm64.whl"
+      sha256 "5efe260f69417b97ddae455bfb5a95e8359f7f66ad7fa9522a60feb66f169520"
+    end
+    on_intel do
+      url "https://files.pythonhosted.org/packages/05/52/9c0136c2de7ae0779b7b366447766cec6d9f0702c56bb8ffeb04c8fd3af4/scipy-1.18.0-cp313-cp313-macosx_10_15_x86_64.whl"
+      sha256 "09143f676d157d9f546d663504ef9c1becb819824f1afc018814176411942446"
+    end
+  end
   def install
     venv = virtualenv_create(libexec, "python3.13")
 
     # Install other resources first (this sets up pip in the venv)
-    other_resources = resources.reject { |r| r.name == "pydantic_core" }
+    wheel_only = %w[numpy pillow pydantic_core pywavelets scipy]
+    other_resources = resources.reject { |r| wheel_only.include?(r.name) }
     venv.pip_install other_resources
 
-    # Install pydantic_core wheel (requires special handling due to Rust build)
-    resource("pydantic_core").stage do
-      wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
-      odie "pydantic_core wheel not found in staged resource" if wheel.nil?
-      system libexec/"bin/python", "-m", "pip",
-             "install", "--no-deps", "--ignore-installed", wheel.to_s
+    # Install prebuilt platform wheels out-of-band: building these from
+    # source needs heavy native toolchains (Rust, C/Fortran).
+    wheel_only.each do |name|
+      resource(name).stage do
+        wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
+        odie "#{name} wheel not found in staged resource" if wheel.nil?
+        system libexec/"bin/python", "-m", "pip",
+               "install", "--no-deps", "--ignore-installed", wheel.to_s
+      end
     end
 
     # Install the package itself
