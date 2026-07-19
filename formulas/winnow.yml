@@ -20,6 +20,12 @@ formulas:
         type: platform
         comment: >-
           pillow requires native compilation - use platform-specific wheels
+      pillow_heif:
+        type: platform
+        resolve-version-from: pillow-heif
+        comment: >-
+          pillow_heif bundles libheif and needs it to build from source -
+          use platform-specific wheels
       pydantic_core:
         type: platform
         resolve-version-from: pydantic-core

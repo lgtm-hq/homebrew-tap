@@ -253,6 +253,13 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 		done <<<"$(printf '%s\n' "${WHEEL_PKG_ARRAY[@]}")"
 	fi
 
+	# Blank line between the sdist and wheel resource sections so the
+	# rendered formula keeps consistent stanza spacing.
+	if [[ -s "$TMPDIR/wheels.txt" && -s "$TMPDIR/resources.txt" ]]; then
+		printf '\n' | cat - "$TMPDIR/wheels.txt" >"$TMPDIR/wheels.txt.tmp"
+		mv "$TMPDIR/wheels.txt.tmp" "$TMPDIR/wheels.txt"
+	fi
+
 	CAVEATS_RAW=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('caveats', '') or '')" "$CONFIG_JSON")
 	if [[ -n "$CAVEATS_RAW" ]]; then
 		INDENTED_CAVEATS=$(while IFS= read -r line || [[ -n "$line" ]]; do
