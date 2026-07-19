@@ -225,11 +225,18 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 
 			# A configured wheel package may be absent from this release's
 			# dependency tree; skip it rather than failing the generation.
+			# Any other probe failure is fatal so a broken probe cannot
+			# silently drop a wheel resource from the formula.
 			probe_name="${resolve_from:-$wheel_pkg}"
-			if ! wheel_version=$("$ANALYSIS_VENV/bin/python" -c \
-				"from importlib.metadata import version; print(version('${probe_name}'))" 2>/dev/null); then
+			probe_status=0
+			wheel_version=$("$ANALYSIS_VENV/bin/python" \
+				"$SCRIPT_DIR/probe_dist_version.py" "$probe_name") || probe_status=$?
+			if [[ "$probe_status" -eq 3 ]]; then
 				log_info "Skipping wheel package ${wheel_pkg}: not in the dependency tree"
 				continue
+			elif [[ "$probe_status" -ne 0 ]]; then
+				log_error "Failed to probe installed version for ${wheel_pkg} (probe name: ${probe_name})"
+				exit 1
 			fi
 
 			wheel_args=(--type "$wheel_type" --comment "$wheel_comment" --python-version "${PYTHON_VERSION_NODOT}")

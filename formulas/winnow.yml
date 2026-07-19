@@ -14,12 +14,10 @@ formulas:
     wheel-only-packages:
       numpy:
         type: platform
-        resolve-version-from: numpy
         comment: >-
           numpy requires native compilation - use platform-specific wheels
       pillow:
         type: platform
-        resolve-version-from: pillow
         comment: >-
           pillow requires native compilation - use platform-specific wheels
       pydantic_core:
@@ -29,12 +27,10 @@ formulas:
           pydantic_core requires Rust to build - use platform-specific wheels
       pywavelets:
         type: platform
-        resolve-version-from: pywavelets
         comment: >-
           pywavelets requires native compilation - use platform-specific wheels
       scipy:
         type: platform
-        resolve-version-from: scipy
         comment: >-
           scipy requires native (C/Fortran) compilation - use
           platform-specific wheels
