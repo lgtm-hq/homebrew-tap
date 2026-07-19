@@ -8,8 +8,8 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  url "https://files.pythonhosted.org/packages/97/41/b9044a5bb484c23633fd2f3f529679378cf0cfb31ebbde2f2c073813bbdf/winnow_media-0.13.0.tar.gz"
-  sha256 "b6cf041f5168a7c22f9ffdf736802e5075647ee5df1f28af1a315af6087c5c52"
+  url "https://files.pythonhosted.org/packages/af/99/6250c68d9bf4369ea483a015206a60a60d283dd9f0a03454790e81eabb41/winnow_media-0.14.0.tar.gz"
+  sha256 "d36919a8961ade902b182f8ec50487b51ee1ebf85d47df339d7240b2f031bead"
   license "MIT"
 
   livecheck do
@@ -36,6 +36,11 @@ class Winnow < Formula
     sha256 "3b50232b774142702c3d4623633bcd76bb9951abf8567b7f1340d73a30a80899"
   end
 
+  resource "exifread" do
+    url "https://files.pythonhosted.org/packages/e2/4e/d8fce8810d819db47f5b159e75223511c5ccd7ad07c2feca64cf7fab2477/exifread-3.5.1.tar.gz"
+    sha256 "9f998f80d3062741c976dfc4fd033424bc40932937994e4d2181eb70c4b6aedd"
+  end
+
   resource "imagehash" do
     url "https://files.pythonhosted.org/packages/cd/de/5c0189b0582e21583c2a213081c35a2501c0f9e51f21f6a52f55fbb9a4ff/ImageHash-4.3.2.tar.gz"
     sha256 "e54a79805afb82a34acde4746a16540503a9636fd1ffb31d8e099b29bbbf8156"
@@ -54,6 +59,11 @@ class Winnow < Formula
   resource "mdurl" do
     url "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz"
     sha256 "bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"
+  end
+
+  resource "mutagen" do
+    url "https://files.pythonhosted.org/packages/df/70/1675da133ea92227da41bf5b24e1c66be597ff736a1533ade41da986852f/mutagen-1.48.1.tar.gz"
+    sha256 "8f95637ab9f6f305cec6bd1294e197debe207998e3e068596563c74f86b0a173"
   end
 
   resource "pydantic" do
@@ -76,6 +86,11 @@ class Winnow < Formula
     sha256 "53eb66cd27849eff968ebf8f0bf61f46cdac2da1d1f3576dd4ccee9b25c31993"
   end
 
+  resource "tinytag" do
+    url "https://files.pythonhosted.org/packages/96/59/8a8cb2331e2602b53e4dc06960f57d1387a2b18e7efd24e5f9cb60ea4925/tinytag-2.2.1.tar.gz"
+    sha256 "e6d06610ebe7cd66fd07be2d3b9495914ab32654a5e47657bb8cd44c2484523c"
+  end
+
   resource "typing-extensions" do
     url "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz"
     sha256 "dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"
@@ -85,6 +100,7 @@ class Winnow < Formula
     url "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac53367ae42139cf4b1ca5f36bb3dc6c9d33acdb43655/typing_inspection-0.4.2.tar.gz"
     sha256 "ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"
   end
+
   # numpy requires native compilation - use platform-specific wheels
   resource "numpy" do
     on_arm do
@@ -105,6 +121,17 @@ class Winnow < Formula
     on_intel do
       url "https://files.pythonhosted.org/packages/42/92/2fc3ffad878ae8dd5469ec1bc8eb83b71f48e13efdf68f02709003982a32/pillow-12.3.0-cp313-cp313-macosx_10_13_x86_64.whl"
       sha256 "7a743ff716f746fc19a9557f60dab1600d4613255f8a7aeb3cdde4db7eb15a66"
+    end
+  end
+  # pillow_heif bundles libheif and needs it to build from source - use platform-specific wheels
+  resource "pillow_heif" do
+    on_arm do
+      url "https://files.pythonhosted.org/packages/55/c0/e4d9b5570ee70f12c817722df398cdcba7fb25f4ddc691a79008a31c653d/pillow_heif-1.4.0-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "8f90b500ec1ae3a59d6613fd96123de35457f69fb9b3cd314d4b5a6799ba9843"
+    end
+    on_intel do
+      url "https://files.pythonhosted.org/packages/79/d4/d15e568b61f6020b1a772174b5c9c60341a1f0130951c518d33461b36bf8/pillow_heif-1.4.0-cp313-cp313-macosx_10_15_x86_64.whl"
+      sha256 "c699f8a3e845839bba590d3459ce59dba16c82c38e799955bef7042c54443eba"
     end
   end
   # pydantic_core requires Rust to build - use platform-specific wheels
@@ -144,7 +171,7 @@ class Winnow < Formula
     venv = virtualenv_create(libexec, "python3.13")
 
     # Install other resources first (this sets up pip in the venv)
-    wheel_only = %w[numpy pillow pydantic_core pywavelets scipy]
+    wheel_only = %w[numpy pillow pillow_heif pydantic_core pywavelets scipy]
     other_resources = resources.reject { |r| wheel_only.include?(r.name) }
     venv.pip_install other_resources
 
