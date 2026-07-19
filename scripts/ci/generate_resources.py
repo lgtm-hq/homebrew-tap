@@ -119,7 +119,7 @@ def get_package_dependencies(package_name: str) -> set[str]:
     dist_map = build_distribution_map()
     normalized_name = normalize_name(package_name)
     dependencies: set[str] = set()
-    to_process: list[tuple[str, frozenset[str]]] = [(normalized_name, frozenset())]
+    to_process: set[tuple[str, frozenset[str]]] = {(normalized_name, frozenset())}
     processed: set[tuple[str, frozenset[str]]] = set()
 
     while to_process:
@@ -145,8 +145,14 @@ def get_package_dependencies(package_name: str) -> set[str]:
             req_name = normalize_name(req.name)
             if req_name in dist_map:
                 dependencies.add(req_name)
-                req_extras = frozenset(normalize_name(extra) for extra in req.extras)
-                to_process.append((req_name, req_extras))
+                # Keep both spellings: PEP 685 normalizes extras, but a
+                # dependency's marker may use the unnormalized form.
+                req_extras = frozenset(
+                    variant
+                    for extra in req.extras
+                    for variant in (extra, normalize_name(extra))
+                )
+                to_process.add((req_name, req_extras))
 
     dependencies.discard(normalized_name)
     return dependencies
