@@ -280,8 +280,8 @@ EOF
 	# native toolchains) are installed out-of-band from their prebuilt
 	# wheels instead of letting venv.pip_install build them from source.
 	if ((${#EMITTED_WHEELS[@]})); then
-		WHEEL_NAMES_RUBY=$(printf '"%s", ' "${EMITTED_WHEELS[@]}")
-		WHEEL_NAMES_RUBY="[${WHEEL_NAMES_RUBY%, }]"
+		# %w literal keeps brew style (Style/WordArray) happy.
+		WHEEL_NAMES_RUBY="%w[${EMITTED_WHEELS[*]}]"
 		INSTALL_RESOURCES=$(
 			cat <<EOF
     # Install other resources first (this sets up pip in the venv)
