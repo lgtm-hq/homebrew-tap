@@ -81,8 +81,34 @@ def get_installed_packages() -> dict[str, str]:
     return {name: version for name, (version, _) in dist_map.items()}
 
 
+def _marker_matches(req: Requirement, extras: frozenset[str]) -> bool:
+    """Evaluate a requirement marker for the target environment.
+
+    Extras-gated requirements (e.g. ``ruamel.yaml ; extra == "yaml"``)
+    only match when the dependent was requested with that extra, so the
+    marker is evaluated once without an extra and once per requested
+    extra.
+
+    Args:
+        req: Parsed requirement whose marker should be evaluated.
+        extras: Normalized extras requested by the dependent package.
+
+    Returns:
+        True if the requirement applies in the target environment.
+    """
+    if req.marker is None:
+        return True
+    if req.marker.evaluate({**TARGET_ENV, "extra": ""}):
+        return True
+    return any(req.marker.evaluate({**TARGET_ENV, "extra": extra}) for extra in extras)
+
+
 def get_package_dependencies(package_name: str) -> set[str]:
     """Get all dependencies of a package recursively.
+
+    Extras requested by a dependent (e.g. ``dynaconf[yaml]``) are
+    propagated so that extras-gated requirements are followed instead of
+    being dropped by marker evaluation.
 
     Args:
         package_name: Name of the package to analyze.
@@ -93,14 +119,14 @@ def get_package_dependencies(package_name: str) -> set[str]:
     dist_map = build_distribution_map()
     normalized_name = normalize_name(package_name)
     dependencies: set[str] = set()
-    to_process = {normalized_name}
-    processed: set[str] = set()
+    to_process: set[tuple[str, frozenset[str]]] = {(normalized_name, frozenset())}
+    processed: set[tuple[str, frozenset[str]]] = set()
 
     while to_process:
-        current = to_process.pop()
-        if current in processed:
+        current, current_extras = to_process.pop()
+        if (current, current_extras) in processed:
             continue
-        processed.add(current)
+        processed.add((current, current_extras))
 
         if current not in dist_map:
             continue
@@ -114,12 +140,19 @@ def get_package_dependencies(package_name: str) -> set[str]:
                 req = Requirement(req_str)
             except InvalidRequirement:
                 continue
-            if req.marker is not None and not req.marker.evaluate(TARGET_ENV):
+            if not _marker_matches(req=req, extras=current_extras):
                 continue
             req_name = normalize_name(req.name)
             if req_name in dist_map:
                 dependencies.add(req_name)
-                to_process.add(req_name)
+                # Keep both spellings: PEP 685 normalizes extras, but a
+                # dependency's marker may use the unnormalized form.
+                req_extras = frozenset(
+                    variant
+                    for extra in req.extras
+                    for variant in (extra, normalize_name(extra))
+                )
+                to_process.add((req_name, req_extras))
 
     dependencies.discard(normalized_name)
     return dependencies
