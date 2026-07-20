@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/48/09/b9447eb9d43d648c18cdd693e9f37b379c63d07236ef34a2f1e24c31a729/lintro-0.81.1.tar.gz"
-  sha256 "79d93f2660e1043ab060af912874b7c6edb8cfeb5d7ec53eb2d3c3c2b3293654"
+  url "https://files.pythonhosted.org/packages/88/e6/ad6ab6431fff30eebdce9db30d4ec41b2ab77fa573585291182ed01ecbc6/lintro-0.82.3.tar.gz"
+  sha256 "e3e74aefaa5bc5f33a68a3e1ab416132b436cc3770deb648df762ddb1c84d3a5"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -161,11 +161,7 @@ class LintroFull < Formula
     url "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac53367ae42139cf4b1ca5f36bb3dc6c9d33acdb43655/typing_inspection-0.4.2.tar.gz"
     sha256 "ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"
   end
-  # pydoclint - use wheel for consistency
-  resource "pydoclint" do
-    url "https://files.pythonhosted.org/packages/bc/35/e2fa913ba2d692ccefbf2e21337fe3fd44200efd9a6ee1ba65766eff7d14/pydoclint-0.9.1-py3-none-any.whl"
-    sha256 "685b4a1c3c852045e4523b61d9c3f789672dfab3a454fe51a9e346c9e21dfcdb"
-  end
+
   # pydantic-core requires Rust to build - use platform-specific wheels
   resource "pydantic-core" do
     on_arm do
@@ -181,15 +177,19 @@ class LintroFull < Formula
     venv = virtualenv_create(libexec, "python3.13")
 
     # Install other resources first (this sets up pip in the venv)
-    other_resources = resources.reject { |r| r.name == "pydantic-core" }
+    wheel_only = %w[pydantic-core]
+    other_resources = resources.reject { |r| wheel_only.include?(r.name) }
     venv.pip_install other_resources
 
-    # Install pydantic-core wheel (requires special handling due to Rust build)
-    resource("pydantic-core").stage do
-      wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
-      odie "pydantic-core wheel not found in staged resource" if wheel.nil?
-      system libexec/"bin/python", "-m", "pip",
-             "install", "--no-deps", "--ignore-installed", wheel.to_s
+    # Install prebuilt platform wheels out-of-band: building these from
+    # source needs heavy native toolchains (Rust, C/Fortran).
+    wheel_only.each do |name|
+      resource(name).stage do
+        wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
+        odie "#{name} wheel not found in staged resource" if wheel.nil?
+        system libexec/"bin/python", "-m", "pip",
+               "install", "--no-deps", "--ignore-installed", wheel.to_s
+      end
     end
 
     # Install the package itself
