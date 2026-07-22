@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/6d/c4/e02580487d4a51ed2fc2d95e694820cd1d81ede7ea8c7f2c4ffe75f9c854/lintro-0.91.1.tar.gz"
-  sha256 "0551e2f21220578cbb793c1565160c5c70d21a7c4721a95c3c558fdc5945271b"
+  url "https://files.pythonhosted.org/packages/c4/68/cd86f3cecc8785ad0db2f64d50cd9e182c357c13ae1009ec36e0475f7f37/lintro-0.91.2.tar.gz"
+  sha256 "abbf060a98137cfa13f3137f740c2910c823b9e7a01d17f5ad3533a00e061a48"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -63,8 +63,8 @@ class LintroFull < Formula
   end
 
   resource "certifi" do
-    url "https://files.pythonhosted.org/packages/c9/c7/424b75da314c1045981bd9777432fad05a9e0c69daa4ed7e308bbaffe405/certifi-2026.6.17.tar.gz"
-    sha256 "024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432"
+    url "https://files.pythonhosted.org/packages/a3/c2/24167ea9858356b47a87a50d39908bfdb72ceeefe0041586e704e5376b3a/certifi-2026.7.22.tar.gz"
+    sha256 "741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55"
   end
 
   resource "click" do
