@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/cd/5f/1446876a5083e2972f4948c2962a1d8e1c7c0ae8ffced8f6e9e55f7fbbc1/lintro-0.91.9.tar.gz"
-  sha256 "e91b1ab62617956f55b18378b7c9032af2d421559b7e899c65bf65cdd970b92e"
+  url "https://files.pythonhosted.org/packages/a5/a7/1406f7e4c671e395b7e447365f29f348aa9fc369daf5755e33e2c5c8b0d8/lintro-0.91.10.tar.gz"
+  sha256 "32f531047d1a2a0daf6e32dd6728c2d152004c928cb2acdc7acc70a4cbacc9ed"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -53,8 +53,8 @@ class LintroFull < Formula
 
   # Pure Python library dependencies
   resource "annotated-types" do
-    url "https://files.pythonhosted.org/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz"
-    sha256 "aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89"
+    url "https://files.pythonhosted.org/packages/5f/56/a8120250d128bed162cd73c76d45f6ef9991f3e068f62a8ee060afa3104a/annotated_types-0.8.0.tar.gz"
+    sha256 "13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7"
   end
 
   resource "anyio" do
