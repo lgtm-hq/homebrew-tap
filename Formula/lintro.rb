@@ -6,7 +6,7 @@
 class Lintro < Formula
   desc "Unified CLI for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  version "0.91.58"
+  version "0.91.59"
   license "MIT"
 
   # Track the latest GitHub release via the releases API rather than scanning all
@@ -22,11 +22,11 @@ class Lintro < Formula
   on_macos do
     on_arm do
       url "https://github.com/lgtm-hq/py-lintro/releases/download/v#{version}/lintro-macos-arm64"
-      sha256 "9f91464d0853896a2a8a39f0672869e6977507c5ad8fe730445eee8c44fb8d37"
+      sha256 "6d7b42874ec31e0f598941320efe520d9bc7c66d260241696edce29f7c011669"
     end
     on_intel do
       url "https://github.com/lgtm-hq/py-lintro/releases/download/v#{version}/lintro-macos-x86_64"
-      sha256 "7ed0c4846d95ec10b5b04ce09fe71c191a11ed681229f382da0578c53972ceff"
+      sha256 "ca570de46233e13c8e9051739f0c0a60453ba49f9381ec5b2bd7d5f745b4e503"
     end
   end
 
