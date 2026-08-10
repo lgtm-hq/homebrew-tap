@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/5d/c1/2065c14fbae462909cc0087cd5e81a28efb8ba57eb7f9abae367e2323ac2/lintro-0.112.7.tar.gz"
-  sha256 "9c0fd5e68e61a735e6bebc2218d268ccf24f8c129554939b3a221e4a369faff6"
+  url "https://files.pythonhosted.org/packages/ff/d9/dce274424394a8a23c4661745baa8b8f9ac67f6e5bea8c0a86fca5133a24/lintro-0.113.0.tar.gz"
+  sha256 "69f7e9e316d6b1946c3b932365d72fd1dd0d6575bff3a4e6c3ff2d3a58fc8567"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -118,8 +118,8 @@ class LintroFull < Formula
   end
 
   resource "packaging" do
-    url "https://files.pythonhosted.org/packages/d7/f1/e7a6dd94a8d4a5626c03e4e99c87f241ba9e350cd9e6d75123f992427270/packaging-26.2.tar.gz"
-    sha256 "ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661"
+    url "https://files.pythonhosted.org/packages/7d/fa/3944b40b07da9ce895c0e6303a5ab7d53da063554f534556b134a54d6093/packaging-26.3.tar.gz"
+    sha256 "94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79"
   end
 
   resource "pathspec" do
