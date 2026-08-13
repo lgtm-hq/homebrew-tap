@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/b1/d7/3042952e3b2b11690e4d494189641147351b364d01e2a81b64865dc55e7e/lintro-0.114.1.tar.gz"
-  sha256 "2f5cef250f7c5043819aede61ed6a7f782b46aa4267889ce07e592523ffd05ae"
+  url "https://files.pythonhosted.org/packages/90/0e/5deb1f2c1ede138e70409e60f21533675a3a3788fa5d1babb0a32d51d52b/lintro-0.115.0.tar.gz"
+  sha256 "85965967db67afe5053beaa8a76b4cdd127022fe8c4e8eb15ec3335e7e0f8914"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -158,8 +158,8 @@ class LintroFull < Formula
   end
 
   resource "typing-inspection" do
-    url "https://files.pythonhosted.org/packages/6d/bc/4eae18cd40c65798a16267572ba346c11f599d44b01603dbd843342042bc/typing_inspection-0.4.3.tar.gz"
-    sha256 "c5f9ec1530b5c1e2c9bc34a84d9a3466ed1b2f3f2fa9f901368d9c5596210e4d"
+    url "https://files.pythonhosted.org/packages/a3/26/b09b8010994eccc3c09092e6b34058f36a460eea2d4c3e8b910c695975a0/typing_inspection-0.4.4.tar.gz"
+    sha256 "547274fa6b0a561ccf549cc9524b999a578e737d015d8709d021f9d0d13bea47"
   end
 
   # pydantic-core requires Rust to build - use platform-specific wheels
