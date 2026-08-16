@@ -218,7 +218,7 @@ consistent typing across PyPI and binary templates.
 Tap scripts reuse [lgtm-ci](https://github.com/lgtm-hq/lgtm-ci) for PyPI
 registry helpers (`wait_for_package`, `get_pypi_download_url`, `get_pypi_sha256`).
 CI workflows sparse-checkout lgtm-ci at the same ref as the reusable quality
-workflows (`66cad82ead0e5d119928c895c7d7da9c837989e5`, v0.52.3). The `uses:`
+workflows (`23c79b65490a3307fb08cdefafa22db12f75b9b2`, v0.63.1). The `uses:`
 refs and the `tooling-ref` / `LGTM_CI_TOOLING_REF` inputs are kept in lockstep;
 bump them together.
 
