@@ -65,7 +65,7 @@ def fetch_pypi_json(
         with urllib.request.urlopen(url, timeout=30) as response:  # nosec B310
             result: dict[str, Any] = json.load(response)
             return result
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         print(f"Error fetching {url}: {exc}", file=sys.stderr)
         sys.exit(1)
 
