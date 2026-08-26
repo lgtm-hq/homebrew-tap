@@ -57,10 +57,29 @@ _pins_lockstep() {
 }
 
 @test "ai-review workflow includes ready_for_review and omits caller concurrency" {
-	run grep -F "ready_for_review" "$WORKFLOW"
+	run grep -F "types: [opened, synchronize, reopened, ready_for_review]" "$WORKFLOW"
 	[ "$status" -eq 0 ]
-	run grep -E '^concurrency:' "$WORKFLOW"
+	# Any-indent concurrency key (job-level included). Comments do not match.
+	run grep -E '^[[:space:]]*concurrency:' "$WORKFLOW"
 	[ "$status" -ne 0 ]
+}
+
+@test "ai-review contract ignores ready_for_review outside the types list" {
+	setup_temp_dir
+	WORKFLOW="$TEST_TEMP_DIR/ai-review.yml"
+	cat >"$WORKFLOW" <<'EOF'
+# ready_for_review
+"on":
+  pull_request:
+    types: [opened, synchronize, reopened]
+  concurrency:
+    group: leaked
+EOF
+	run grep -F "types: [opened, synchronize, reopened, ready_for_review]" "$WORKFLOW"
+	[ "$status" -ne 0 ]
+	run grep -E '^[[:space:]]*concurrency:' "$WORKFLOW"
+	[ "$status" -eq 0 ]
+	teardown_temp_dir
 }
 
 @test "ai-review contract fails when uses and tooling-ref SHAs differ" {
