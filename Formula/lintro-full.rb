@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/4d/72/7683770640aded268e0bdf87c39de98b920107b5ad36479f4a419258f2cd/lintro-0.131.5.tar.gz"
-  sha256 "8d6cff40fdc7b349cf17bff6e54b461df75ced3ef33b13e7008a3cadd4b7e600"
+  url "https://files.pythonhosted.org/packages/34/f8/409f2dec1828d4caed7ed1af127d6b0adb9ff5dba0ec40b1a5377a7e47e2/lintro-0.132.0.tar.gz"
+  sha256 "df972321562e9e89a4c2ed81503aa9f81afd0b6a264a16bc04f704b7149363ba"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -68,8 +68,8 @@ class LintroFull < Formula
   end
 
   resource "click" do
-    url "https://files.pythonhosted.org/packages/76/d4/81420972a676e8ffea40450d8c8c92943e7218a78fe9b64359836cc9876b/click-8.4.2.tar.gz"
-    sha256 "9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6"
+    url "https://files.pythonhosted.org/packages/c7/0e/7fa0ef50764b67090eca4114772a2abf8b6148198475e54c660b97caeee6/click-8.5.0.tar.gz"
+    sha256 "ba0d2089de75ea0310e2dde03160e6ca10009947fb95a182f9b54021bb272e34"
   end
 
   resource "defusedxml" do
