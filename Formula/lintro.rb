@@ -22,11 +22,11 @@ class Lintro < Formula
   on_macos do
     on_arm do
       url "https://github.com/lgtm-hq/py-lintro/releases/download/v#{version}/lintro-macos-arm64"
-      sha256 "82b79224b22a7b4fd593c156aa7f79b5d678700b79540add734c28c7dac9d13f"
+      sha256 "99836c4c19d1ee1424910d2a070b4a3ec58217bfb78a8c4ed459a693eba7baae"
     end
     on_intel do
       url "https://github.com/lgtm-hq/py-lintro/releases/download/v#{version}/lintro-macos-x86_64"
-      sha256 "dda05511ab544d198cfaa321942118835dc7d6a4bcdc4256833d471318ae9fdc"
+      sha256 "d1d5986c7e9d8ef1a22929478f13c9a493ff96ee6c8144389684c131ce451066"
     end
   end
 
