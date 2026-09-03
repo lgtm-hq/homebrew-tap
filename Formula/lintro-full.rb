@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/55/b4/55b10226eb16d59ae78f0b540c1cec7edf5f71ee19a79893dc65fdbc5c1c/lintro-0.138.1.tar.gz"
-  sha256 "b0b58f8d05fb40056f4bd9964c24399fb25cd7b18456f1751d47f535c26d9dd0"
+  url "https://files.pythonhosted.org/packages/74/db/a6d536ad4e9b47facb0d350bbe2a4a413ebd8e718c85fecc179fec2d5b3a/lintro-0.139.0.tar.gz"
+  sha256 "6e8409d76f8645d3ac9b28fe3f39678e24141a3b86e7add7d48dc6f536d0a007"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -58,8 +58,8 @@ class LintroFull < Formula
   end
 
   resource "anyio" do
-    url "https://files.pythonhosted.org/packages/61/cc/a381afa6efea9f496eff839d4a6a1aed3bfafc7b3ab4b0d1b243a12573dd/anyio-4.14.2.tar.gz"
-    sha256 "cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f"
+    url "https://files.pythonhosted.org/packages/ea/9a/c15a60547004a3f3cea20296c934f827ddd7bdba225a2e7e9fcb5ec48c80/anyio-4.15.0.tar.gz"
+    sha256 "b5c620ed540725e2579c31b17bb995b3bf02c9281c9cace04c7d186380bab85e"
   end
 
   resource "certifi" do
