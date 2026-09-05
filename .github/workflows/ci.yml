@@ -17,9 +17,9 @@ jobs:
       contents: read  # checkout repository code
       packages: read  # pull py-lintro container image
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality-lint.yml@23c79b65490a3307fb08cdefafa22db12f75b9b2  # v0.63.1
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality-lint.yml@c14fbb654af2fc59c4abd7435e85a269a57057fc  # v0.69.2
     with:
-      tooling-ref: "23c79b65490a3307fb08cdefafa22db12f75b9b2"
+      tooling-ref: "c14fbb654af2fc59c4abd7435e85a269a57057fc"
       job-name: "🛠️ Lintro Code Quality"
       egress-policy: block
       egress-preset: quality
@@ -35,9 +35,9 @@ jobs:
       contents: read  # read quality job outputs and artifacts
       pull-requests: write  # post lint summary to PR
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-publish-quality-summary.yml@23c79b65490a3307fb08cdefafa22db12f75b9b2  # v0.63.1
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-publish-quality-summary.yml@c14fbb654af2fc59c4abd7435e85a269a57057fc  # v0.69.2
     with:
-      tooling-ref: "23c79b65490a3307fb08cdefafa22db12f75b9b2"
+      tooling-ref: "c14fbb654af2fc59c4abd7435e85a269a57057fc"
       # yamllint disable-line rule:line-length
       exit-code: ${{ needs.quality.outputs.exit-code != '' && needs.quality.outputs.exit-code || '1' }}
       job-name: "PR Lint Comment"
@@ -49,9 +49,9 @@ jobs:
       contents: read  # checkout repository code
       pull-requests: write  # post test results/coverage to PR
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-test-shell.yml@23c79b65490a3307fb08cdefafa22db12f75b9b2  # v0.63.1
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-test-shell.yml@c14fbb654af2fc59c4abd7435e85a269a57057fc  # v0.69.2
     with:
-      tooling-ref: "23c79b65490a3307fb08cdefafa22db12f75b9b2"
+      tooling-ref: "c14fbb654af2fc59c4abd7435e85a269a57057fc"
       job-name: "🐚 Shell Tests"
       test-path: tests/bats
       coverage: true

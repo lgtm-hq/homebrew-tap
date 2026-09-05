@@ -7,3 +7,9 @@ dependencies = ["packaging>=21.0", "pyyaml==6.0.3"]
 
 [tool.uv]
 package = false
+
+[tool.ruff]
+# Vendored CI scripts live here; declaring src makes first-party import
+# detection (e.g. sibling module `pypi_utils`) independent of the directory
+# ruff is invoked from.
+src = ["scripts/ci"]

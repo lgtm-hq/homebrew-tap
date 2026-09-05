@@ -22,6 +22,7 @@ import sys
 from importlib.metadata import distributions
 
 from packaging.requirements import InvalidRequirement, Requirement
+
 from pypi_utils import fetch_pypi_json, get_sdist_info
 
 # Homebrew macOS Python formula install environment for marker evaluation.
