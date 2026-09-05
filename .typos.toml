@@ -1,0 +1,7 @@
+# Typos configuration for the lgtm-hq Homebrew tap.
+# https://github.com/crate-ci/typos
+
+[default.extend-words]
+# "certifi" is the PyPI package name (SSL certificates) pinned in Formula
+# resource stanzas — not a misspelling of "certify".
+certifi = "certifi"
