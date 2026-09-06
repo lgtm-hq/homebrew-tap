@@ -105,6 +105,69 @@ def derive_tags(entry: dict, python_version: str | None) -> list[str]:
     return tags
 
 
+def _ordered_variant_keys(entries: dict) -> tuple[list[str], str, set[str]]:
+    """Order a product's formula entries into install variants.
+
+    A base formula is one no other entry references as its "full" sibling.
+    Variants are ordered: primary first, then its full sibling, then the rest.
+
+    Args:
+        entries: The ``formulas`` mapping from a product config.
+
+    Returns:
+        ``(ordered_keys, primary_key, referenced)``.
+    """
+    referenced = {
+        e["full-formula-ref"] for e in entries.values() if e.get("full-formula-ref")
+    }
+    base_keys = [k for k in entries if k not in referenced]
+    primary_key = base_keys[0] if base_keys else next(iter(entries))
+
+    ordered: list[str] = [primary_key]
+    full_ref = entries[primary_key].get("full-formula-ref")
+    if full_ref and full_ref in entries:
+        ordered.append(full_ref)
+    ordered += [k for k in entries if k not in ordered]
+    return ordered, primary_key, referenced
+
+
+def _build_variant(
+    key: str,
+    entry: dict,
+    formula_dir: Path,
+    referenced: set[str],
+    multi: bool,
+) -> Variant | None:
+    """Build one install variant, or ``None`` if its formula is missing.
+
+    Args:
+        key: The formula entry key.
+        entry: The formula entry from a product config.
+        formula_dir: Directory of generated ``*.rb`` formulae.
+        referenced: Keys referenced as "full" siblings by other entries.
+        multi: Whether the product exposes more than one variant.
+
+    Returns:
+        The assembled :class:`Variant`, or ``None`` when the formula file
+        has not been generated.
+    """
+    formula_path = formula_dir / f"{key}.rb"
+    if not formula_path.exists():
+        return None
+    python_version = entry.get("python-version")
+    version = read_formula_version(formula_path)
+    label, note = derive_variant_copy(entry, is_full=key in referenced)
+    return Variant(
+        name=key,
+        formula_type=entry.get("type", ""),
+        version=version,
+        tags=derive_tags(entry, python_version),
+        install_cmd=f"brew install {key}",
+        label=label if multi else None,
+        note=note if multi else None,
+    )
+
+
 def build_products(formulas_dir: Path, formula_dir: Path) -> list[Product]:
     """Read every product config and assemble the catalogue.
 
@@ -123,41 +186,13 @@ def build_products(formulas_dir: Path, formula_dir: Path) -> list[Product]:
         if not entries:
             continue
 
-        # A base formula is one no other entry references as its "full" sibling.
-        referenced = {
-            e["full-formula-ref"] for e in entries.values() if e.get("full-formula-ref")
-        }
-        base_keys = [k for k in entries if k not in referenced]
-        primary_key = base_keys[0] if base_keys else next(iter(entries))
-
-        # Order variants: primary first, then its full sibling, then the rest.
-        ordered: list[str] = [primary_key]
-        full_ref = entries[primary_key].get("full-formula-ref")
-        if full_ref and full_ref in entries:
-            ordered.append(full_ref)
-        ordered += [k for k in entries if k not in ordered]
-
+        ordered, primary_key, referenced = _ordered_variant_keys(entries)
         multi = len(ordered) > 1
         variants: list[Variant] = []
         for key in ordered:
-            entry = entries[key]
-            formula_path = formula_dir / f"{key}.rb"
-            if not formula_path.exists():
-                continue
-            python_version = entry.get("python-version")
-            version = read_formula_version(formula_path)
-            label, note = derive_variant_copy(entry, is_full=key in referenced)
-            variants.append(
-                Variant(
-                    name=key,
-                    formula_type=entry.get("type", ""),
-                    version=version,
-                    tags=derive_tags(entry, python_version),
-                    install_cmd=f"brew install {key}",
-                    label=label if multi else None,
-                    note=note if multi else None,
-                ),
-            )
+            variant = _build_variant(key, entries[key], formula_dir, referenced, multi)
+            if variant is not None:
+                variants.append(variant)
 
         if not variants:
             continue
