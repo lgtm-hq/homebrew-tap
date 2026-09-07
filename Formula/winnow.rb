@@ -8,8 +8,8 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  url "https://files.pythonhosted.org/packages/9e/12/6acfcdea27fe939f9ee2bdbaf2c2b0edd104baf6ce525c6d9dd8c7d99f70/winnow_media-0.36.0.tar.gz"
-  sha256 "01308df0aac7c95c5caaeff66d12e0bcc1da59dba95f50a22ec96fa49941a467"
+  url "https://files.pythonhosted.org/packages/a3/56/edb8bea9b4897a87ccf07f2b9af1f3385572a466da21ee5c4154ddbc51b7/winnow_media-0.36.1.tar.gz"
+  sha256 "fe3c796eb9b8fe51ae85122e024c385435439042fcfec3fdc9238479305113fc"
   license "MIT"
 
   livecheck do
@@ -92,8 +92,8 @@ class Winnow < Formula
   end
 
   resource "tinytag" do
-    url "https://files.pythonhosted.org/packages/77/1d/ba5d28e50e582e3f0661ec9be182a7532595aea0cd8b61f629c69cce69bf/tinytag-2.3.1.tar.gz"
-    sha256 "537869e67de2dbc8b84d96b5ffcccac6ed1bc9f4500ee623f36b198d3ac3b23c"
+    url "https://files.pythonhosted.org/packages/38/0f/fae085b7f19fe0c67b68e6d70098ac6cd046cc498f253f5ee56a3dd03bbc/tinytag-2.3.2.tar.gz"
+    sha256 "021d711cdbdbf840d3b67b976cb34dadc58d2fcfd490eb74ef9602b37b991414"
   end
 
   resource "typing-extensions" do
@@ -153,12 +153,12 @@ class Winnow < Formula
   # pywavelets requires native compilation - use platform-specific wheels
   resource "pywavelets" do
     on_arm do
-      url "https://files.pythonhosted.org/packages/aa/0c/b54b86596c0df68027e48c09210e907e628435003e77048384a2dd6767e3/pywavelets-1.9.0-cp313-cp313-macosx_11_0_arm64.whl"
-      sha256 "c50320fe0a4a23ddd8835b3dc9b53b09ee05c7cc6c56b81d0916f04fc1649070"
+      url "https://files.pythonhosted.org/packages/cf/0f/3b2762f936510c0344ce8b97438720ee9f1879a83316410ba475bdeea463/pywavelets-1.10.0-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "4bfeaada62a12664626b21cfc41e5d0538b3c238dde22e78ea4769fac4bf6160"
     end
     on_intel do
-      url "https://files.pythonhosted.org/packages/db/a7/dec4e450675d62946ad975f5b4d924437df42d2fae46e91dfddda2de0f5a/pywavelets-1.9.0-cp313-cp313-macosx_10_13_x86_64.whl"
-      sha256 "74f8455c143818e4b026fc67b27fd82f38e522701b94b8a6d1aaf3a45fcc1a25"
+      url "https://files.pythonhosted.org/packages/07/dd/6db37a5c4d3e8c0ae7316384fa0cd52f8575c2e15d71a12d320f9dc4b2c3/pywavelets-1.10.0-cp313-cp313-macosx_10_13_x86_64.whl"
+      sha256 "761af8d319c9c104969b1a92e0e9c41aad34ca98f229cf87060f202cd9e633eb"
     end
   end
   # scipy requires native (C/Fortran) compilation - use platform-specific wheels
