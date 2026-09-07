@@ -17,9 +17,9 @@ jobs:
       contents: read  # checkout repository code
       packages: read  # pull py-lintro container image
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality-lint.yml@f2b35cdad10df33b60c2996570b3848b70f55ed1  # v0.69.7
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality-lint.yml@f0e999fd9934a43c8d1d6a1c68ee2d1a8a978f36  # v0.69.8
     with:
-      tooling-ref: "f2b35cdad10df33b60c2996570b3848b70f55ed1"  # v0.69.7
+      tooling-ref: "f0e999fd9934a43c8d1d6a1c68ee2d1a8a978f36" # v0.69.8
       job-name: "🛠️ Lintro Code Quality"
       egress-policy: block
       egress-preset: quality
@@ -35,9 +35,9 @@ jobs:
       contents: read  # read quality job outputs and artifacts
       pull-requests: write  # post lint summary to PR
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-publish-quality-summary.yml@f2b35cdad10df33b60c2996570b3848b70f55ed1  # v0.69.7
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-publish-quality-summary.yml@f0e999fd9934a43c8d1d6a1c68ee2d1a8a978f36  # v0.69.8
     with:
-      tooling-ref: "f2b35cdad10df33b60c2996570b3848b70f55ed1"  # v0.69.7
+      tooling-ref: "f0e999fd9934a43c8d1d6a1c68ee2d1a8a978f36" # v0.69.8
       # yamllint disable-line rule:line-length
       exit-code: ${{ needs.quality.outputs.exit-code != '' && needs.quality.outputs.exit-code || '1' }}
       job-name: "PR Lint Comment"
@@ -49,9 +49,9 @@ jobs:
       contents: read  # checkout repository code
       pull-requests: write  # post test results/coverage to PR
     # yamllint disable-line rule:line-length
-    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-test-shell.yml@f2b35cdad10df33b60c2996570b3848b70f55ed1  # v0.69.7
+    uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-test-shell.yml@f0e999fd9934a43c8d1d6a1c68ee2d1a8a978f36  # v0.69.8
     with:
-      tooling-ref: "f2b35cdad10df33b60c2996570b3848b70f55ed1"  # v0.69.7
+      tooling-ref: "f0e999fd9934a43c8d1d6a1c68ee2d1a8a978f36" # v0.69.8
       job-name: "🐚 Shell Tests"
       test-path: tests/bats
       coverage: true
