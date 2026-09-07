@@ -8,8 +8,8 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  url "https://files.pythonhosted.org/packages/5b/9e/474589d93af5b589885a40af3a30486fded5ad2f447607bd53f2ab6471ac/winnow_media-0.19.0.tar.gz"
-  sha256 "d64b26bf54ee958aaa24a87ae7c643d13717d97384d13dc380a634ef333266db"
+  url "https://files.pythonhosted.org/packages/c8/a8/149021225727fc9d7703732726a953c17c35e8e78ad86c56af87f704bebe/winnow_media-0.19.1.tar.gz"
+  sha256 "850a359d903fe81f697df03b1a5781fb88ae23d49743cc63398e2bfcdebaca0f"
   license "MIT"
 
   livecheck do
@@ -72,8 +72,8 @@ class Winnow < Formula
   end
 
   resource "pydantic" do
-    url "https://files.pythonhosted.org/packages/18/a5/b60d21ac674192f8ab0ba4e9fd860690f9b4a6e51ca5df118733b487d8d6/pydantic-2.13.4.tar.gz"
-    sha256 "c40756b57adaa8b1efeeced5c196f3f3b7c435f90e84ea7f443901bec8099ef6"
+    url "https://files.pythonhosted.org/packages/53/ef/fc4f868f4e2cee79f863883abffceff107875f569b848507319842d2a681/pydantic-2.13.5.tar.gz"
+    sha256 "51a9c5f7b2f8e636f04c6cada605d9b6a3bf1348fdf945a3d8869b19bba0ee08"
   end
 
   resource "pygments" do
@@ -92,8 +92,8 @@ class Winnow < Formula
   end
 
   resource "tinytag" do
-    url "https://files.pythonhosted.org/packages/9f/a4/a1d39cc10b43cbbae268127a1c38d689bc6a85cf966f9445bc9f1f5f517a/tinytag-2.3.0.tar.gz"
-    sha256 "84850f8045424b944475b9754bc35c7e09bcae1ab08d1f88d9293aa33af39a27"
+    url "https://files.pythonhosted.org/packages/77/1d/ba5d28e50e582e3f0661ec9be182a7532595aea0cd8b61f629c69cce69bf/tinytag-2.3.1.tar.gz"
+    sha256 "537869e67de2dbc8b84d96b5ffcccac6ed1bc9f4500ee623f36b198d3ac3b23c"
   end
 
   resource "typing-extensions" do
@@ -109,12 +109,12 @@ class Winnow < Formula
   # numpy requires native compilation - use platform-specific wheels
   resource "numpy" do
     on_arm do
-      url "https://files.pythonhosted.org/packages/65/60/f2d208d366f263f39c6e69ed309290717aab41078b6d04c9be2a84fa2a07/numpy-2.5.2-cp313-cp313-macosx_11_0_arm64.whl"
-      sha256 "52c808f96484f5571a5cc863775ce50247c17dfb3b0361f8ed6b4b0456f80080"
+      url "https://files.pythonhosted.org/packages/2f/06/9dc9e48b5e5e941c8b10350c5ff2d721da42a20517d911d15544246775ff/numpy-2.5.3-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "92f30e89b8ee0ecf363033576c422b2f58fed6a80bed0aa48dff6d14c654663e"
     end
     on_intel do
-      url "https://files.pythonhosted.org/packages/f5/d2/6b24738a0ef4557d189b150046cd07823c50e4273e8aebd651222e24306f/numpy-2.5.2-cp313-cp313-macosx_10_13_x86_64.whl"
-      sha256 "8e4cb9a754c8a0c62eaa88273a5fba3391f4a610d1dee893c0755da31c083f15"
+      url "https://files.pythonhosted.org/packages/79/e5/8fb89cd46d14e35699d13bf943a5f5f441ecee8667120a1f6105ab89e349/numpy-2.5.3-cp313-cp313-macosx_10_13_x86_64.whl"
+      sha256 "66a78fe4556c60aceda5916f9eacd638b18e9e681016ec302dcb4682d6d4d034"
     end
   end
   # pillow requires native compilation - use platform-specific wheels
@@ -131,23 +131,23 @@ class Winnow < Formula
   # pillow_heif bundles libheif and needs it to build from source - use platform-specific wheels
   resource "pillow_heif" do
     on_arm do
-      url "https://files.pythonhosted.org/packages/e3/4f/a9f2e1525655c93e9b72cec3792a41f7d732222dad1d329fa04c227cbe28/pillow_heif-1.5.0-cp313-cp313-macosx_11_0_arm64.whl"
-      sha256 "a6d7c9dd6f490c433267ab9b66b63961e59a4c04c9d0e38ba66e4b6664d5e7d8"
+      url "https://files.pythonhosted.org/packages/0d/32/59dfe8f1799eef6a442fe5007e5c199b1961d33c7a56c64e0babc9d4a95c/pillow_heif-1.7.0-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "9912a8301d469012fe2ba1f2da539b56de048aab3db649857b4ab5fa9a07919b"
     end
     on_intel do
-      url "https://files.pythonhosted.org/packages/33/92/502ae6bebaf1fc48850f690858040932fb6fe0bd0de25b5e715df2517d14/pillow_heif-1.5.0-cp313-cp313-macosx_10_15_x86_64.whl"
-      sha256 "b736040d566271143c09bf87967549daf3d3090e9b4283ca2076c3383ab141d8"
+      url "https://files.pythonhosted.org/packages/c4/56/f5aa099875cc881aa19bcd1b8c5ef3d97376a05bdc3b56487e49d01dd9be/pillow_heif-1.7.0-cp313-cp313-macosx_10_15_x86_64.whl"
+      sha256 "2c602d5177e46fca3e0491572d76ed4de66c63ac5aaef999e5b3a4c1fe101395"
     end
   end
   # pydantic_core requires Rust to build - use platform-specific wheels
   resource "pydantic_core" do
     on_arm do
-      url "https://files.pythonhosted.org/packages/c1/81/4fa520eaffa8bd7d1525e644cd6d39e7d60b1592bc5b516693c7340b50f1/pydantic_core-2.46.4-cp313-cp313-macosx_11_0_arm64.whl"
-      sha256 "c94f0688e7b8d0a67abf40e57a7eaaecd17cc9586706a31b76c031f63df052b4"
+      url "https://files.pythonhosted.org/packages/21/43/6323b1f8b217780454c61304bcd2b38ae4762f50754414124603ccc90bb2/pydantic_core-2.46.5-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "f332f0e72a5a0400141f830744e141bf9f97917878dbe968669e8a7fefea78ff"
     end
     on_intel do
-      url "https://files.pythonhosted.org/packages/51/a2/5d30b469c5267a17b39dec53208222f76a8d351dfac4af661888c5aee77d/pydantic_core-2.46.4-cp313-cp313-macosx_10_12_x86_64.whl"
-      sha256 "5d5902252db0d3cedf8d4a1bc68f70eeb430f7e4c7104c8c476753519b423008"
+      url "https://files.pythonhosted.org/packages/f5/37/5abe39a8372a61d3dc3c1338fc504281c01b32fdb3169cd7187153b56d3e/pydantic_core-2.46.5-cp313-cp313-macosx_10_12_x86_64.whl"
+      sha256 "b7ca9034437b6022f941f4857459562ee00a560b97e7cce8a0ec5a74fc6766e0"
     end
   end
   # pywavelets requires native compilation - use platform-specific wheels
