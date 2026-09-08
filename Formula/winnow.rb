@@ -8,8 +8,8 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  url "https://files.pythonhosted.org/packages/a0/10/bbc062e573d85d1b730ed50c866c7499fb1672c07eb9947f42a482ea56cb/winnow_media-0.37.3.tar.gz"
-  sha256 "0d6e812939ca96f5442e532363422f9cc667d6ef4971af49e514246f909daf20"
+  url "https://files.pythonhosted.org/packages/49/dd/f6af498640b5407e582008573f3a10f399003f7c5b74b5100dfde633f548/winnow_media-0.37.4.tar.gz"
+  sha256 "d4470d7b2d1adbdfbf2828b47477578ceef449fa51c133fa8f078b1585350f4c"
   license "MIT"
 
   livecheck do
