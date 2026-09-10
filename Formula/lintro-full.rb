@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/7f/f8/26c684e9c1513ccf7dccce818c888488b736c600678e4ccf088b5f2b241c/lintro-0.152.7.tar.gz"
-  sha256 "183c936788e19c9645dc82f3bdd620e60345ea5a6acf141a25f4a3ad864335ba"
+  url "https://files.pythonhosted.org/packages/d1/ce/d2ada7734f99f6af09926b178c88501d58a9b2fe7fae43783b1a2281da78/lintro-0.152.8.tar.gz"
+  sha256 "485ae416c8531c930764fa67e61bfcf22315e8cde615d7fd3062e6c53c5e12b8"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
