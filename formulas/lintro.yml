@@ -13,8 +13,13 @@ formulas:
       https://github.com/lgtm-hq/py-lintro/releases/download/v{version}/lintro-macos-{arch}
     binary-names:
       arm64: lintro-macos-arm64
-      x86_64: lintro-macos-x86_64
     install-name: lintro
+    # Intel Macs get no release binary (lgtm-hq/py-lintro#2579): the formula's
+    # on_intel branch installs the same version from PyPI with these extras.
+    intel-pypi:
+      python-version: "3.13"
+      extras:
+        - mcp
     full-formula-ref: lintro-full
     conflicts-with:
       formula: lintro-full
@@ -31,7 +36,8 @@ formulas:
       doctor_cmd = "#{utf8} #{bin}/lintro doctor 2>&1"
       assert_match "Lintro Doctor", pipe_output(doctor_cmd)
     caveats: |
-      lintro is a lightweight standalone binary (no Python required).
+      lintro is a lightweight install: a standalone binary on Apple silicon
+      (no Python required) and a PyPI virtualenv on Intel Macs.
 
       Install tools with:
         lintro doctor

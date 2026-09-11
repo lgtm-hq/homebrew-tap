@@ -43,7 +43,7 @@ brew install <formula-name>
   <tr>
     <td width="50">🔧</td>
     <td><strong><a href="https://github.com/lgtm-hq/py-lintro">lintro</a></strong></td>
-    <td>Lightweight standalone binary (no Python required)</td>
+    <td>Lightweight install: standalone binary on Apple silicon (no Python required), PyPI virtualenv on Intel</td>
     <td><code>brew install lintro</code></td>
   </tr>
   <tr>
@@ -143,7 +143,8 @@ notify-homebrew-tap:
           }
 ```
 
-For binary products (e.g. lintro), include SHA256s from release assets:
+For binary products (e.g. lintro), include the SHA256 of the arm64 release
+asset:
 
 ```json
 {
@@ -151,18 +152,21 @@ For binary products (e.g. lintro), include SHA256s from release assets:
   "version": "v0.64.4",
   "pypi-package": "lintro",
   "binary-assets": {
-    "arm64-sha": "<sha256>",
-    "x86-sha": "<sha256>"
+    "arm64-sha": "<sha256>"
   }
 }
 ```
+
+A legacy `x86-sha` key is still accepted (validated, then ignored): binary
+formulas no longer ship an x86_64 asset, and Intel Macs install the same
+version from the PyPI sdist (see `intel-pypi` below).
 
 | Field | Required | Description |
 | ----- | -------- | ----------- |
 | `formula` | yes | Product config name (`formulas/<formula>.yml`) |
 | `version` | yes | Release version (with or without `v` prefix) |
 | `pypi-package` | no | Override PyPI package name from config |
-| `binary-assets` | for binary formulas | `arm64-sha` and `x86-sha` from release assets |
+| `binary-assets` | for binary formulas | `arm64-sha` from the release asset (`x86-sha` accepted and ignored) |
 
 ### Product config schema (`formulas/*.yml`)
 
@@ -194,7 +198,8 @@ Formula entry fields:
 | `homebrew-deps` | pypi | CLI tools installed via `depends_on` |
 | `wheel-only-packages` | pypi | Packages installed from wheels (not sdist) |
 | `binary-url-pattern` | binary | Release URL with `{version}` and `{arch}` |
-| `binary-names` | binary | Asset filenames per architecture |
+| `binary-names` | binary | Asset filenames per architecture (`arm64`) |
+| `intel-pypi` | binary | Intel fallback: `python-version` (Homebrew Python dependency) and `extras` (PyPI extras installed with the sdist, e.g. `[mcp]`). The `on_intel` branch installs `package` at the same version from PyPI into a virtualenv. |
 | `install-name` | binary | Binary name installed to `$PREFIX/bin` |
 | `class-name` | optional | Override Homebrew class name |
 | `description` | optional | Override product-level description. Must be non-empty and must not start with the formula name ([FormulaAudit/Desc](https://docs.brew.sh/Formula-Cookbook#summary)). Generators validate before render; mid-word prefixes (e.g. `WinnowTool`) are not caught and still fail `brew audit`. |

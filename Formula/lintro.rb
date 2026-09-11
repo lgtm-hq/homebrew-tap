@@ -4,17 +4,20 @@
 # Homebrew formula for lintro binary distribution
 # Auto-generated - do not edit manually
 class Lintro < Formula
+  include Language::Python::Virtualenv
+
   desc "Unified CLI for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
   version "0.153.8"
   license "MIT"
 
   # Track the latest GitHub release via the releases API rather than scanning all
-  # tags, so the stray single-component "v1" tag is ignored. url :stable is
-  # required by FormulaAudit/LivecheckUrlSymbol; github_latest derives the repo
-  # from it, and the semver regex is a defensive filter on the release tag.
+  # tags, so the stray single-component "v1" tag is ignored. The stable url is
+  # architecture-specific (release asset on arm, PyPI sdist on intel), so the
+  # homepage anchors github_latest instead; the semver regex is a defensive
+  # filter on the release tag.
   livecheck do
-    url :stable
+    url :homepage
     strategy :github_latest
     regex(/^v?(\d+\.\d+\.\d+)$/i)
   end
@@ -25,8 +28,13 @@ class Lintro < Formula
       sha256 "90dcda5c77cc5e24683dae2395fdf59595ec2a98299e60e12efdcaf8ab156498"
     end
     on_intel do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v#{version}/lintro-macos-x86_64"
-      sha256 "e56b1f9d74e210a70d13b1d43e6924eaeab2af91a71703aeb9f9b184cb23ea75"
+      # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
+      # Intel Macs install the same version from the PyPI sdist into a
+      # Homebrew Python virtualenv.
+      url "https://files.pythonhosted.org/packages/52/6c/a1e5a58011aad7e006d3b01fdf1f380827a42954ba11135ee7686f2697b1/lintro-0.153.8.tar.gz"
+      sha256 "982149cf6cdb5edd14b85430bcf7e15906d3793388388277e2747d6a81ec1c83"
+
+      depends_on "python@3.13"
     end
   end
 
@@ -37,13 +45,21 @@ class Lintro < Formula
     if Hardware::CPU.arm?
       bin.install "lintro-macos-arm64" => "lintro"
     else
-      bin.install "lintro-macos-x86_64" => "lintro"
+      # pip resolves the dependency tree from PyPI at install time; the
+      # sdist itself is checksum-pinned above. Linting tools are not bundled
+      # (`lintro install` fetches them), matching the binary's footprint.
+      virtualenv_create(libexec, "python3.13")
+      system "python3.13", "-m", "pip",
+             "--python=#{libexec}/bin/python", "install",
+             "#{buildpath}[mcp]"
+      bin.install_symlink libexec/"bin/lintro"
     end
   end
 
   def caveats
     <<~EOS
-      lintro is a lightweight standalone binary (no Python required).
+      lintro is a lightweight install: a standalone binary on Apple silicon
+      (no Python required) and a PyPI virtualenv on Intel Macs.
 
       Install tools with:
         lintro doctor

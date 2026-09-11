@@ -4,17 +4,20 @@
 # Homebrew formula for {{FORMULA_KEY}} binary distribution
 # Auto-generated - do not edit manually
 class {{CLASS_NAME}} < Formula
+  include Language::Python::Virtualenv
+
   desc "{{DESCRIPTION}}"
   homepage "{{HOMEPAGE}}"
   version "{{VERSION}}"
   license "{{LICENSE}}"
 
   # Track the latest GitHub release via the releases API rather than scanning all
-  # tags, so the stray single-component "v1" tag is ignored. url :stable is
-  # required by FormulaAudit/LivecheckUrlSymbol; github_latest derives the repo
-  # from it, and the semver regex is a defensive filter on the release tag.
+  # tags, so the stray single-component "v1" tag is ignored. The stable url is
+  # architecture-specific (release asset on arm, PyPI sdist on intel), so the
+  # homepage anchors github_latest instead; the semver regex is a defensive
+  # filter on the release tag.
   livecheck do
-    url :stable
+    url :homepage
     strategy :github_latest
     regex(/^v?(\d+\.\d+\.\d+)$/i)
   end
@@ -25,8 +28,13 @@ class {{CLASS_NAME}} < Formula
       sha256 "{{ARM64_SHA}}"
     end
     on_intel do
-      url "{{X86_URL}}"
-      sha256 "{{X86_SHA}}"
+      # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
+      # Intel Macs install the same version from the PyPI sdist into a
+      # Homebrew Python virtualenv.
+      url "{{SDIST_URL}}"
+      sha256 "{{SDIST_SHA}}"
+
+      depends_on "python@{{PYTHON_VERSION}}"
     end
   end{{CONFLICTS_BLOCK}}
 
@@ -34,7 +42,14 @@ class {{CLASS_NAME}} < Formula
     if Hardware::CPU.arm?
       bin.install "{{ARM64_ASSET}}" => "{{INSTALL_NAME}}"
     else
-      bin.install "{{X86_ASSET}}" => "{{INSTALL_NAME}}"
+      # pip resolves the dependency tree from PyPI at install time; the
+      # sdist itself is checksum-pinned above. Linting tools are not bundled
+      # (`lintro install` fetches them), matching the binary's footprint.
+      virtualenv_create(libexec, "python{{PYTHON_VERSION}}")
+      system "python{{PYTHON_VERSION}}", "-m", "pip",
+             "--python=#{libexec}/bin/python", "install",
+             "#{buildpath}[{{PYPI_EXTRAS}}]"
+      bin.install_symlink libexec/"bin/{{INSTALL_NAME}}"
     end
   end
 {{CAVEATS_BLOCK}}

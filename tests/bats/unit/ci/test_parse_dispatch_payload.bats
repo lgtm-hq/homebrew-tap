@@ -65,3 +65,22 @@ teardown() {
 	[ "$status" -eq 0 ]
 	grep -q '^binary-assets<<EOF$' "$GITHUB_OUTPUT"
 }
+
+@test "parse-dispatch-payload: accepts an arm64-only binary-assets payload" {
+	# The shape py-lintro sends once the x86_64 binary is dropped (#2579).
+	export CLIENT_PAYLOAD='{"formula":"lintro","version":"1.0.0","binary-assets":{"arm64-sha":"a4c1663e5908757746676c9a48bdc35a4d0ef4dbaa3bd6a96dd3a29c0a0d4c10"}}'
+
+	run bash "$REPO_ROOT/scripts/ci/parse-dispatch-payload.sh"
+	[ "$status" -eq 0 ]
+	grep -q '^binary-assets<<EOF$' "$GITHUB_OUTPUT"
+	grep -q '"arm64-sha":"a4c1663e5908757746676c9a48bdc35a4d0ef4dbaa3bd6a96dd3a29c0a0d4c10"' "$GITHUB_OUTPUT"
+	! grep -q 'x86-sha' "$GITHUB_OUTPUT"
+}
+
+@test "parse-dispatch-payload: rejects a malformed legacy x86-sha" {
+	export CLIENT_PAYLOAD='{"formula":"lintro","version":"1.0.0","binary-assets":{"arm64-sha":"a4c1663e5908757746676c9a48bdc35a4d0ef4dbaa3bd6a96dd3a29c0a0d4c10","x86-sha":"nope"}}'
+
+	run bash "$REPO_ROOT/scripts/ci/parse-dispatch-payload.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Invalid x86-sha"* ]]
+}

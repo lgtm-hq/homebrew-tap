@@ -126,6 +126,16 @@ EOF
 	echo "$output" | python3 -c "import json,sys; json.load(sys.stdin)"
 }
 
+@test "resolve_binary_assets: passes an arm64-only payload through unmodified" {
+	extract_function "resolve_binary_assets"
+	export DISPATCH_BINARY_ASSETS='{"arm64-sha":"aaa"}'
+
+	run resolve_binary_assets
+
+	[ "$status" -eq 0 ]
+	[ "$output" = '{"arm64-sha":"aaa"}' ]
+}
+
 @test "resolve_binary_assets: defaults to empty object when unset" {
 	extract_function "resolve_binary_assets"
 	unset DISPATCH_BINARY_ASSETS

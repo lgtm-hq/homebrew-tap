@@ -90,9 +90,11 @@ def derive_tags(entry: dict, python_version: str | None) -> list[str]:
     formula_type = entry.get("type", "")
     if formula_type == "binary":
         tags = ["binary"]
-        arches = entry.get("binary-names", {})
-        if {"arm64", "x86_64"} <= set(arches):
-            tags.append("arm64 · x86_64")
+        arches = sorted(entry.get("binary-names", {}))
+        if arches:
+            tags.append(" · ".join(arches))
+        if entry.get("intel-pypi"):
+            tags.append("x86_64 via PyPI")
         tags.append("zero deps")
         return tags
 

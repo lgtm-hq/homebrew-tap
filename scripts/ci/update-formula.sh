@@ -17,7 +17,8 @@ Environment:
   DISPATCH_FORMULA       Product config name (formulas/<name>.yml)
   DISPATCH_VERSION       Release version (with or without v prefix)
   DISPATCH_PYPI_PACKAGE  Optional PyPI package override
-  DISPATCH_BINARY_ASSETS Optional JSON with arm64-sha and x86-sha
+  DISPATCH_BINARY_ASSETS Optional JSON with arm64-sha (a legacy x86-sha is
+                         accepted and ignored: Intel Macs install from PyPI)
   GH_TOKEN               GitHub App token (contents + pull-requests write)
   GITHUB_REPOSITORY      Target repository (owner/repo)
 
@@ -109,10 +110,13 @@ if [[ ! -f "$CONFIG_PATH" ]]; then
 	exit 1
 fi
 
+# Binary formulas with an intel-pypi block install from the PyPI sdist on
+# Intel Macs, so they need the release on PyPI just like pypi formulas do.
 needs_pypi_wait=$(python3 -c "
 import yaml
 cfg = yaml.safe_load(open('${CONFIG_PATH}'))
-print('true' if any(v.get('type') == 'pypi' for v in cfg.get('formulas', {}).values()) else 'false')
+entries = cfg.get('formulas', {}).values()
+print('true' if any(v.get('type') == 'pypi' or v.get('intel-pypi') for v in entries) else 'false')
 ")
 
 PACKAGE_NAME="${PYPI_PACKAGE_OVERRIDE}"
@@ -121,7 +125,7 @@ if [[ -z "$PACKAGE_NAME" && "$needs_pypi_wait" == "true" ]]; then
 import yaml
 cfg = yaml.safe_load(open('${CONFIG_PATH}'))
 for key, entry in cfg.get('formulas', {}).items():
-    if entry.get('type') == 'pypi':
+    if entry.get('type') == 'pypi' or entry.get('intel-pypi'):
         print(key)
         break
 ")
@@ -206,12 +210,17 @@ print('true' if entry.get('generate-resources') else 'false')
 		bash "$SCRIPT_DIR/generate-pypi-formula.sh" "${pypi_args[@]}"
 		;;
 	binary)
-		bash "$SCRIPT_DIR/generate-binary-formula.sh" \
-			--config "$CONFIG_PATH" \
-			--formula-key "$formula_key" \
-			--version "$VERSION" \
-			--output "$output_file" \
+		binary_args=(
+			--config "$CONFIG_PATH"
+			--formula-key "$formula_key"
+			--version "$VERSION"
+			--output "$output_file"
 			--binary-assets "$BINARY_ASSETS"
+		)
+		if [[ -n "$PYPI_PACKAGE_OVERRIDE" ]]; then
+			binary_args+=(--pypi-package "$PYPI_PACKAGE_OVERRIDE")
+		fi
+		bash "$SCRIPT_DIR/generate-binary-formula.sh" "${binary_args[@]}"
 		;;
 	*)
 		log_error "Unsupported formula type '${formula_type}' for ${formula_key}"
