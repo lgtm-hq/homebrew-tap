@@ -8,7 +8,7 @@ class Lintro < Formula
 
   desc "Unified CLI for code formatting, linting, and quality assurance"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  version "0.154.0"
+  version "0.154.1"
   license "MIT"
 
   # Track the latest GitHub release via the releases API rather than scanning all
@@ -25,14 +25,14 @@ class Lintro < Formula
   on_macos do
     on_arm do
       url "https://github.com/lgtm-hq/py-lintro/releases/download/v#{version}/lintro-macos-arm64"
-      sha256 "e568d9482335ea4ec856fb55e5227d48bf371ffd27cc26195c5758b3c4ecbd79"
+      sha256 "a36744d68b6de1a03bfcc37c34cad66c6dc1d932928b99effa1ef877e87784a9"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv.
-      url "https://files.pythonhosted.org/packages/6e/4f/1746ee0e5a12a0a1411c05facb317f319a05ceafd40e4dbcb6b23a3ca5b4/lintro-0.154.0.tar.gz"
-      sha256 "739123bb614bc9b8b4fe3e6e179aa277e3a848a514622565ab5bbe7aa092f5cd"
+      url "https://files.pythonhosted.org/packages/4d/8b/5a68f7adb145b9514d9042c385eb8cb805e54f8a65cfb1f0fded3fa0a0d2/lintro-0.154.1.tar.gz"
+      sha256 "fce8d445a58d57d040ebc2790e13d0935d94343a8a6ac260f4b4640392714e79"
 
       depends_on "python@3.13"
     end
