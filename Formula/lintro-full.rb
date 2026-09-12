@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/42/b7/01963c87291d2da76009b1fd2b6f67f03503dc0b764bdc7a723b0e19f5fb/lintro-0.156.3.tar.gz"
-  sha256 "56e187f76fc7c433346e875ddd7d555b9e7f9ec7690afe1fc47980e6cb7f3ba1"
+  url "https://files.pythonhosted.org/packages/0a/38/70bf2c6e1471b9f764f1fabc4299c3613ff1f43439ef314a37c8f8441bb4/lintro-0.156.4.tar.gz"
+  sha256 "65ba727fb003d6639a3413219487deaabdb3d2ed5a7738270d2ecb5a4760b86d"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -130,6 +130,11 @@ class LintroFull < Formula
   resource "pydantic" do
     url "https://files.pythonhosted.org/packages/53/ef/fc4f868f4e2cee79f863883abffceff107875f569b848507319842d2a681/pydantic-2.13.5.tar.gz"
     sha256 "51a9c5f7b2f8e636f04c6cada605d9b6a3bf1348fdf945a3d8869b19bba0ee08"
+  end
+
+  resource "pygments" do
+    url "https://files.pythonhosted.org/packages/49/2e/ced460408999b33da6b31b0021b0f37d329e202d4169aeb164493778f25b/pygments-2.21.0.tar.gz"
+    sha256 "610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c"
   end
 
   resource "pyyaml" do
