@@ -4,6 +4,7 @@
 import base64
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -14,6 +15,21 @@ from typing import Any, NamedTuple
 PYPI_BASE_URL = "https://pypi.org/pypi"
 # PyPI integrity API (PEP 740 provenance), https only
 PYPI_INTEGRITY_URL = "https://pypi.org/integrity"
+
+
+def normalize_name(name: str) -> str:
+    """Normalize a project name per PEP 503.
+
+    Homebrew resources are named this way too: brew audit --strict requires
+    a resource name to match the (normalized) PyPI project name.
+
+    Args:
+        name: Project name as written (e.g. ``pillow_heif``).
+
+    Returns:
+        Lowercase name with runs of ``-``, ``_`` and ``.`` collapsed to ``-``.
+    """
+    return re.sub(r"[-_.]+", "-", name.lower())
 
 
 class PackageInfo(NamedTuple):

@@ -129,7 +129,7 @@ class Winnow < Formula
     end
   end
   # pillow_heif bundles libheif and needs it to build from source - use platform-specific wheels
-  resource "pillow_heif" do
+  resource "pillow-heif" do
     on_arm do
       url "https://files.pythonhosted.org/packages/0d/32/59dfe8f1799eef6a442fe5007e5c199b1961d33c7a56c64e0babc9d4a95c/pillow_heif-1.7.0-cp313-cp313-macosx_11_0_arm64.whl"
       sha256 "9912a8301d469012fe2ba1f2da539b56de048aab3db649857b4ab5fa9a07919b"
@@ -140,7 +140,7 @@ class Winnow < Formula
     end
   end
   # pydantic_core requires Rust to build - use platform-specific wheels
-  resource "pydantic_core" do
+  resource "pydantic-core" do
     on_arm do
       url "https://files.pythonhosted.org/packages/21/43/6323b1f8b217780454c61304bcd2b38ae4762f50754414124603ccc90bb2/pydantic_core-2.46.5-cp313-cp313-macosx_11_0_arm64.whl"
       sha256 "f332f0e72a5a0400141f830744e141bf9f97917878dbe968669e8a7fefea78ff"
@@ -176,7 +176,7 @@ class Winnow < Formula
     venv = virtualenv_create(libexec, "python3.13")
 
     # Install other resources first (this sets up pip in the venv)
-    wheel_only = %w[numpy pillow pillow_heif pydantic_core pywavelets scipy]
+    wheel_only = %w[numpy pillow pillow-heif pydantic-core pywavelets scipy]
     other_resources = resources.reject { |r| wheel_only.include?(r.name) }
     venv.pip_install other_resources
 

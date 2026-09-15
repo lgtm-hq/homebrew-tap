@@ -25,14 +25,13 @@ specifier is pinned and its own requirements are walked the same way.
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from importlib.metadata import distributions
 
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.version import InvalidVersion, Version
 
-from pypi_utils import fetch_pypi_json, get_sdist_info
+from pypi_utils import fetch_pypi_json, get_sdist_info, normalize_name
 
 # Homebrew macOS Python formula install environment for marker evaluation.
 # platform_machine is set per run (--platform-machine): arm64 for Apple
@@ -56,18 +55,6 @@ RESOURCE_TEMPLATE = """  resource "{name}" do
     sha256 "{sha256}"
   end
 """
-
-
-def normalize_name(name: str) -> str:
-    """Normalize package name per PEP 503.
-
-    Args:
-        name: Package name to normalize.
-
-    Returns:
-        Normalized package name (lowercase, runs of [-_.] replaced with single hyphen).
-    """
-    return re.sub(r"[-_.]+", "-", name.lower())
 
 
 def build_distribution_map() -> dict[str, tuple[str, list[str] | None]]:

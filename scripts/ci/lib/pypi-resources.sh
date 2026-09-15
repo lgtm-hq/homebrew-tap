@@ -12,6 +12,18 @@
 _PYPI_RESOURCES_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _PYPI_RESOURCES_SCRIPT_DIR="$(cd "$_PYPI_RESOURCES_LIB_DIR/.." && pwd)"
 
+# PEP 503 normalization of a PyPI project name: lowercase, runs of "-", "_"
+# and "." collapsed to "-". brew audit --strict requires wheel resources to
+# carry the normalized project name, so a wheel-only-packages key such as
+# pydantic_core renders as pydantic-core (fetch_wheel_info.py applies the
+# same rule to the stanza).
+# Usage: pypi_canonical_name <package>
+pypi_canonical_name() {
+	# tr rather than ${var,,}: macOS ships bash 3.2.
+	printf '%s' "$1" | sed -E 's/[-_.]+/-/g' | tr '[:upper:]' '[:lower:]'
+	printf '\n'
+}
+
 # Usage: generate_pinned_resources <package> <tarball-file> <python-version> \
 #          '<config-json>' <out-dir> <min-resource-count> [extras] [arch]
 #   extras  comma-separated extras installed with the sdist ("" for none)
@@ -129,9 +141,12 @@ generate_pinned_resources() {
 
 		python3 "$script_dir/fetch_wheel_info.py" "$wheel_pkg" "${wheel_args[@]}" >>"$out_dir/wheels.txt"
 		# Platform wheels are installed out-of-band in the formula;
-		# universal wheels go through venv.pip_install like sdists.
+		# universal wheels go through venv.pip_install like sdists. The
+		# stanza is named after the normalized PyPI project name (what
+		# fetch_wheel_info.py renders), so the wheel_only list must use
+		# the same spelling for resources.reject to match it.
 		if [[ "$wheel_type" == "platform" ]]; then
-			emitted_wheels+=("$wheel_pkg")
+			emitted_wheels+=("$(pypi_canonical_name "$wheel_pkg")")
 		fi
 	done
 

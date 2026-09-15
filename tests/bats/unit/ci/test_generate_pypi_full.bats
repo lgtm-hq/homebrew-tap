@@ -298,3 +298,18 @@ YAML
 	grep -q 'head "https://github.com/lgtm-hq/winnow.git", branch: "main"' "$TEST_TEMP_DIR/winnow.rb"
 	! grep -qi 'bottle' "$TEST_TEMP_DIR/winnow.rb"
 }
+
+@test "committed formulas: wheel-only packages render with the PEP 503 name" {
+	# winnow.yml keys pillow_heif and pydantic_core; brew audit --strict wants
+	# the resource named after the PyPI project (pillow-heif, pydantic-core),
+	# and the wheel_only list must use the same spelling.
+	formula="$REPO_ROOT/Formula/winnow.rb"
+	grep -q '^  resource "pillow-heif" do' "$formula"
+	grep -q '^  resource "pydantic-core" do' "$formula"
+	! grep -q 'resource "pillow_heif"' "$formula"
+	! grep -q 'resource "pydantic_core"' "$formula"
+	grep -q 'wheel_only = %w\[numpy pillow pillow-heif pydantic-core pywavelets scipy\]' "$formula"
+	grep -q '^  resource "pydantic-core" do' "$REPO_ROOT/Formula/lintro-full.rb"
+	grep -q '^      resource "pydantic-core" do' "$REPO_ROOT/Formula/lintro.rb"
+	grep -q 'wheel_only = %w\[pydantic-core\]' "$REPO_ROOT/Formula/lintro.rb"
+}

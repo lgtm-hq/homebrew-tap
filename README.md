@@ -236,7 +236,7 @@ Formula entry fields:
 | `test-command` | all | Command used in the formula `test` block |
 | `generate-resources` | pypi | Run importlib.metadata resource generation |
 | `homebrew-deps` | pypi | CLI tools installed via `depends_on` |
-| `wheel-only-packages` | pypi | Packages installed from wheels (not sdist) |
+| `wheel-only-packages` | pypi | Packages installed from wheels (not sdist); the key is the PyPI lookup name, the rendered `resource` is its PEP 503 normalized form (`pydantic_core` becomes `pydantic-core`, as `brew audit --strict` requires) |
 | `binary-url-pattern` | binary | Release URL with `{version}` and `{arch}` |
 | `binary-names` | binary | Asset filenames per architecture (`arm64`) |
 | `intel-pypi` | binary | Intel fallback: `python-version` (Homebrew Python dependency), `extras` (PyPI extras whose dependencies are pinned too, e.g. `[mcp]`), `min-resource-count`, `homebrew-deps` and `wheel-only-packages` (same shape as a pypi entry). The `on_intel` branch installs `package` at the same version from the PyPI sdist into a virtualenv with every dependency pinned as a `resource`. |

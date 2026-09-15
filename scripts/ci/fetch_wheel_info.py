@@ -27,6 +27,7 @@ from pypi_utils import (
     fetch_pypi_json,
     find_macos_wheel,
     find_universal_wheel,
+    normalize_name,
 )
 
 
@@ -141,6 +142,11 @@ def main() -> None:
     args = parser.parse_args()
 
     data = fetch_pypi_json(args.package, version=args.version)
+    # Resource names carry the PEP 503 project name (brew audit --strict:
+    # "resource name should be '<normalized>' to match the PyPI package name");
+    # the lookup keeps the configured spelling. pypi_canonical_name in
+    # scripts/ci/lib/pypi-resources.sh applies the same rule to wheel_only.
+    resource_name = normalize_name(args.package)
 
     if args.type == "universal":
         wheel = find_universal_wheel(data)
@@ -151,7 +157,7 @@ def main() -> None:
             )
             sys.exit(1)
         comment = args.comment or f"{args.package} - using wheel"
-        print(generate_universal_resource(args.package, wheel, comment))
+        print(generate_universal_resource(resource_name, wheel, comment))
     elif args.arch:
         wheel = find_macos_wheel(
             data,
@@ -165,7 +171,7 @@ def main() -> None:
             )
             sys.exit(1)
         comment = args.comment or f"{args.package} - using platform-specific wheels"
-        print(generate_single_arch_resource(args.package, wheel, comment))
+        print(generate_single_arch_resource(resource_name, wheel, comment))
     else:
         arm_wheel = find_macos_wheel(
             data,
@@ -186,7 +192,9 @@ def main() -> None:
             print(f"  x86_64: {'found' if intel_wheel else 'missing'}", file=sys.stderr)
             sys.exit(1)
         comment = args.comment or f"{args.package} - using platform-specific wheels"
-        print(generate_platform_resource(args.package, arm_wheel, intel_wheel, comment))
+        print(
+            generate_platform_resource(resource_name, arm_wheel, intel_wheel, comment),
+        )
 
 
 if __name__ == "__main__":
