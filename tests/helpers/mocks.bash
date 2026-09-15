@@ -176,9 +176,13 @@ EOF
 #   MOCK_BREW_STATE          state directory (created by the mock as needed)
 #   MOCK_BREW_REPO           directory answered for `brew --repository`
 #   MOCK_BREW_CONFLICTS      space-separated a:b pairs of conflicting formulae
+#   MOCK_BREW_FAIL_INSTALL   formula name whose brew install fails
 #   MOCK_BREW_FAIL_UNINSTALL formula name whose uninstall fails
 #   MOCK_BREW_FAIL_TEST      formula name whose brew test fails
 #   MOCK_BREW_BROKEN_VERIFY  formula name whose installed binary fails --version
+#   MOCK_BREW_AUDIT_FINDINGS newline-separated "* message" findings printed by
+#                            `brew audit` (non-empty => exit 1)
+#   MOCK_BREW_AUDIT_FORMULA  formula name the findings apply to (default: all)
 mock_brew() {
 	local mock_dir="$1"
 	mkdir -p "$mock_dir"
@@ -210,8 +214,22 @@ case "${1:-}" in
 style)
 	exit 0
 	;;
+audit)
+	name="$(basename "${!#}")"
+	if [[ -n "${MOCK_BREW_AUDIT_FINDINGS:-}" && ( -z "${MOCK_BREW_AUDIT_FORMULA:-}" || "$name" == "${MOCK_BREW_AUDIT_FORMULA}" ) ]]; then
+		echo "local/test-tap/$name"
+		printf '%s\n' "$MOCK_BREW_AUDIT_FINDINGS" | sed 's/^/  /'
+		echo "Error: 1 problem in 1 formula detected." >&2
+		exit 1
+	fi
+	exit 0
+	;;
 install)
 	name="$(basename "${!#}")"
+	if [[ "$name" == "${MOCK_BREW_FAIL_INSTALL:-}" ]]; then
+		echo "Error: mock brew install failure for $name" >&2
+		exit 1
+	fi
 	for pair in ${MOCK_BREW_CONFLICTS:-}; do
 		a="${pair%%:*}"
 		b="${pair##*:}"
@@ -264,5 +282,69 @@ EOF
 	export MOCK_BREW_LOG="${MOCK_BREW_LOG:-$mock_dir/brew.log}"
 	mkdir -p "$MOCK_BREW_REPO"
 	: >"$MOCK_BREW_LOG"
+	export PATH="$mock_dir:$PATH"
+}
+
+# gh mock for provenance checks (scripts/ci/lib/provenance.sh). Logs every
+# invocation to $MOCK_GH_LOG and responds based on MOCK_* variables:
+#   MOCK_GH_ATTEST_MODE     ok (default) | fail (signature/identity mismatch)
+#                           | missing (no attestation for the digest, gh 404)
+#   MOCK_GH_ATTEST_FAIL_FOR basename of the one file whose verification uses
+#                           MOCK_GH_ATTEST_MODE; other files verify ok
+#   MOCK_RELEASE_DIGEST     sha256 hex answered for the release asset lookup
+#                           (empty => asset has no digest / is absent)
+#   MOCK_RELEASE_API_ERROR  when set, the releases API call fails with it
+mock_gh_provenance() {
+	local mock_dir="$1"
+	mkdir -p "$mock_dir"
+	cat >"$mock_dir/gh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+joined="$*"
+if [[ -n "${MOCK_GH_LOG:-}" ]]; then
+	echo "$joined" >>"$MOCK_GH_LOG"
+fi
+
+if [[ "${1:-}" == "attestation" && "${2:-}" == "verify" ]]; then
+	file="${3:?file required}"
+	mode="${MOCK_GH_ATTEST_MODE:-ok}"
+	if [[ -n "${MOCK_GH_ATTEST_FAIL_FOR:-}" && "$(basename "$file")" != "${MOCK_GH_ATTEST_FAIL_FOR}" ]]; then
+		mode="ok"
+	fi
+	case "$mode" in
+	ok)
+		echo "Loaded digest sha256:mock for file://$file"
+		echo "✓ Verification succeeded!"
+		exit 0
+		;;
+	fail)
+		echo 'Error: verifying with issuer "sigstore.dev"' >&2
+		exit 1
+		;;
+	missing)
+		echo "Error: no attestations found for subject sha256:mock (HTTP 404)" >&2
+		exit 1
+		;;
+	esac
+fi
+
+if [[ "$joined" == api\ repos/*/releases/tags/* ]]; then
+	if [[ -n "${MOCK_RELEASE_API_ERROR:-}" ]]; then
+		echo "$MOCK_RELEASE_API_ERROR" >&2
+		exit 1
+	fi
+	if [[ -n "${MOCK_RELEASE_DIGEST:-}" ]]; then
+		echo "sha256:${MOCK_RELEASE_DIGEST}"
+	fi
+	exit 0
+fi
+
+echo "unsupported gh invocation: $joined" >&2
+exit 1
+EOF
+	chmod +x "$mock_dir/gh"
+	export MOCK_GH_LOG="${MOCK_GH_LOG:-$mock_dir/gh.log}"
+	: >"$MOCK_GH_LOG"
 	export PATH="$mock_dir:$PATH"
 }

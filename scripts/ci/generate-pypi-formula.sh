@@ -6,12 +6,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-# shellcheck source=../lib/common.sh disable=SC1091
-source "$SCRIPT_DIR/../lib/common.sh"
-# shellcheck source=../lib/formula-blocks.sh disable=SC1091
-source "$SCRIPT_DIR/../lib/formula-blocks.sh"
-# shellcheck source=../lib/lgtm-ci-tooling.sh disable=SC1091
-source "$SCRIPT_DIR/../lib/lgtm-ci-tooling.sh"
+# shellcheck source=lib/common.sh disable=SC1091
+source "$SCRIPT_DIR/lib/common.sh"
+# shellcheck source=lib/formula-blocks.sh disable=SC1091
+source "$SCRIPT_DIR/lib/formula-blocks.sh"
+# shellcheck source=lib/lgtm-ci-tooling.sh disable=SC1091
+source "$SCRIPT_DIR/lib/lgtm-ci-tooling.sh"
+# shellcheck source=lib/pypi-resources.sh disable=SC1091
+source "$SCRIPT_DIR/lib/pypi-resources.sh"
+# shellcheck source=lib/provenance.sh disable=SC1091
+source "$SCRIPT_DIR/lib/provenance.sh"
 
 usage() {
 	cat <<'EOF'
@@ -25,6 +29,15 @@ Options:
   --version        Package version (without v prefix)
   --output         Output formula path (e.g., Formula/winnow.rb)
   --pypi-package   Override PyPI package name from config
+
+Before rendering, the sdist digest is cross-checked against the GitHub
+Release asset digest and PyPI's PEP 740 provenance, and its attestation is
+verified (config block provenance:, see scripts/ci/lib/provenance.sh).
+
+Environment (test seams):
+  PYPI_FIXTURE_DIR   Read PyPI JSON from fixtures; the sdist comes from
+                     ../sdist/ next to that directory when present.
+  SKIP_ASSET_VERIFY  Skip every provenance check (local regeneration only).
 EOF
 }
 
@@ -98,7 +111,6 @@ read_config_value() {
 PACKAGE_NAME="${PYPI_PACKAGE_OVERRIDE:-$(read_config_value package)}"
 PYTHON_VERSION="$(read_config_value python-version)"
 PYTHON_VERSION="${PYTHON_VERSION:-3.13}"
-PYTHON_VERSION_NODOT="${PYTHON_VERSION//./}"
 MIN_RESOURCE_COUNT="$(read_config_value min-resource-count)"
 MIN_RESOURCE_COUNT="${MIN_RESOURCE_COUNT:-1}"
 GENERATE_RESOURCES=$(python3 -c "import json, sys; print('true' if json.loads(sys.argv[1]).get('generate-resources') else 'false')" "$CONFIG_JSON")
@@ -141,6 +153,9 @@ validate_sdist() {
 	if [[ -n "${PYPI_FIXTURE_DIR:-}" ]]; then
 		local fixture_sdist
 		fixture_sdist="$(dirname "$PYPI_FIXTURE_DIR")/sdist/${PACKAGE_NAME}-${VERSION}.tar.gz"
+		if [[ ! -f "$fixture_sdist" ]]; then
+			fixture_sdist="$(dirname "$PYPI_FIXTURE_DIR")/sdist/$(basename "$tarball_file")"
+		fi
 		if [[ -f "$fixture_sdist" ]]; then
 			cp "$fixture_sdist" "$tarball_file"
 			log_info "Using sdist fixture: ${fixture_sdist}"
@@ -168,97 +183,32 @@ validate_sdist() {
 	fi
 }
 
-TARBALL_FILE="$TMPDIR/${PACKAGE_NAME}-${VERSION}.tar.gz"
+# PyPI names the sdist <normalized_name>-<version>.tar.gz; the provenance
+# checks look the same filename up on the GitHub Release and at PyPI's
+# integrity API, so keep the real filename rather than the config name.
+TARBALL_FILE="$TMPDIR/$(basename "$TARBALL_URL")"
 validate_sdist "$TARBALL_FILE"
 
+# Cross-check what will be pinned: GitHub Release digest, PEP 740 provenance
+# and the sdist attestation (scripts/ci/lib/provenance.sh). Skipped in the
+# fixture seam when no sdist file is available.
+PROVENANCE_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('provenance') or {}))" "$CONFIG_JSON")
+if [[ -n "${SKIP_ASSET_VERIFY:-}" ]]; then
+	log_warning "SKIP_ASSET_VERIFY set; skipping every provenance check (local regeneration only)"
+elif [[ -f "$TARBALL_FILE" ]]; then
+	verify_sdist_provenance "$TARBALL_FILE" "$PACKAGE_NAME" "$VERSION" "$TARBALL_SHA" "$PROVENANCE_JSON"
+else
+	log_info "No sdist file available in fixture mode; skipping provenance cross-checks"
+fi
+
 if [[ "$GENERATE_RESOURCES" == "true" ]]; then
-	HOMEBREW_DEPS_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('homebrew-deps', [])))" "$CONFIG_JSON")
-	WHEEL_PACKAGES_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('wheel-only-packages', {})))" "$CONFIG_JSON")
+	generate_pinned_resources "$PACKAGE_NAME" "$TARBALL_FILE" "$PYTHON_VERSION" \
+		"$CONFIG_JSON" "$TMPDIR" "$MIN_RESOURCE_COUNT"
 
 	HOMEBREW_PKG_ARRAY=()
 	while IFS= read -r line; do
 		[[ -n "$line" ]] && HOMEBREW_PKG_ARRAY+=("$line")
-	done < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1])))" "$HOMEBREW_DEPS_JSON")
-	WHEEL_PKG_ARRAY=()
-	while IFS= read -r line; do
-		[[ -n "$line" ]] && WHEEL_PKG_ARRAY+=("$line")
-	done < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1]).keys()))" "$WHEEL_PACKAGES_JSON")
-
-	ANALYSIS_VENV=$(mktemp -d)
-	trap 'rm -rf "$TMPDIR" "$ANALYSIS_VENV"' EXIT
-
-	log_info "Creating temporary venv for dependency analysis..."
-	python3 -m venv "$ANALYSIS_VENV"
-
-	log_info "Installing ${PACKAGE_NAME} from tarball..."
-	"$ANALYSIS_VENV/bin/pip" install --quiet "$TARBALL_FILE"
-
-	EXCLUDE_ARGS=()
-	for pkg in ${WHEEL_PKG_ARRAY[@]+"${WHEEL_PKG_ARRAY[@]}"} ${HOMEBREW_PKG_ARRAY[@]+"${HOMEBREW_PKG_ARRAY[@]}"}; do
-		EXCLUDE_ARGS+=("$pkg")
-	done
-
-	log_info "Generating resource stanzas..."
-	ANALYSIS_SITE_PACKAGES=$("$ANALYSIS_VENV/bin/python" -c "import site; print(site.getsitepackages()[0])")
-	generate_resource_args=("$SCRIPT_DIR/generate_resources.py" "$PACKAGE_NAME")
-	if ((${#EXCLUDE_ARGS[@]})); then
-		generate_resource_args+=(--exclude "${EXCLUDE_ARGS[@]}")
-	fi
-	RESOURCES=$(PYTHONPATH="$ANALYSIS_SITE_PACKAGES" python3 "${generate_resource_args[@]}")
-
-	RESOURCE_COUNT=$(printf '%s\n' "$RESOURCES" | awk '/^  resource / { count++ } END { print count + 0 }')
-	if [[ "$RESOURCE_COUNT" -lt "$MIN_RESOURCE_COUNT" ]]; then
-		log_error "Expected at least ${MIN_RESOURCE_COUNT} resource stanzas but only found ${RESOURCE_COUNT}"
-		exit 1
-	fi
-	echo "$RESOURCES" >"$TMPDIR/resources.txt"
-
-	log_info "Generating wheel resources..."
-	: >"$TMPDIR/wheels.txt"
-	EMITTED_WHEELS=()
-	if ((${#WHEEL_PKG_ARRAY[@]})); then
-		while IFS= read -r wheel_pkg; do
-			[[ -z "$wheel_pkg" ]] && continue
-			wheel_type=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('type', 'universal'))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
-			wheel_comment=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('comment', ''))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
-			resolve_from=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get(sys.argv[2], {}).get('resolve-version-from', ''))" "$WHEEL_PACKAGES_JSON" "$wheel_pkg")
-
-			# A configured wheel package may be absent from this release's
-			# dependency tree; skip it rather than failing the generation.
-			# Any other probe failure is fatal so a broken probe cannot
-			# silently drop a wheel resource from the formula.
-			probe_name="${resolve_from:-$wheel_pkg}"
-			probe_status=0
-			wheel_version=$("$ANALYSIS_VENV/bin/python" \
-				"$SCRIPT_DIR/probe_dist_version.py" "$probe_name") || probe_status=$?
-			if [[ "$probe_status" -eq 3 ]]; then
-				log_info "Skipping wheel package ${wheel_pkg}: not in the dependency tree"
-				continue
-			elif [[ "$probe_status" -ne 0 ]]; then
-				log_error "Failed to probe installed version for ${wheel_pkg} (probe name: ${probe_name})"
-				exit 1
-			fi
-
-			wheel_args=(--type "$wheel_type" --comment "$wheel_comment" --python-version "${PYTHON_VERSION_NODOT}")
-			if [[ "$wheel_type" == "platform" ]]; then
-				wheel_args+=(--version "$wheel_version")
-			fi
-
-			python3 "$SCRIPT_DIR/fetch_wheel_info.py" "$wheel_pkg" "${wheel_args[@]}" >>"$TMPDIR/wheels.txt"
-			# Platform wheels are installed out-of-band in the formula;
-			# universal wheels go through venv.pip_install like sdists.
-			if [[ "$wheel_type" == "platform" ]]; then
-				EMITTED_WHEELS+=("$wheel_pkg")
-			fi
-		done <<<"$(printf '%s\n' "${WHEEL_PKG_ARRAY[@]}")"
-	fi
-
-	# Blank line between the sdist and wheel resource sections so the
-	# rendered formula keeps consistent stanza spacing.
-	if [[ -s "$TMPDIR/wheels.txt" && -s "$TMPDIR/resources.txt" ]]; then
-		printf '\n' | cat - "$TMPDIR/wheels.txt" >"$TMPDIR/wheels.txt.tmp"
-		mv "$TMPDIR/wheels.txt.tmp" "$TMPDIR/wheels.txt"
-	fi
+	done < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1]).get('homebrew-deps', [])))" "$CONFIG_JSON")
 
 	CAVEATS_RAW=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('caveats', '') or '')" "$CONFIG_JSON")
 	if [[ -n "$CAVEATS_RAW" ]]; then
@@ -283,35 +233,6 @@ EOF
 		CAVEATS_BLOCK=""
 	fi
 
-	# Platform-wheel packages (pydantic-core needs Rust; scipy/numpy need
-	# native toolchains) are installed out-of-band from their prebuilt
-	# wheels instead of letting venv.pip_install build them from source.
-	if ((${#EMITTED_WHEELS[@]})); then
-		# %w literal keeps brew style (Style/WordArray) happy.
-		WHEEL_NAMES_RUBY="%w[${EMITTED_WHEELS[*]}]"
-		INSTALL_RESOURCES=$(
-			cat <<EOF
-    # Install other resources first (this sets up pip in the venv)
-    wheel_only = ${WHEEL_NAMES_RUBY}
-    other_resources = resources.reject { |r| wheel_only.include?(r.name) }
-    venv.pip_install other_resources
-
-    # Install prebuilt platform wheels out-of-band: building these from
-    # source needs heavy native toolchains (Rust, C/Fortran).
-    wheel_only.each do |name|
-      resource(name).stage do
-        wheel = Pathname.pwd.children.find { |f| f.extname == ".whl" }
-        odie "#{name} wheel not found in staged resource" if wheel.nil?
-        system libexec/"bin/python", "-m", "pip",
-               "install", "--no-deps", "--ignore-installed", wheel.to_s
-      end
-    end
-EOF
-		)
-	else
-		INSTALL_RESOURCES='    venv.pip_install resources'
-	fi
-
 	HEAD_ENABLED=$(python3 -c "import json, sys; print('true' if json.loads(sys.argv[1]).get('head') else 'false')" "$CONFIG_JSON")
 	HEAD_BLOCK=""
 	if [[ "$HEAD_ENABLED" == "true" ]]; then
@@ -320,22 +241,14 @@ EOF
 		HEAD_BLOCK=$(build_head_block "$SOURCE_REPO" "${HEAD_BRANCH:-main}")
 	fi
 
-	BOTTLE_COMMENT_ENABLED=$(python3 -c "import json, sys; print('true' if json.loads(sys.argv[1]).get('bottle-comment') else 'false')" "$CONFIG_JSON")
-	BOTTLE_COMMENT_BLOCK=""
-	if [[ "$BOTTLE_COMMENT_ENABLED" == "true" ]]; then
-		BOTTLE_COMMENT_BLOCK=$(build_bottle_comment_block)
-	fi
-
 	CONFLICTS_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('conflicts-with') or {}))" "$CONFIG_JSON")
 	CONFLICTS_BLOCK=$(build_conflicts_block "$CONFLICTS_JSON")
 
 	TEST_EXTRA_RAW=$(read_config_value test-extra)
 	TEST_EXTRA_BLOCK=$(build_test_extra_block "$TEST_EXTRA_RAW")
 
-	printf '%s' "$INSTALL_RESOURCES" >"$TMPDIR/install_resources.txt"
 	printf '%s' "$CAVEATS_BLOCK" >"$TMPDIR/caveats_block.txt"
 	printf '%s' "$HEAD_BLOCK" >"$TMPDIR/head_block.txt"
-	printf '%s' "$BOTTLE_COMMENT_BLOCK" >"$TMPDIR/bottle_comment_block.txt"
 	printf '%s' "$CONFLICTS_BLOCK" >"$TMPDIR/conflicts_block.txt"
 	printf '%s' "$TEST_EXTRA_BLOCK" >"$TMPDIR/test_extra_block.txt"
 
@@ -366,7 +279,6 @@ EOF
 		--replace-file "INSTALL_RESOURCES=${TMPDIR}/install_resources.txt" \
 		--replace-file "CAVEATS_BLOCK=${TMPDIR}/caveats_block.txt" \
 		--replace-file "HEAD_BLOCK=${TMPDIR}/head_block.txt" \
-		--replace-file "BOTTLE_COMMENT_BLOCK=${TMPDIR}/bottle_comment_block.txt" \
 		--replace-file "CONFLICTS_BLOCK=${TMPDIR}/conflicts_block.txt" \
 		--replace-file "TEST_EXTRA_BLOCK=${TMPDIR}/test_extra_block.txt" \
 		--output "$OUTPUT_FILE"

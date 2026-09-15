@@ -57,6 +57,12 @@ def merge_formula_config(
         raise KeyError(msg)
 
     formula_entry = dict(formulas[formula_key])
+    # Provenance identities are a product property (one release pipeline
+    # signs every artifact); a formula entry may still override single keys.
+    provenance = {
+        **(product_config.get("provenance") or {}),
+        **(formula_entry.pop("provenance", None) or {}),
+    }
     return {
         "product": formula_key,
         "package": product_config.get("package"),
@@ -68,6 +74,7 @@ def merge_formula_config(
             product_config.get("description"),
         ),
         "class-name": formula_entry.pop("class-name", formula_class_name(formula_key)),
+        "provenance": provenance,
         **formula_entry,
     }
 

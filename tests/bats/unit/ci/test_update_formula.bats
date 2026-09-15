@@ -21,8 +21,8 @@ extract_function() {
 setup() {
 	setup_temp_dir
 	REPO_ROOT="$(repo_root)"
-	# shellcheck source=../../../scripts/lib/common.sh disable=SC1091
-	source "$REPO_ROOT/scripts/lib/common.sh"
+	# shellcheck source=../../../../scripts/ci/lib/common.sh disable=SC1091
+	source "$REPO_ROOT/scripts/ci/lib/common.sh"
 	extract_function "remote_main_oid"
 	extract_function "remote_file_at_ref"
 	extract_function "remote_blob_sha_at_ref"

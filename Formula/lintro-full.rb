@@ -13,11 +13,6 @@ class LintroFull < Formula
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
-  # No bottle block is declared here: bottles are pre-compiled binary packages
-  # whose SHA256 checksums are produced by the tap's brew test-bot after this
-  # formula is merged. They cannot be hardcoded in the source template, so the
-  # tap CI injects the `bottle do ... end` stanza when it builds bottles.
-
   livecheck do
     url :stable
     strategy :pypi

@@ -10,7 +10,7 @@ class {{CLASS_NAME}} < Formula
   homepage "{{HOMEPAGE}}"
   url "{{TARBALL_URL}}"
   sha256 "{{TARBALL_SHA}}"
-  license "{{LICENSE}}"{{HEAD_BLOCK}}{{BOTTLE_COMMENT_BLOCK}}
+  license "{{LICENSE}}"{{HEAD_BLOCK}}
 
   livecheck do
     url :stable

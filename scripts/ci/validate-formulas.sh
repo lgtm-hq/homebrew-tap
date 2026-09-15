@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # validate-formulas.sh - Validate all Homebrew formulas in this tap
 #
-# Performs: style checking, source installation, and verification
+# Performs: style checking, source installation, strict audit, and verification
 
 set -euo pipefail
 
@@ -15,12 +15,21 @@ export HOMEBREW_NO_INSTALL_FROM_API=1
 export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../lib/common.sh disable=SC1091 # Dynamic SCRIPT_DIR source is intentional; lintro issue #928 tracks ShellCheck source-path support.
-source "$SCRIPT_DIR/../lib/common.sh"
-# shellcheck source=../lib/local-tap.sh disable=SC1091 # Dynamic SCRIPT_DIR source is intentional; lintro issue #928 tracks ShellCheck source-path support.
-source "$SCRIPT_DIR/../lib/local-tap.sh"
+# shellcheck source=lib/common.sh disable=SC1091 # Dynamic SCRIPT_DIR source is intentional; lintro issue #928 tracks ShellCheck source-path support.
+source "$SCRIPT_DIR/lib/common.sh"
+# shellcheck source=lib/local-tap.sh disable=SC1091 # Dynamic SCRIPT_DIR source is intentional; lintro issue #928 tracks ShellCheck source-path support.
+source "$SCRIPT_DIR/lib/local-tap.sh"
 
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# brew audit --strict --online findings that are known and accepted: one
+# finding substring per line, e.g.
+#   AUDIT_ACCEPTED_WARNINGS="${AUDIT_ACCEPTED_WARNINGS-Version 'v' not found in URL}"
+# Any finding not listed fails the run (lgtm-hq/homebrew-tap#471). Keep the
+# list short and justify each entry. The environment may pre-set the list
+# (tests, local experiments); the default is empty.
+AUDIT_ACCEPTED_WARNINGS="${AUDIT_ACCEPTED_WARNINGS-}"
+export AUDIT_ACCEPTED_WARNINGS
 
 # Show environment info
 log_info "Environment:"
@@ -50,7 +59,7 @@ setup_local_tap "$REPO_ROOT"
 register_tap_cleanup
 echo ""
 
-# Install and verify each formula in an isolated install -> verify ->
+# Install and verify each formula in an isolated install -> audit -> verify ->
 # brew test -> uninstall sequence. lintro and lintro-full declare
 # conflicts_with each other (both provide the lintro binary), so a formula
 # left installed makes brew refuse the next install (#144). brew test runs
@@ -59,8 +68,13 @@ echo ""
 log_info "Installing from source for smoke test..."
 for formula in "${formulas[@]}"; do
 	formula_name="$(basename "$formula" .rb)"
-	install_local_formula "$formula_name"
-	if ! verify_formula "$formula_name" || ! brew_test_formula "$formula_name"; then
+	if ! install_local_formula "$formula_name"; then
+		log_error "Validation failed: ${formula_name} does not install"
+		exit 1
+	fi
+	if ! audit_local_formula "$formula_name" ||
+		! verify_formula "$formula_name" ||
+		! brew_test_formula "$formula_name"; then
 		uninstall_local_formula "$formula_name" || true
 		exit 1
 	fi

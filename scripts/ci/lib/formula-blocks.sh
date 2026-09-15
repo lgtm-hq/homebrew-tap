@@ -65,17 +65,3 @@ build_head_block() {
 	fi
 	printf '\n  head "https://github.com/%s.git", branch: "%s"' "$source_repo" "$branch"
 }
-
-# Build the standard explanatory comment for formulae that intentionally
-# declare no bottle block.
-# Usage: build_bottle_comment_block
-build_bottle_comment_block() {
-	cat <<'EOF'
-
-
-  # No bottle block is declared here: bottles are pre-compiled binary packages
-  # whose SHA256 checksums are produced by the tap's brew test-bot after this
-  # formula is merged. They cannot be hardcoded in the source template, so the
-  # tap CI injects the `bottle do ... end` stanza when it builds bottles.
-EOF
-}

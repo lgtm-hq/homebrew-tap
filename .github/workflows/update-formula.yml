@@ -18,13 +18,16 @@ jobs:
       contents: read
       pull-requests: write
     env:
-      LGTM_CI_TOOLING_REF: 23c79b65490a3307fb08cdefafa22db12f75b9b2  # v0.63.1
+      LGTM_CI_TOOLING_REF: 97cb6ddb0d00eaaa38c208033020abc85f2ff1d0  # v0.73.2
     steps:
       # Direct remote harden-runner step: the lgtm-ci local composite was
       # removed in v0.50.0 (lgtm-ci#467), and GitHub skips pre hooks for
       # workspace-local actions anyway. The allowlist must be a literal,
       # space-separated folded scalar (replace semantics): the pypi preset
-      # equivalent plus setup-uv/astral download endpoints.
+      # equivalent plus setup-uv/astral download endpoints, release asset
+      # downloads, and the Sigstore TUF root that `gh attestation verify`
+      # fetches (attestations themselves come from api.github.com; PEP 740
+      # provenance from pypi.org).
       - name: Harden runner
         # yamllint disable-line rule:line-length
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
@@ -46,6 +49,7 @@ jobs:
             test.pypi.org:443
             upload.pypi.org:443
             upload.test.pypi.org:443
+            tuf-repo-cdn.sigstore.dev:443
 
       - name: Checkout
         # yamllint disable-line rule:line-length

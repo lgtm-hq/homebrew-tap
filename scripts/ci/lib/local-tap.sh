@@ -3,9 +3,11 @@
 #
 # Creates a symlink from the repo to Homebrew's tap directory
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh disable=SC1091 # Dynamic SCRIPT_DIR source is intentional; lintro issue #928 tracks ShellCheck source-path support.
-source "$SCRIPT_DIR/common.sh"
+# Private name: callers (validate-formulas.sh) own SCRIPT_DIR and derive
+# their repo root from it after sourcing this library.
+_LOCAL_TAP_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh disable=SC1091 # Dynamic source is intentional; lintro issue #928 tracks ShellCheck source-path support.
+source "$_LOCAL_TAP_LIB_DIR/common.sh"
 
 # Tap configuration
 LOCAL_TAP_NAME="local/test-tap"
@@ -85,15 +87,65 @@ install_local_formula() {
 
 	log_info "Installing $full_name from source..."
 
-	# Note: pydantic_core wheels may trigger dylib ID warnings (non-zero exit)
-	# Install continues successfully, so we verify by checking the binary
+	# A non-zero brew install is a failure, full stop. The old "may be dylib
+	# warnings" pass-through let a formula that does not install reach the
+	# --version smoke check (lgtm-hq/homebrew-tap#471).
 	if brew install --build-from-source "$full_name"; then
 		log_success "$full_name installed successfully"
 		return 0
-	else
-		log_warning "brew install returned non-zero (may be dylib warnings)"
-		return 0 # Continue to verification
 	fi
+	log_error "brew install failed for $full_name"
+	return 1
+}
+
+# Run brew audit --strict --online on an installed local-tap formula.
+# Warnings whose text matches an entry in AUDIT_ACCEPTED_WARNINGS (a
+# newline-separated list; see validate-formulas.sh) are reported but do not
+# fail the audit; anything else does.
+# Usage: audit_local_formula "lintro"
+audit_local_formula() {
+	local formula="$1"
+	local full_name
+	full_name=$(get_local_formula_name "$formula")
+
+	log_info "Running brew audit --strict --online $full_name"
+	local audit_output audit_status=0
+	audit_output="$(brew audit --strict --online "$full_name" 2>&1)" || audit_status=$?
+	if [[ -n "$audit_output" ]]; then
+		printf '%s\n' "$audit_output"
+	fi
+	if [[ "$audit_status" -eq 0 ]]; then
+		log_success "$formula brew audit passed"
+		return 0
+	fi
+
+	# Every "* <message>" line must match an accepted pattern for the
+	# failure to be tolerated; unmatched findings fail the audit.
+	local line unaccepted=0 pattern accepted
+	while IFS= read -r line; do
+		[[ "$line" == "  * "* || "$line" == "* "* ]] || continue
+		accepted=0
+		while IFS= read -r pattern; do
+			[[ -z "$pattern" ]] && continue
+			if [[ "$line" == *"$pattern"* ]]; then
+				accepted=1
+				break
+			fi
+		done <<<"${AUDIT_ACCEPTED_WARNINGS:-}"
+		if [[ "$accepted" -eq 1 ]]; then
+			log_warning "Accepted audit finding: ${line#*\* }"
+		else
+			log_error "Unaccepted audit finding: ${line#*\* }"
+			unaccepted=1
+		fi
+	done <<<"$audit_output"
+
+	if [[ "$unaccepted" -eq 1 ]]; then
+		log_error "brew audit failed for $formula"
+		return 1
+	fi
+	log_warning "$formula brew audit exited ${audit_status} with only accepted findings"
+	return 0
 }
 
 # Run a formula's `test do` block via brew test
