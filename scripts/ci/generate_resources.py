@@ -50,6 +50,9 @@ TARGET_ENV: dict[str, str] = {
 # Requirements not installed in the analysis environment, resolved from
 # PyPI metadata: normalized name -> (version, requires_dist).
 _RESOLVED_FROM_PYPI: dict[str, tuple[str, list[str] | None]] = {}
+# The requirement that produced each resolution, for conflict messages:
+# normalized name -> (requirement string, dependent).
+_RESOLVED_BY: dict[str, tuple[str, str]] = {}
 
 # Template for a single resource stanza
 RESOURCE_TEMPLATE = """  resource "{name}" do
@@ -194,6 +197,30 @@ def resolve_from_pypi(req: Requirement) -> tuple[str, list[str] | None] | None:
     return version, requires
 
 
+def _check_resolved_pin(req: Requirement, req_str: str, dependent: str) -> None:
+    """Fail closed when a cached PyPI resolution does not satisfy a later pin.
+
+    The cache is keyed by project name; reusing the first resolved version
+    for an incompatible specifier would depend on traversal order and pin a
+    version some dependent rejects.
+
+    Args:
+        req: Parsed requirement being checked.
+        req_str: Its original Requires-Dist text.
+        dependent: Package that declares it.
+    """
+    name = normalize_name(req.name)
+    version, _ = _RESOLVED_FROM_PYPI[name]
+    if req.specifier.contains(Version(version), prereleases=False):
+        return
+    first_req, first_dependent = _RESOLVED_BY[name]
+    sys.exit(
+        f"Conflicting pins for {name}: resolved {name}=={version} for "
+        f"'{first_req}' (required by {first_dependent}), but '{req_str}' "
+        f"(required by {dependent}) does not accept it",
+    )
+
+
 def get_package_dependencies(
     package_name: str,
     root_extras: frozenset[str] = frozenset(),
@@ -242,7 +269,9 @@ def get_package_dependencies(
             if not _marker_matches(req=req, extras=current_extras):
                 continue
             req_name = normalize_name(req.name)
-            if req_name not in dist_map and req_name not in _RESOLVED_FROM_PYPI:
+            if req_name in _RESOLVED_FROM_PYPI:
+                _check_resolved_pin(req=req, req_str=req_str, dependent=current)
+            elif req_name not in dist_map:
                 resolved = resolve_from_pypi(req)
                 if resolved is None:
                     print(
@@ -257,6 +286,7 @@ def get_package_dependencies(
                     file=sys.stderr,
                 )
                 _RESOLVED_FROM_PYPI[req_name] = resolved
+                _RESOLVED_BY[req_name] = (req_str, current)
             dependencies.add(req_name)
             # Keep both spellings: PEP 685 normalizes extras, but a
             # dependency's marker may use the unnormalized form.

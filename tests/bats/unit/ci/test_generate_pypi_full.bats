@@ -231,6 +231,33 @@ run_generate_provenance() {
 	[ ! -f "$TEST_TEMP_DIR/winnow.rb" ]
 }
 
+@test "generate-pypi-formula: provenance: {} and provenance: (null) are errors, not skips" {
+	mock_gh_provenance "$TEST_TEMP_DIR/mock-bin"
+	write_provenance_fixtures "$SDIST_SHA"
+	python3 - "$TEST_TEMP_DIR/winnow-provenance.yml" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+text = re.sub(r"provenance:\n(  .*\n)+", "provenance: {}\n", text)
+open(path, "w").write(text)
+PY
+	grep -q '^provenance: {}$' "$TEST_TEMP_DIR/winnow-provenance.yml"
+
+	run_generate_provenance
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance block for winnow is present but empty"* ]]
+	[ ! -f "$TEST_TEMP_DIR/winnow.rb" ]
+
+	sed -i.bak 's/^provenance: {}$/provenance:/' "$TEST_TEMP_DIR/winnow-provenance.yml"
+
+	run_generate_provenance
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance block for winnow must be a mapping (got NoneType)"* ]]
+	[ ! -f "$TEST_TEMP_DIR/winnow.rb" ]
+}
+
 @test "generate-pypi-formula: SKIP_ASSET_VERIFY is refused under GitHub Actions" {
 	export PYPI_FIXTURE_DIR="$REPO_ROOT/tests/fixtures/pypi"
 	export GITHUB_ACTIONS=true

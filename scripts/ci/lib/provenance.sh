@@ -20,10 +20,11 @@
 #                            Publisher in the PEP 740 provenance
 #
 # A missing or incomplete block never silently skips a check:
-#   - no `provenance:` block at all -> provenance_mode prints "skip" and the
+#   - no `provenance:` key at all -> provenance_mode prints "skip" and the
 #     caller logs it; the sha256 checks still run.
-#   - a block that is present but lacks a key the caller needs -> error
-#     naming the key, whatever require-attestation says.
+#   - a key that is present but empty, null, not a mapping, or lacks a key
+#     the caller needs -> error naming the formula/key, whatever
+#     require-attestation says.
 #
 # Functions never `exit`; callers decide (they run under set -e).
 
@@ -50,7 +51,7 @@ file_sha256() {
 }
 
 # Decide whether provenance checks run for a product and validate the block.
-# Usage: provenance_mode '<json>' <binary|pypi> <label>
+# Usage: provenance_mode '<json>' <binary|pypi> <label> [present:true|false]
 # Prints "skip" when the config has no provenance block, "verify" when the
 # block is complete for the caller kind; returns 1 (naming the key) when
 # the block is present but incomplete.
@@ -58,13 +59,42 @@ provenance_mode() {
 	local provenance_json="$1"
 	local kind="$2"
 	local label="$3"
+	# "true"/"false": whether the config has a provenance key at all. When
+	# omitted, JSON null means absent (unit-test convenience).
+	local present="${4:-}"
 
-	local key_count
-	key_count="$(python3 -c 'import json, sys; print(len(json.loads(sys.argv[1]) or {}))' "$provenance_json")"
-	if [[ "$key_count" -eq 0 ]]; then
+	# "absent" is only a missing key; `provenance:` (null), `provenance: {}`
+	# or a non-mapping value is an error.
+	if [[ "$present" == "false" ]]; then
 		printf 'skip\n'
 		return 0
 	fi
+	local shape
+	shape="$(python3 -c 'import json, sys
+value = json.loads(sys.argv[1])
+if value is None and sys.argv[2] != "true":
+    print("absent")
+elif isinstance(value, dict) and value:
+    print("mapping")
+elif isinstance(value, dict):
+    print("empty")
+else:
+    print(type(value).__name__)' "$provenance_json" "$present")"
+	case "$shape" in
+	absent)
+		printf 'skip\n'
+		return 0
+		;;
+	mapping) ;;
+	empty)
+		log_error "provenance block for ${label} is present but empty: remove the key to opt out, or fill in the identities"
+		return 1
+		;;
+	*)
+		log_error "provenance block for ${label} must be a mapping (got ${shape})"
+		return 1
+		;;
+	esac
 
 	local required=(repo tag-prefix sdist-signer-workflow pypi-publisher-workflow)
 	if [[ "$kind" == "binary" ]]; then

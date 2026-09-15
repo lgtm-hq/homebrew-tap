@@ -180,14 +180,25 @@ if [[ ! "$PYTHON_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
 	log_error "intel-pypi.python-version must look like 3.13, got '${PYTHON_VERSION}'"
 	exit 1
 fi
-if [[ -n "$PYPI_EXTRAS" && ! "$PYPI_EXTRAS" =~ ^[A-Za-z0-9._-]+(,[A-Za-z0-9._-]+)*$ ]]; then
-	log_error "intel-pypi.extras must be a list of extra names for ${FORMULA_KEY}"
-	exit 1
+# Extras are interpolated into Ruby source ("#{buildpath}[mcp]") and pip
+# arguments: enforce the PEP 685 extra-name charset per entry.
+if [[ -n "$PYPI_EXTRAS" ]]; then
+	IFS=',' read -r -a _extras_list <<<"$PYPI_EXTRAS"
+	for _extra in "${_extras_list[@]}"; do
+		if [[ ! "$_extra" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+			log_error "intel-pypi.extras entry '${_extra}' for ${FORMULA_KEY} is not a valid extra name (expected ^[A-Za-z0-9][A-Za-z0-9._-]*$)"
+			exit 1
+		fi
+	done
 fi
 INTEL_MIN_RESOURCES=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('min-resource-count', 1) or 1)" "$INTEL_PYPI_JSON")
 # intel-pypi may also declare homebrew-deps and wheel-only-packages (same
 # shape as a pypi formula entry); the shared resource generator reads them.
-PROVENANCE_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('provenance') or {}))" "$CONFIG_JSON")
+# PROVENANCE_PRESENT tells "key absent everywhere" (checks not adopted) apart
+# from a present but null/empty/non-mapping value, which provenance_mode
+# rejects.
+PROVENANCE_PRESENT=$(python3 -c "import json, sys; print('true' if 'provenance' in json.loads(sys.argv[1]) else 'false')" "$CONFIG_JSON")
+PROVENANCE_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('provenance')))" "$CONFIG_JSON")
 REQUIRE_ATTESTATION="$(provenance_value "$PROVENANCE_JSON" require-attestation)"
 PROVENANCE_REPO="$(provenance_value "$PROVENANCE_JSON" repo)"
 BINARY_SIGNER_WORKFLOW="$(provenance_value "$PROVENANCE_JSON" binary-signer-workflow)"
@@ -292,7 +303,7 @@ if [[ "$SKIP_VERIFY" != "true" ]]; then
 
 	# 2. Provenance: an incomplete provenance block is an error; no block at
 	#    all means the product has not adopted the checks yet (logged).
-	PROVENANCE_MODE="$(provenance_mode "$PROVENANCE_JSON" binary "$FORMULA_KEY")" || exit 1
+	PROVENANCE_MODE="$(provenance_mode "$PROVENANCE_JSON" binary "$FORMULA_KEY" "$PROVENANCE_PRESENT")" || exit 1
 	if [[ "$PROVENANCE_MODE" == "skip" ]]; then
 		log_warning "No provenance block in config for ${FORMULA_KEY}: attestation and sdist cross-checks not run (sha256 checks only)"
 	else
@@ -376,16 +387,31 @@ python3 - "$INTEL_PYPI_JSON" "python@${PYTHON_VERSION}" >"$TMPDIR/intel_deps.txt
 import json
 import sys
 
+import re
+
+# Names are emitted into Ruby source: enforce Homebrew's formula-name
+# charset and a strict boolean build flag before rendering.
+NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._+@/-]*$")
 entries = json.loads(sys.argv[1]).get("homebrew-deps") or []
 build, runtime = [], [sys.argv[2]]
 for entry in entries:
     if isinstance(entry, dict):
+        unknown = set(entry) - {"name", "build"}
+        if unknown:
+            sys.exit(f"intel-pypi.homebrew-deps entry {entry!r}: unknown keys {sorted(unknown)}")
         name = entry.get("name")
-        if not name:
-            sys.exit("intel-pypi.homebrew-deps mapping entries need a name")
-        (build if entry.get("build") else runtime).append(name)
+        is_build = entry.get("build", False)
+        if not isinstance(is_build, bool):
+            sys.exit(f"intel-pypi.homebrew-deps entry {entry!r}: build must be true or false")
     else:
-        runtime.append(entry)
+        name = entry
+        is_build = False
+    if not isinstance(name, str) or not NAME_RE.match(name):
+        sys.exit(
+            f"intel-pypi.homebrew-deps entry {name!r} is not a valid Homebrew formula "
+            "name (expected ^[a-z0-9][a-z0-9._+@/-]*$)"
+        )
+    (build if is_build else runtime).append(name)
 for name in sorted(build):
     print(f'      depends_on "{name}" => :build')
 for name in sorted(runtime):

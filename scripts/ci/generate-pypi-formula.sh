@@ -201,12 +201,16 @@ validate_sdist "$TARBALL_FILE"
 # Cross-check what will be pinned: GitHub Release digest, PEP 740 provenance
 # and the sdist attestation (scripts/ci/lib/provenance.sh). Skipped in the
 # fixture seam when no sdist file is available.
-PROVENANCE_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('provenance') or {}))" "$CONFIG_JSON")
+# PROVENANCE_PRESENT tells "key absent everywhere" (checks not adopted) apart
+# from a present but null/empty/non-mapping value, which provenance_mode
+# rejects.
+PROVENANCE_PRESENT=$(python3 -c "import json, sys; print('true' if 'provenance' in json.loads(sys.argv[1]) else 'false')" "$CONFIG_JSON")
+PROVENANCE_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('provenance')))" "$CONFIG_JSON")
 SKIP_VERIFY="$(resolve_skip_asset_verify "$SKIP_VERIFY_FLAG")" || exit 1
 if [[ "$SKIP_VERIFY" != "true" ]]; then
 	# An incomplete provenance block is an error; no block at all means the
 	# product has not adopted the checks yet (logged).
-	PROVENANCE_MODE="$(provenance_mode "$PROVENANCE_JSON" pypi "$FORMULA_KEY")" || exit 1
+	PROVENANCE_MODE="$(provenance_mode "$PROVENANCE_JSON" pypi "$FORMULA_KEY" "$PROVENANCE_PRESENT")" || exit 1
 	if [[ "$PROVENANCE_MODE" == "skip" ]]; then
 		log_warning "No provenance block in config for ${FORMULA_KEY}: sdist cross-checks not run (sha256 check only)"
 	elif [[ -f "$TARBALL_FILE" ]]; then

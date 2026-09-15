@@ -38,6 +38,39 @@ def load_config(config_path: Path) -> dict[str, Any]:
         return yaml.safe_load(handle)
 
 
+def merge_provenance(
+    product_value: Any,
+    formula_value: Any,
+    *,
+    product_has_key: bool,
+    formula_has_key: bool,
+) -> Any:
+    """Merge the product- and formula-level provenance blocks.
+
+    Args:
+        product_value: Product-level ``provenance`` value (None when absent).
+        formula_value: Formula-level ``provenance`` value (None when absent).
+        product_has_key: Whether the product document has the key at all.
+        formula_has_key: Whether the formula entry has the key at all.
+
+    Returns:
+        The merged mapping when every present value is a mapping; otherwise
+        the offending non-mapping value (an empty mapping stays empty, null
+        stays None) so callers can fail. None when neither level has the key.
+    """
+    if not product_has_key and not formula_has_key:
+        return None
+    merged: dict[str, Any] = {}
+    levels = ((product_has_key, product_value), (formula_has_key, formula_value))
+    for present, value in levels:
+        if not present:
+            continue
+        if not isinstance(value, dict):
+            return value
+        merged.update(value)
+    return merged
+
+
 def merge_formula_config(
     product_config: dict[str, Any],
     formula_key: str,
@@ -59,11 +92,17 @@ def merge_formula_config(
     formula_entry = dict(formulas[formula_key])
     # Provenance identities are a product property (one release pipeline
     # signs every artifact); a formula entry may still override single keys.
-    provenance = {
-        **(product_config.get("provenance") or {}),
-        **(formula_entry.pop("provenance", None) or {}),
-    }
-    return {
+    # None means the key is absent at both levels (checks not adopted); a
+    # present-but-empty, null or non-mapping value is passed through so the
+    # generators reject it instead of treating it as absent.
+    provenance_present = "provenance" in product_config or "provenance" in formula_entry
+    provenance = merge_provenance(
+        product_config.get("provenance"),
+        formula_entry.pop("provenance", None),
+        product_has_key="provenance" in product_config,
+        formula_has_key="provenance" in formulas[formula_key],
+    )
+    merged: dict[str, Any] = {
         "product": formula_key,
         "package": product_config.get("package"),
         "source-repo": product_config.get("source-repo"),
@@ -74,9 +113,13 @@ def merge_formula_config(
             product_config.get("description"),
         ),
         "class-name": formula_entry.pop("class-name", formula_class_name(formula_key)),
-        "provenance": provenance,
         **formula_entry,
     }
+    # Only emit the key when some level declares it, so consumers can tell
+    # "not adopted" (key absent) from "present but null/empty/invalid".
+    if provenance_present:
+        merged["provenance"] = provenance
+    return merged
 
 
 def emit_shell(config: dict[str, Any]) -> None:

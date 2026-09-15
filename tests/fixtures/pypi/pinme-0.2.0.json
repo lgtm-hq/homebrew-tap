@@ -1,0 +1,20 @@
+{
+  "info": {
+    "version": "0.2.0",
+    "requires_dist": [
+      "click==8.1.7",
+      "idna>=3.19; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+      "conflictor==1.0; sys_platform == 'darwin' and platform_machine == 'x86_64'"
+    ]
+  },
+  "urls": [
+    {
+      "packagetype": "sdist",
+      "filename": "pinme-0.2.0.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/ab/cd/pinme-0.2.0.tar.gz",
+      "digests": {
+        "sha256": "308a59ef41602f9077fcf7b92ace03506b60ab024ec7445a591eff07efcaf745"
+      }
+    }
+  ]
+}
