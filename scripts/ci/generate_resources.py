@@ -12,20 +12,32 @@ Usage:
 
     # Exclude specific packages (e.g., already available as Homebrew formulae)
     python3 generate_resources.py lintro --exclude bandit black mypy ruff yamllint
+
+    # Follow the root package's extras and resolve for an Intel Mac
+    python3 generate_resources.py lintro --extras mcp --platform-machine x86_64
+
+Requirements that the analysis environment did not install (a dependency
+gated on a marker that is false where the analysis ran, e.g. macOS x86_64
+only) are resolved from PyPI: the newest final release satisfying the
+specifier is pinned and its own requirements are walked the same way.
 """
 
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from importlib.metadata import distributions
+from typing import Any
 
 from packaging.requirements import InvalidRequirement, Requirement
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
+from packaging.version import InvalidVersion, Version
 
-from pypi_utils import fetch_pypi_json, get_sdist_info
+from pypi_utils import fetch_pypi_json, get_sdist_info, normalize_name
 
 # Homebrew macOS Python formula install environment for marker evaluation.
+# platform_machine is set per run (--platform-machine): arm64 for Apple
+# silicon formulas, x86_64 for the Intel branch of a binary formula.
 TARGET_ENV: dict[str, str] = {
     "python_version": "3.13",
     "python_full_version": "3.13.0",
@@ -35,24 +47,19 @@ TARGET_ENV: dict[str, str] = {
     "platform_machine": "arm64",
 }
 
+# Requirements not installed in the analysis environment, resolved from
+# PyPI metadata: normalized name -> (version, requires_dist).
+_RESOLVED_FROM_PYPI: dict[str, tuple[str, list[str] | None]] = {}
+# The requirement that produced each resolution, for conflict messages:
+# normalized name -> (requirement string, dependent).
+_RESOLVED_BY: dict[str, tuple[str, str]] = {}
+
 # Template for a single resource stanza
 RESOURCE_TEMPLATE = """  resource "{name}" do
     url "{url}"
     sha256 "{sha256}"
   end
 """
-
-
-def normalize_name(name: str) -> str:
-    """Normalize package name per PEP 503.
-
-    Args:
-        name: Package name to normalize.
-
-    Returns:
-        Normalized package name (lowercase, runs of [-_.] replaced with single hyphen).
-    """
-    return re.sub(r"[-_.]+", "-", name.lower())
 
 
 def build_distribution_map() -> dict[str, tuple[str, list[str] | None]]:
@@ -104,15 +111,131 @@ def _marker_matches(req: Requirement, extras: frozenset[str]) -> bool:
     return any(req.marker.evaluate({**TARGET_ENV, "extra": extra}) for extra in extras)
 
 
-def get_package_dependencies(package_name: str) -> set[str]:
+def _is_sdist(entry: dict[str, Any]) -> bool:
+    """Tell whether a release file entry is a source distribution.
+
+    Args:
+        entry: One entry of a PyPI ``releases[<version>]`` list.
+
+    Returns:
+        True for sdists (by packagetype, or by filename when absent).
+    """
+    packagetype = entry.get("packagetype")
+    if packagetype:
+        return packagetype == "sdist"
+    filename = entry.get("filename") or ""
+    return filename.endswith((".tar.gz", ".zip"))
+
+
+def _sdist_supports_target(files: list[dict[str, Any]]) -> bool:
+    """Tell whether a release has a usable sdist for the target Python.
+
+    The generated resource pins the sdist, so the release must carry at
+    least one non-yanked sdist whose ``requires_python`` is absent or
+    accepts ``TARGET_ENV["python_full_version"]``.
+
+    Args:
+        files: The release's file entries.
+
+    Returns:
+        True when such an sdist exists.
+    """
+    target = Version(TARGET_ENV["python_full_version"])
+    for entry in files:
+        if not _is_sdist(entry) or entry.get("yanked"):
+            continue
+        requires_python = entry.get("requires_python")
+        if not requires_python:
+            return True
+        try:
+            if SpecifierSet(requires_python).contains(target, prereleases=True):
+                return True
+        except InvalidSpecifier:
+            continue
+    return False
+
+
+def resolve_from_pypi(req: Requirement) -> tuple[str, list[str] | None] | None:
+    """Resolve a requirement that the analysis environment did not install.
+
+    Picks the newest final release on PyPI that satisfies the specifier and
+    ships an sdist usable on the target Python, and returns its version and
+    Requires-Dist metadata.
+
+    Args:
+        req: Requirement to resolve.
+
+    Returns:
+        (version, requires_dist) or None when nothing on PyPI satisfies it.
+    """
+    project = fetch_pypi_json(req.name)
+    candidates: list[Version] = []
+    for raw_version, files in (project.get("releases") or {}).items():
+        try:
+            parsed = Version(raw_version)
+        except InvalidVersion:
+            continue
+        if parsed.is_prerelease or not files:
+            continue
+        if any(entry.get("yanked") for entry in files):
+            continue
+        if not req.specifier.contains(parsed, prereleases=False):
+            continue
+        if not _sdist_supports_target(files):
+            print(
+                f"Skipping {req.name} {parsed}: no sdist accepts Python "
+                f"{TARGET_ENV['python_full_version']} (requires_python)",
+                file=sys.stderr,
+            )
+            continue
+        candidates.append(parsed)
+    if not candidates:
+        return None
+    version = str(max(candidates))
+    release = fetch_pypi_json(req.name, version)
+    requires: list[str] | None = release.get("info", {}).get("requires_dist")
+    return version, requires
+
+
+def _check_resolved_pin(req: Requirement, req_str: str, dependent: str) -> None:
+    """Fail closed when a cached PyPI resolution does not satisfy a later pin.
+
+    The cache is keyed by project name; reusing the first resolved version
+    for an incompatible specifier would depend on traversal order and pin a
+    version some dependent rejects.
+
+    Args:
+        req: Parsed requirement being checked.
+        req_str: Its original Requires-Dist text.
+        dependent: Package that declares it.
+    """
+    name = normalize_name(req.name)
+    version, _ = _RESOLVED_FROM_PYPI[name]
+    if req.specifier.contains(Version(version), prereleases=False):
+        return
+    first_req, first_dependent = _RESOLVED_BY[name]
+    sys.exit(
+        f"Conflicting pins for {name}: resolved {name}=={version} for "
+        f"'{first_req}' (required by {first_dependent}), but '{req_str}' "
+        f"(required by {dependent}) does not accept it",
+    )
+
+
+def get_package_dependencies(
+    package_name: str,
+    root_extras: frozenset[str] = frozenset(),
+) -> set[str]:
     """Get all dependencies of a package recursively.
 
     Extras requested by a dependent (e.g. ``dynaconf[yaml]``) are
     propagated so that extras-gated requirements are followed instead of
-    being dropped by marker evaluation.
+    being dropped by marker evaluation. Requirements whose marker matches
+    the target environment but that the analysis environment did not
+    install are resolved from PyPI (see :func:`resolve_from_pypi`).
 
     Args:
         package_name: Name of the package to analyze.
+        root_extras: Extras requested for the root package itself.
 
     Returns:
         Set of normalized dependency package names.
@@ -120,7 +243,7 @@ def get_package_dependencies(package_name: str) -> set[str]:
     dist_map = build_distribution_map()
     normalized_name = normalize_name(package_name)
     dependencies: set[str] = set()
-    to_process: set[tuple[str, frozenset[str]]] = {(normalized_name, frozenset())}
+    to_process: set[tuple[str, frozenset[str]]] = {(normalized_name, root_extras)}
     processed: set[tuple[str, frozenset[str]]] = set()
 
     while to_process:
@@ -129,10 +252,12 @@ def get_package_dependencies(package_name: str) -> set[str]:
             continue
         processed.add((current, current_extras))
 
-        if current not in dist_map:
+        if current in dist_map:
+            _, requires = dist_map[current]
+        elif current in _RESOLVED_FROM_PYPI:
+            _, requires = _RESOLVED_FROM_PYPI[current]
+        else:
             continue
-
-        _, requires = dist_map[current]
         if not requires:
             continue
 
@@ -144,16 +269,33 @@ def get_package_dependencies(package_name: str) -> set[str]:
             if not _marker_matches(req=req, extras=current_extras):
                 continue
             req_name = normalize_name(req.name)
-            if req_name in dist_map:
-                dependencies.add(req_name)
-                # Keep both spellings: PEP 685 normalizes extras, but a
-                # dependency's marker may use the unnormalized form.
-                req_extras = frozenset(
-                    variant
-                    for extra in req.extras
-                    for variant in (extra, normalize_name(extra))
+            if req_name in _RESOLVED_FROM_PYPI:
+                _check_resolved_pin(req=req, req_str=req_str, dependent=current)
+            elif req_name not in dist_map:
+                resolved = resolve_from_pypi(req)
+                if resolved is None:
+                    print(
+                        f"Warning: {req_str} (required by {current}) is not installed "
+                        "and no PyPI release satisfies it; skipping",
+                        file=sys.stderr,
+                    )
+                    continue
+                print(
+                    f"Resolved {req_name}=={resolved[0]} from PyPI for the target "
+                    f"environment ({req_str}, required by {current})",
+                    file=sys.stderr,
                 )
-                to_process.add((req_name, req_extras))
+                _RESOLVED_FROM_PYPI[req_name] = resolved
+                _RESOLVED_BY[req_name] = (req_str, current)
+            dependencies.add(req_name)
+            # Keep both spellings: PEP 685 normalizes extras, but a
+            # dependency's marker may use the unnormalized form.
+            req_extras = frozenset(
+                variant
+                for extra in req.extras
+                for variant in (extra, normalize_name(extra))
+            )
+            to_process.add((req_name, req_extras))
 
     dependencies.discard(normalized_name)
     return dependencies
@@ -203,14 +345,34 @@ def main() -> None:
         default=[],
         help="Package names to exclude (e.g., available as Homebrew formulae)",
     )
+    parser.add_argument(
+        "--extras",
+        default="",
+        help="Comma-separated extras of the root package to follow (e.g. mcp)",
+    )
+    parser.add_argument(
+        "--platform-machine",
+        default=TARGET_ENV["platform_machine"],
+        help="Target platform_machine for marker evaluation (arm64 or x86_64)",
+    )
     args = parser.parse_args()
 
+    TARGET_ENV["platform_machine"] = args.platform_machine
     exclude: set[str] = {normalize_name(name) for name in args.exclude}
     main_package = normalize_name(args.package)
     exclude.add(main_package)
+    root_extras = frozenset(
+        variant
+        for extra in args.extras.split(",")
+        if extra
+        for variant in (extra, normalize_name(extra))
+    )
 
     installed = get_installed_packages()
-    dependencies = get_package_dependencies(args.package)
+    dependencies = get_package_dependencies(args.package, root_extras=root_extras)
+    installed.update(
+        {name: version for name, (version, _) in _RESOLVED_FROM_PYPI.items()},
+    )
     to_generate = sorted(dependencies - exclude)
 
     if not to_generate:

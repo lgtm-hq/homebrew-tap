@@ -1,0 +1,66 @@
+{
+  "info": {
+    "name": "idna",
+    "version": "3.21"
+  },
+  "releases": {
+    "3.7": [
+      {
+        "filename": "idna-3.7-py3-none-any.whl",
+        "yanked": false,
+        "packagetype": "bdist_wheel",
+        "requires_python": ">=3.6"
+      },
+      {
+        "filename": "idna-3.7.tar.gz",
+        "yanked": false,
+        "packagetype": "sdist",
+        "requires_python": ">=3.6"
+      }
+    ],
+    "3.19": [
+      {
+        "filename": "idna-3.19-py3-none-any.whl",
+        "yanked": false,
+        "packagetype": "bdist_wheel",
+        "requires_python": ">=3.6"
+      },
+      {
+        "filename": "idna-3.19.tar.gz",
+        "yanked": false,
+        "packagetype": "sdist",
+        "requires_python": ">=3.6"
+      }
+    ],
+    "3.20b1": [
+      {
+        "filename": "idna-3.20b1.tar.gz",
+        "yanked": false,
+        "packagetype": "sdist",
+        "requires_python": ">=3.6"
+      }
+    ],
+    "3.21": [
+      {
+        "filename": "idna-3.21-py3-none-any.whl",
+        "yanked": false,
+        "packagetype": "bdist_wheel",
+        "requires_python": ">=3.14"
+      },
+      {
+        "filename": "idna-3.21.tar.gz",
+        "yanked": false,
+        "packagetype": "sdist",
+        "requires_python": ">=3.14"
+      }
+    ],
+    "3.20": [
+      {
+        "filename": "idna-3.20.tar.gz",
+        "yanked": true,
+        "packagetype": "sdist",
+        "requires_python": ">=3.6"
+      }
+    ]
+  }
+}

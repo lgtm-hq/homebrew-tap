@@ -34,8 +34,9 @@ AUTHOR_LOGIN="$(
 )"
 
 # GitHub App authors appear as app/<slug> via GraphQL and <slug>[bot] elsewhere.
-# PRs are opened by github-actions[bot] (GITHUB_TOKEN) while branches are pushed
-# by homebrew-tap-release-bot (App token); both identities are trusted.
+# update-formula.yml opens the PR with the homebrew-tap-release-bot App token
+# (#80); github-actions[bot] stays trusted for PRs from the older GITHUB_TOKEN
+# flow.
 if [[ "$AUTHOR_LOGIN" != "app/homebrew-tap-release-bot" &&
 	"$AUTHOR_LOGIN" != "homebrew-tap-release-bot[bot]" &&
 	"$AUTHOR_LOGIN" != "github-actions[bot]" ]]; then

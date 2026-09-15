@@ -1,0 +1,24 @@
+{
+  "info": {
+    "name": "pydantic_core",
+    "version": "2.46.5"
+  },
+  "urls": [
+    {
+      "packagetype": "bdist_wheel",
+      "filename": "pydantic_core-2.46.5-cp313-cp313-macosx_11_0_arm64.whl",
+      "url": "https://files.pythonhosted.org/packages/21/43/6323b1f8b217780454c61304bcd2b38ae4762f50754414124603ccc90bb2/pydantic_core-2.46.5-cp313-cp313-macosx_11_0_arm64.whl",
+      "digests": {
+        "sha256": "f332f0e72a5a0400141f830744e141bf9f97917878dbe968669e8a7fefea78ff"
+      }
+    },
+    {
+      "packagetype": "bdist_wheel",
+      "filename": "pydantic_core-2.46.5-cp313-cp313-macosx_10_12_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/f5/37/5abe39a8372a61d3dc3c1338fc504281c01b32fdb3169cd7187153b56d3e/pydantic_core-2.46.5-cp313-cp313-macosx_10_12_x86_64.whl",
+      "digests": {
+        "sha256": "b7ca9034437b6022f941f4857459562ee00a560b97e7cce8a0ec5a74fc6766e0"
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "attestation_bundles": [
+    {
+      "publisher": {
+        "kind": "GitHub",
+        "repository": "lgtm-hq/winnow",
+        "workflow": "publish-pypi-on-tag.yml",
+        "environment": "pypi"
+      },
+      "attestations": [
+        {
+          "version": 1,
+          "verification_material": {
+            "certificate": "mock",
+            "transparency_entries": []
+          },
+          "envelope": {
+            "statement": "eyJfdHlwZSI6ICJodHRwczovL2luLXRvdG8uaW8vU3RhdGVtZW50L3YxIiwgInN1YmplY3QiOiBbeyJuYW1lIjogIndpbm5vd19tZWRpYS0wLjAuMS50YXIuZ3oiLCAiZGlnZXN0IjogeyJzaGEyNTYiOiAiODQ2ZjcyNzhlMWVkOTI5MjMzYzlkZTQyYTAzOWViNDJlYjNhNjMzZjE5NTE3YzdiNjVlZDI1ZjRhNGViZTM0MyJ9fV0sICJwcmVkaWNhdGVUeXBlIjogImh0dHBzOi8vZG9jcy5weXBpLm9yZy9hdHRlc3RhdGlvbnMvcHVibGlzaC92MSIsICJwcmVkaWNhdGUiOiBudWxsfQ==",
+            "signature": "mock"
+          }
+        }
+      ]
+    }
+  ]
+}

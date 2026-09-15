@@ -1,0 +1,19 @@
+{
+  "info": {
+    "name": "conflictor",
+    "version": "1.0",
+    "requires_dist": [
+      "idna<3.19"
+    ]
+  },
+  "urls": [
+    {
+      "packagetype": "sdist",
+      "filename": "conflictor-1.0.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/ab/cd/conflictor-1.0.tar.gz",
+      "digests": {
+        "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+      }
+    }
+  ]
+}

@@ -60,8 +60,9 @@ print(len(cfg['formulas']['lintro-full']['homebrew-deps']))
 
 @test "build-pages: versions are read live from Formula/*.rb, not pinned" {
 	build
-	# Binary formula: explicit version field.
-	lver=$(sed -nE 's/^[[:space:]]*version[[:space:]]+"([^"]+)".*/\1/p' \
+	# Binary formula: version embedded in the release asset url (no explicit
+	# version line; brew audit --strict flags it as redundant).
+	lver=$(sed -nE 's|.*/releases/download/v([0-9][^"/]*)/.*|\1|p' \
 		"$REPO_ROOT/Formula/lintro.rb" | head -1)
 	[ -n "$lver" ]
 	grep -q "$lver" "$OUT"

@@ -13,6 +13,10 @@ Usage:
 
     # Specific version
     python3 fetch_wheel_info.py pydantic_core --type platform --version 2.41.5
+
+    # Only one architecture, flat stanza (for a formula branch that is
+    # already inside an on_intel/on_arm block)
+    python3 fetch_wheel_info.py pydantic_core --type platform --arch intel
 """
 
 import argparse
@@ -23,6 +27,7 @@ from pypi_utils import (
     fetch_pypi_json,
     find_macos_wheel,
     find_universal_wheel,
+    normalize_name,
 )
 
 
@@ -78,10 +83,41 @@ def generate_platform_resource(
   end"""
 
 
+def generate_single_arch_resource(
+    package: str,
+    wheel: WheelInfo,
+    comment: str,
+) -> str:
+    """Generate a flat platform-wheel stanza for one architecture.
+
+    Args:
+        package: Package name.
+        wheel: Wheel information for the requested architecture.
+        comment: Comment to add above the resource stanza.
+
+    Returns:
+        Homebrew resource stanza as a string.
+    """
+    return f"""  # {comment}
+  resource "{package}" do
+    url "{wheel.url}"
+    sha256 "{wheel.sha256}"
+  end"""
+
+
+ARCH_WHEEL_TAGS: dict[str, str] = {"arm": "arm64", "intel": "x86_64"}
+
+
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Fetch wheel info from PyPI")
     parser.add_argument("package", help="Package name")
+    parser.add_argument(
+        "--arch",
+        choices=sorted(ARCH_WHEEL_TAGS),
+        default=None,
+        help="Emit a flat stanza for one architecture only (platform wheels)",
+    )
     parser.add_argument(
         "--type",
         choices=["universal", "platform"],
@@ -106,6 +142,11 @@ def main() -> None:
     args = parser.parse_args()
 
     data = fetch_pypi_json(args.package, version=args.version)
+    # Resource names carry the PEP 503 project name (brew audit --strict:
+    # "resource name should be '<normalized>' to match the PyPI package name");
+    # the lookup keeps the configured spelling. pypi_canonical_name in
+    # scripts/ci/lib/pypi-resources.sh applies the same rule to wheel_only.
+    resource_name = normalize_name(args.package)
 
     if args.type == "universal":
         wheel = find_universal_wheel(data)
@@ -116,7 +157,21 @@ def main() -> None:
             )
             sys.exit(1)
         comment = args.comment or f"{args.package} - using wheel"
-        print(generate_universal_resource(args.package, wheel, comment))
+        print(generate_universal_resource(resource_name, wheel, comment))
+    elif args.arch:
+        wheel = find_macos_wheel(
+            data,
+            ARCH_WHEEL_TAGS[args.arch],
+            python_version=args.python_version,
+        )
+        if not wheel:
+            print(
+                f"Error: Missing {ARCH_WHEEL_TAGS[args.arch]} wheel for {args.package}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        comment = args.comment or f"{args.package} - using platform-specific wheels"
+        print(generate_single_arch_resource(resource_name, wheel, comment))
     else:
         arm_wheel = find_macos_wheel(
             data,
@@ -137,7 +192,9 @@ def main() -> None:
             print(f"  x86_64: {'found' if intel_wheel else 'missing'}", file=sys.stderr)
             sys.exit(1)
         comment = args.comment or f"{args.package} - using platform-specific wheels"
-        print(generate_platform_resource(args.package, arm_wheel, intel_wheel, comment))
+        print(
+            generate_platform_resource(resource_name, arm_wheel, intel_wheel, comment),
+        )
 
 
 if __name__ == "__main__":

@@ -5,3 +5,6 @@
 # "certifi" is the PyPI package name (SSL certificates) pinned in Formula
 # resource stanzas — not a misspelling of "certify".
 certifi = "certifi"
+# "intoto" is the in-toto attestation bundle suffix (<asset>.intoto.jsonl) on
+# py-lintro release assets, not a misspelling of "into".
+intoto = "intoto"

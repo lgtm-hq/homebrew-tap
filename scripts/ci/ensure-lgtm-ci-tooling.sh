@@ -6,8 +6,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-# shellcheck source=../lib/lgtm-ci-tooling.sh disable=SC1091
-source "$SCRIPT_DIR/../lib/lgtm-ci-tooling.sh"
+# shellcheck source=lib/lgtm-ci-tooling.sh disable=SC1091
+source "$SCRIPT_DIR/lib/lgtm-ci-tooling.sh"
 
 TOOLING_DIR="$REPO_ROOT/.lgtm-ci-tooling"
 

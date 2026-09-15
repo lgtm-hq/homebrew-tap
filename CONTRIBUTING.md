@@ -56,10 +56,27 @@ brew install --build-from-source ./Formula/<formula>.rb
 
 # Run formula tests
 brew test <formula>
-
-# Audit the formula
-brew audit --strict --online <formula>
 ```
+
+`brew style`, `brew audit --strict --online`, a source install, `brew test`
+and a `--version` smoke check run in CI for every PR that touches a formula
+(`scripts/ci/validate-formulas.sh`); a formula that does not install or that
+has an audit finding outside the explicit accept list fails the check. To run
+the same sequence locally:
+
+```bash
+bash scripts/ci/validate-formulas.sh
+```
+
+Tap scripts have a bats suite with a coverage floor:
+
+```bash
+bash scripts/ci/run-tests.sh
+```
+
+Formulas are generated from `formulas/*.yml`; do not hand-edit `Formula/*.rb`.
+Every generated digest is verified against the release artifacts first (see
+"What the tap verifies before pinning" in the README).
 
 ## Code of Conduct
 

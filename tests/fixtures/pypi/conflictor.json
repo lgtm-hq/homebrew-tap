@@ -1,0 +1,16 @@
+{
+  "info": {
+    "name": "conflictor",
+    "version": "1.0"
+  },
+  "releases": {
+    "1.0": [
+      {
+        "filename": "conflictor-1.0.tar.gz",
+        "yanked": false,
+        "packagetype": "sdist",
+        "requires_python": ">=3.8"
+      }
+    ]
+  }
+}

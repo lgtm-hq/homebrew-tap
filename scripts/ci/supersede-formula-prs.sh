@@ -10,8 +10,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../lib/common.sh disable=SC1091
-source "$SCRIPT_DIR/../lib/common.sh"
+# shellcheck source=lib/common.sh disable=SC1091
+source "$SCRIPT_DIR/lib/common.sh"
 
 usage() {
 	cat <<'EOF'

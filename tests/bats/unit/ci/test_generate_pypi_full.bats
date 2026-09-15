@@ -3,12 +3,14 @@
 # Purpose: Tests for full PyPI formula generation with pinned resources (winnow).
 
 load "../../../helpers/common"
+load "../../../helpers/mocks"
 
 setup() {
 	setup_temp_dir
 	REPO_ROOT="$(repo_root)"
 	bootstrap_test_env "$REPO_ROOT"
 	SCRIPTS_DIR="$REPO_ROOT/scripts/ci"
+	unset GITHUB_ACTIONS SKIP_ASSET_VERIFY
 }
 
 teardown() {
@@ -101,4 +103,240 @@ EOF
 	[ "$status" -eq 0 ]
 	run python3 -c "import json, sys; data=json.loads(sys.argv[1]); wheel=data.get('wheel-only-packages', {}); sys.exit(0 if wheel.get('pydantic_core', {}).get('type') == 'platform' else 1)" "$output"
 	[ "$status" -eq 0 ]
+}
+
+# =============================================================================
+# sdist provenance cross-check wiring (#471)
+# =============================================================================
+
+SDIST_SHA="846f7278e1ed929233c9de42a039eb42eb3a633f19517c7b65ed25f4a4ebe343"
+OTHER_SHA="0000000000000000000000000000000000000000000000000000000000000000"
+
+write_provenance_fixtures() { # $1 = sdist sha advertised by PyPI JSON
+	FIXTURES="$TEST_TEMP_DIR/fixtures"
+	mkdir -p "$FIXTURES/pypi" "$FIXTURES/sdist"
+	cp "$REPO_ROOT/tests/fixtures/pypi/click-8.1.7.json" "$FIXTURES/pypi/"
+	cp "$REPO_ROOT/tests/fixtures/pypi/winnow-media-0.0.1-winnow_media-0.0.1.tar.gz.provenance.json" "$FIXTURES/pypi/"
+	cp "$REPO_ROOT/tests/fixtures/sdist/winnow-media-0.0.1.tar.gz" "$FIXTURES/sdist/"
+	python3 - "$FIXTURES/pypi/winnow-media-0.0.1.json" "$1" <<'PY'
+import json, sys
+path, sha = sys.argv[1:]
+data = {
+    "info": {"version": "0.0.1"},
+    "urls": [{
+        "packagetype": "sdist",
+        "filename": "winnow_media-0.0.1.tar.gz",
+        "url": "https://files.pythonhosted.org/packages/ab/cd/winnow_media-0.0.1.tar.gz",
+        "digests": {"sha256": sha},
+    }],
+}
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(data, handle)
+PY
+	export PYPI_FIXTURE_DIR="$FIXTURES/pypi"
+	cat >"$TEST_TEMP_DIR/winnow-provenance.yml" <<'YAML'
+---
+package: winnow-media
+source-repo: lgtm-hq/winnow
+homepage: https://github.com/lgtm-hq/winnow
+license: MIT
+description: "Organize, deduplicate, and keep the best from your media library"
+provenance:
+  require-attestation: true
+  repo: lgtm-hq/winnow
+  tag-prefix: v
+  sdist-signer-workflow: lgtm-hq/lgtm-ci/.github/workflows/reusable-build-python-dist.yml
+  pypi-publisher-workflow: publish-pypi-on-tag.yml
+
+formulas:
+  winnow:
+    type: pypi
+    generate-resources: true
+    python-version: "3.13"
+    test-command: "winnow --version"
+YAML
+}
+
+run_generate_provenance() {
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$TEST_TEMP_DIR/winnow-provenance.yml" \
+		--formula-key winnow \
+		--version 0.0.1 \
+		--output "$TEST_TEMP_DIR/winnow.rb"
+}
+
+@test "generate-pypi-formula: cross-checks the sdist digest and attestation before rendering" {
+	mock_gh_provenance "$TEST_TEMP_DIR/mock-bin"
+	export MOCK_RELEASE_DIGEST="$SDIST_SHA"
+	write_provenance_fixtures "$SDIST_SHA"
+
+	run_generate_provenance
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"sdist digests agree for winnow_media-0.0.1.tar.gz"* ]]
+	[[ "$output" == *"PEP 740 provenance for winnow_media-0.0.1.tar.gz matches"* ]]
+	[[ "$output" == *"Attestation verified for winnow_media-0.0.1.tar.gz"* ]]
+	grep -q 'resource "click" do' "$TEST_TEMP_DIR/winnow.rb"
+	grep -q "sha256 \"${SDIST_SHA}\"" "$TEST_TEMP_DIR/winnow.rb"
+}
+
+@test "generate-pypi-formula: fails when the GitHub Release digest differs from PyPI" {
+	mock_gh_provenance "$TEST_TEMP_DIR/mock-bin"
+	export MOCK_RELEASE_DIGEST="$OTHER_SHA"
+	write_provenance_fixtures "$SDIST_SHA"
+
+	run_generate_provenance
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"sdist digest mismatch for winnow_media-0.0.1.tar.gz"* ]]
+	[[ "$output" == *"GitHub Release:  ${OTHER_SHA}"* ]]
+	[ ! -f "$TEST_TEMP_DIR/winnow.rb" ]
+}
+
+@test "generate-pypi-formula: fails when the sdist attestation is missing and required" {
+	mock_gh_provenance "$TEST_TEMP_DIR/mock-bin"
+	export MOCK_RELEASE_DIGEST="$SDIST_SHA"
+	export MOCK_GH_ATTEST_MODE=missing
+	write_provenance_fixtures "$SDIST_SHA"
+
+	run_generate_provenance
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Attestation verification failed for winnow_media-0.0.1.tar.gz"* ]]
+	[ ! -f "$TEST_TEMP_DIR/winnow.rb" ]
+}
+
+@test "generate-pypi-formula: winnow without a provenance block logs the skip" {
+	export PYPI_FIXTURE_DIR="$REPO_ROOT/tests/fixtures/pypi"
+
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$REPO_ROOT/formulas/winnow.yml" \
+		--formula-key winnow \
+		--version 0.0.1 \
+		--output "$TEST_TEMP_DIR/winnow.rb"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"[WARN]"*"No provenance block in config for winnow"* ]]
+}
+
+@test "generate-pypi-formula: an incomplete provenance block fails naming the key" {
+	mock_gh_provenance "$TEST_TEMP_DIR/mock-bin"
+	write_provenance_fixtures "$SDIST_SHA"
+	sed -i.bak '/^  tag-prefix: v$/d' "$TEST_TEMP_DIR/winnow-provenance.yml"
+
+	run_generate_provenance
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance.tag-prefix is required for winnow"* ]]
+	[ ! -f "$TEST_TEMP_DIR/winnow.rb" ]
+}
+
+@test "generate-pypi-formula: provenance: {} and provenance: (null) are errors, not skips" {
+	mock_gh_provenance "$TEST_TEMP_DIR/mock-bin"
+	write_provenance_fixtures "$SDIST_SHA"
+	python3 - "$TEST_TEMP_DIR/winnow-provenance.yml" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+text = re.sub(r"provenance:\n(  .*\n)+", "provenance: {}\n", text)
+open(path, "w").write(text)
+PY
+	grep -q '^provenance: {}$' "$TEST_TEMP_DIR/winnow-provenance.yml"
+
+	run_generate_provenance
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance block for winnow is present but empty"* ]]
+	[ ! -f "$TEST_TEMP_DIR/winnow.rb" ]
+
+	sed -i.bak 's/^provenance: {}$/provenance:/' "$TEST_TEMP_DIR/winnow-provenance.yml"
+
+	run_generate_provenance
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance block for winnow must be a mapping (got NoneType)"* ]]
+	[ ! -f "$TEST_TEMP_DIR/winnow.rb" ]
+}
+
+@test "generate-pypi-formula: SKIP_ASSET_VERIFY is refused under GitHub Actions" {
+	export PYPI_FIXTURE_DIR="$REPO_ROOT/tests/fixtures/pypi"
+	export GITHUB_ACTIONS=true
+	export SKIP_ASSET_VERIFY=1
+
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$REPO_ROOT/formulas/winnow.yml" \
+		--formula-key winnow \
+		--version 0.0.1 \
+		--output "$TEST_TEMP_DIR/winnow.rb"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Refusing to skip asset verification under GitHub Actions"* ]]
+}
+
+@test "generate-pypi-formula: --skip-asset-verify skips the provenance checks locally" {
+	unset GITHUB_ACTIONS
+	mock_gh_provenance "$TEST_TEMP_DIR/mock-bin"
+	write_provenance_fixtures "$SDIST_SHA"
+
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$TEST_TEMP_DIR/winnow-provenance.yml" \
+		--formula-key winnow \
+		--version 0.0.1 \
+		--output "$TEST_TEMP_DIR/winnow.rb" \
+		--skip-asset-verify
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"ASSET VERIFICATION DISABLED"* ]]
+	[ ! -s "$MOCK_GH_LOG" ]
+}
+
+@test "generate-pypi-formula: lintro-full declares no redundant version line" {
+	! grep -qE '^  version "' "$REPO_ROOT/Formula/lintro-full.rb"
+	! grep -q 'version "' "$SCRIPTS_DIR/templates/pypi-full.rb.template"
+}
+
+@test "generate-pypi-formula: no bottle comment is rendered" {
+	export PYPI_FIXTURE_DIR="$REPO_ROOT/tests/fixtures/pypi"
+	cat >"$TEST_TEMP_DIR/winnow-head.yml" <<'YAML'
+---
+package: winnow-media
+source-repo: lgtm-hq/winnow
+homepage: https://github.com/lgtm-hq/winnow
+license: MIT
+description: "Organize, deduplicate, and keep the best from your media library"
+
+formulas:
+  winnow:
+    type: pypi
+    generate-resources: true
+    python-version: "3.13"
+    test-command: "winnow --version"
+    head: true
+    bottle-comment: true
+YAML
+
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$TEST_TEMP_DIR/winnow-head.yml" \
+		--formula-key winnow \
+		--version 0.0.1 \
+		--output "$TEST_TEMP_DIR/winnow.rb"
+
+	[ "$status" -eq 0 ]
+	grep -q 'head "https://github.com/lgtm-hq/winnow.git", branch: "main"' "$TEST_TEMP_DIR/winnow.rb"
+	! grep -qi 'bottle' "$TEST_TEMP_DIR/winnow.rb"
+}
+
+@test "committed formulas: wheel-only packages render with the PEP 503 name" {
+	# winnow.yml keys pillow_heif and pydantic_core; brew audit --strict wants
+	# the resource named after the PyPI project (pillow-heif, pydantic-core),
+	# and the wheel_only list must use the same spelling.
+	formula="$REPO_ROOT/Formula/winnow.rb"
+	grep -q '^  resource "pillow-heif" do' "$formula"
+	grep -q '^  resource "pydantic-core" do' "$formula"
+	! grep -q 'resource "pillow_heif"' "$formula"
+	! grep -q 'resource "pydantic_core"' "$formula"
+	grep -q 'wheel_only = %w\[numpy pillow pillow-heif pydantic-core pywavelets scipy\]' "$formula"
+	grep -q '^  resource "pydantic-core" do' "$REPO_ROOT/Formula/lintro-full.rb"
+	grep -q '^      resource "pydantic-core" do' "$REPO_ROOT/Formula/lintro.rb"
+	grep -q 'wheel_only = %w\[pydantic-core\]' "$REPO_ROOT/Formula/lintro.rb"
 }

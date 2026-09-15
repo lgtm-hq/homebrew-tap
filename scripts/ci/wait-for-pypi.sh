@@ -6,10 +6,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-# shellcheck source=../lib/common.sh disable=SC1091
-source "$SCRIPT_DIR/../lib/common.sh"
-# shellcheck source=../lib/lgtm-ci-tooling.sh disable=SC1091
-source "$SCRIPT_DIR/../lib/lgtm-ci-tooling.sh"
+# shellcheck source=lib/common.sh disable=SC1091
+source "$SCRIPT_DIR/lib/common.sh"
+# shellcheck source=lib/lgtm-ci-tooling.sh disable=SC1091
+source "$SCRIPT_DIR/lib/lgtm-ci-tooling.sh"
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
 	cat <<'EOF'
