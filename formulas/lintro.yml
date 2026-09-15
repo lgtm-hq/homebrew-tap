@@ -50,6 +50,12 @@ formulas:
       min-resource-count: 5
       homebrew-deps:
         - libyaml
+        # cryptography and rpds-py are pinned as sdists (no x86_64 macOS
+        # wheel for cryptography at this pin) and build Rust extensions
+        # with maturin/cargo, so the Intel source build needs a toolchain
+        # at build time only.
+        - name: rust
+          build: true
       wheel-only-packages:
         pydantic-core:
           type: platform

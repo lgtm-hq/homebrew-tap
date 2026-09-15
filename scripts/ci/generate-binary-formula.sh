@@ -368,14 +368,29 @@ if [[ -n "$PYPI_EXTRAS" ]]; then
 fi
 
 # Homebrew dependencies of the Intel branch (intel-pypi.homebrew-deps, e.g.
-# libyaml for pyyaml) plus the Python runtime, sorted like the full formula.
-INTEL_HOMEBREW_DEPS=()
-while IFS= read -r line; do
-	[[ -n "$line" ]] && INTEL_HOMEBREW_DEPS+=("$line")
-done < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1]).get('homebrew-deps') or []))" "$INTEL_PYPI_JSON")
-while IFS= read -r dep; do
-	echo "      depends_on \"${dep}\""
-done < <(printf '%s\n' ${INTEL_HOMEBREW_DEPS[@]+"${INTEL_HOMEBREW_DEPS[@]}"} "python@${PYTHON_VERSION}" | LC_ALL=C sort) >"$TMPDIR/intel_deps.txt"
+# libyaml for pyyaml) plus the Python runtime. An entry is a name or a
+# {name, build: true} mapping; build-only dependencies render as
+# `depends_on "x" => :build` and, as brew style's dependency ordering
+# expects, come before the runtime ones. Each group is sorted by name.
+python3 - "$INTEL_PYPI_JSON" "python@${PYTHON_VERSION}" >"$TMPDIR/intel_deps.txt" <<'PY'
+import json
+import sys
+
+entries = json.loads(sys.argv[1]).get("homebrew-deps") or []
+build, runtime = [], [sys.argv[2]]
+for entry in entries:
+    if isinstance(entry, dict):
+        name = entry.get("name")
+        if not name:
+            sys.exit("intel-pypi.homebrew-deps mapping entries need a name")
+        (build if entry.get("build") else runtime).append(name)
+    else:
+        runtime.append(entry)
+for name in sorted(build):
+    print(f'      depends_on "{name}" => :build')
+for name in sorted(runtime):
+    print(f'      depends_on "{name}"')
+PY
 
 TEST_EXTRA_RAW=$(read_config_value test-extra)
 TEST_EXTRA_BLOCK=$(build_test_extra_block "$TEST_EXTRA_RAW")

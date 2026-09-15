@@ -255,7 +255,7 @@ run_generate_pinme() {
 	run_generate_pinme
 
 	[ "$status" -eq 0 ]
-	# idna is gated on sys_platform == darwin and platform_machine == x86_64:
+	# idna (>=3.7) is gated on sys_platform == darwin and platform_machine == x86_64:
 	# the analysis venv (whatever host runs CI) never installs it, so it is
 	# resolved from PyPI metadata and pinned for the Intel branch.
 	[[ "$output" == *"Resolved idna==3.19 from PyPI for the target environment"* ]]
@@ -263,6 +263,27 @@ run_generate_pinme() {
 	grep -q '^      resource "idna" do' <<<"$intel_block"
 	grep -q 'idna-3.19.tar.gz' <<<"$intel_block"
 	[ "$(grep -c '^      resource "' "$OUTPUT_FILE")" -eq 2 ]
+}
+
+@test "generate-binary-formula: PyPI resolution honours the sdist requires_python" {
+	# The idna fixture's newest final release (3.21) only ships files with
+	# requires_python >=3.14, 3.20 is yanked and 3.20b1 is a prerelease, so
+	# the resolver must fall back to 3.19 for the Python 3.13 target.
+	python3 - "$REPO_ROOT/tests/fixtures/pypi/idna.json" <<'PY'
+import json, sys
+releases = json.load(open(sys.argv[1]))["releases"]
+assert all(f["requires_python"] == ">=3.14" for f in releases["3.21"]), releases["3.21"]
+assert releases["3.20"][0]["yanked"] is True
+PY
+	write_pinme_config ""
+
+	run_generate_pinme
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Skipping idna 3.21: no sdist accepts Python 3.13.0 (requires_python)"* ]]
+	[[ "$output" == *"Resolved idna==3.19 from PyPI"* ]]
+	! grep -q 'idna-3.21' "$OUTPUT_FILE"
+	grep -q 'idna-3.19.tar.gz' "$OUTPUT_FILE"
 }
 
 @test "generate-binary-formula: Intel homebrew-deps render sorted with the Python dependency" {
@@ -278,6 +299,23 @@ YAML
 	intel_block="$(awk '/^    on_intel do/,/^    end$/' "$OUTPUT_FILE")"
 	deps="$(grep 'depends_on' <<<"$intel_block" | tr -d ' ')"
 	[ "$deps" = $'depends_on"libyaml"\ndepends_on"python@3.13"' ]
+}
+
+@test "generate-binary-formula: Intel build-only homebrew-deps render as => :build before runtime deps" {
+	write_config true
+	cat >>"$CONFIG" <<'YAML'
+      homebrew-deps:
+        - libyaml
+        - name: rust
+          build: true
+YAML
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -eq 0 ]
+	intel_block="$(awk '/^    on_intel do/,/^    end$/' "$OUTPUT_FILE")"
+	deps="$(grep 'depends_on' <<<"$intel_block" | sed 's/^ *//')"
+	[ "$deps" = $'depends_on "rust" => :build\ndepends_on "libyaml"\ndepends_on "python@3.13"' ]
 }
 
 @test "generate-binary-formula: fails when fewer resources than min-resource-count are pinned" {
@@ -611,6 +649,9 @@ assert p["pypi-publisher-workflow"] == "publish-pypi-on-tag.yml", p
 	# lintro[mcp] pulls the mcp SDK; it must be pinned like everything else.
 	grep -q '^      resource "mcp" do' <<<"$intel_block"
 	grep -q 'depends_on "libyaml"' <<<"$intel_block"
+	# cryptography / rpds-py are pinned as sdists that build Rust extensions.
+	grep -q '^      depends_on "rust" => :build' <<<"$intel_block"
+	grep -q 'resource "cryptography"' <<<"$intel_block"
 	grep -q 'venv.pip_install_and_link "#{buildpath}\[mcp\]"' "$formula"
 	# Exactly one blank line separates the sdist resources from the wheel
 	# resources, and no double blank line exists anywhere (brew style).

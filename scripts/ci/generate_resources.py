@@ -27,8 +27,10 @@ from __future__ import annotations
 import argparse
 import sys
 from importlib.metadata import distributions
+from typing import Any
 
 from packaging.requirements import InvalidRequirement, Requirement
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
 
 from pypi_utils import fetch_pypi_json, get_sdist_info, normalize_name
@@ -106,11 +108,56 @@ def _marker_matches(req: Requirement, extras: frozenset[str]) -> bool:
     return any(req.marker.evaluate({**TARGET_ENV, "extra": extra}) for extra in extras)
 
 
+def _is_sdist(entry: dict[str, Any]) -> bool:
+    """Tell whether a release file entry is a source distribution.
+
+    Args:
+        entry: One entry of a PyPI ``releases[<version>]`` list.
+
+    Returns:
+        True for sdists (by packagetype, or by filename when absent).
+    """
+    packagetype = entry.get("packagetype")
+    if packagetype:
+        return packagetype == "sdist"
+    filename = entry.get("filename") or ""
+    return filename.endswith((".tar.gz", ".zip"))
+
+
+def _sdist_supports_target(files: list[dict[str, Any]]) -> bool:
+    """Tell whether a release has a usable sdist for the target Python.
+
+    The generated resource pins the sdist, so the release must carry at
+    least one non-yanked sdist whose ``requires_python`` is absent or
+    accepts ``TARGET_ENV["python_full_version"]``.
+
+    Args:
+        files: The release's file entries.
+
+    Returns:
+        True when such an sdist exists.
+    """
+    target = Version(TARGET_ENV["python_full_version"])
+    for entry in files:
+        if not _is_sdist(entry) or entry.get("yanked"):
+            continue
+        requires_python = entry.get("requires_python")
+        if not requires_python:
+            return True
+        try:
+            if SpecifierSet(requires_python).contains(target, prereleases=True):
+                return True
+        except InvalidSpecifier:
+            continue
+    return False
+
+
 def resolve_from_pypi(req: Requirement) -> tuple[str, list[str] | None] | None:
     """Resolve a requirement that the analysis environment did not install.
 
     Picks the newest final release on PyPI that satisfies the specifier and
-    returns its version and Requires-Dist metadata.
+    ships an sdist usable on the target Python, and returns its version and
+    Requires-Dist metadata.
 
     Args:
         req: Requirement to resolve.
@@ -129,8 +176,16 @@ def resolve_from_pypi(req: Requirement) -> tuple[str, list[str] | None] | None:
             continue
         if any(entry.get("yanked") for entry in files):
             continue
-        if req.specifier.contains(parsed, prereleases=False):
-            candidates.append(parsed)
+        if not req.specifier.contains(parsed, prereleases=False):
+            continue
+        if not _sdist_supports_target(files):
+            print(
+                f"Skipping {req.name} {parsed}: no sdist accepts Python "
+                f"{TARGET_ENV['python_full_version']} (requires_python)",
+                file=sys.stderr,
+            )
+            continue
+        candidates.append(parsed)
     if not candidates:
         return None
     version = str(max(candidates))

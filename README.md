@@ -239,7 +239,7 @@ Formula entry fields:
 | `wheel-only-packages` | pypi | Packages installed from wheels (not sdist); the key is the PyPI lookup name, the rendered `resource` is its PEP 503 normalized form (`pydantic_core` becomes `pydantic-core`, as `brew audit --strict` requires) |
 | `binary-url-pattern` | binary | Release URL with `{version}` and `{arch}` |
 | `binary-names` | binary | Asset filenames per architecture (`arm64`) |
-| `intel-pypi` | binary | Intel fallback: `python-version` (Homebrew Python dependency), `extras` (PyPI extras whose dependencies are pinned too, e.g. `[mcp]`), `min-resource-count`, `homebrew-deps` and `wheel-only-packages` (same shape as a pypi entry). The `on_intel` branch installs `package` at the same version from the PyPI sdist into a virtualenv with every dependency pinned as a `resource`. |
+| `intel-pypi` | binary | Intel fallback: `python-version` (Homebrew Python dependency), `extras` (PyPI extras whose dependencies are pinned too, e.g. `[mcp]`), `min-resource-count`, `homebrew-deps` (a name, or `{name, build: true}` for a build-time dependency such as `rust`, rendered as `depends_on "rust" => :build`) and `wheel-only-packages` (same shape as a pypi entry). The `on_intel` branch installs `package` at the same version from the PyPI sdist into a virtualenv with every dependency pinned as a `resource`. |
 | `provenance` | optional (product level, per-formula override) | `require-attestation`, `repo`, `tag-prefix`, `binary-signer-workflow`, `sdist-signer-workflow`, `pypi-publisher-workflow`; see "What the tap verifies before pinning". |
 | `install-name` | binary | Binary name installed to `$PREFIX/bin` |
 | `class-name` | optional | Override Homebrew class name |
