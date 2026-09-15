@@ -10,7 +10,7 @@
 #   repo                     owner/repo whose GitHub Releases publish the
 #                            artifacts (release digest + attestation lookup)
 #   tag-prefix               release tag prefix in front of the version
-#                            (default "v")
+#                            (e.g. "v"; required once the block exists)
 #   binary-signer-workflow   owner/repo/.github/workflows/<file> that signed
 #                            the release binaries (`--signer-workflow`)
 #   sdist-signer-workflow    owner/repo/.github/workflows/<file> that signed
@@ -18,6 +18,12 @@
 #                            is fine because the path carries its repo
 #   pypi-publisher-workflow  workflow file PyPI records as the Trusted
 #                            Publisher in the PEP 740 provenance
+#
+# A missing or incomplete block never silently skips a check:
+#   - no `provenance:` block at all -> provenance_mode prints "skip" and the
+#     caller logs it; the sha256 checks still run.
+#   - a block that is present but lacks a key the caller needs -> error
+#     naming the key, whatever require-attestation says.
 #
 # Functions never `exit`; callers decide (they run under set -e).
 
@@ -43,12 +49,47 @@ file_sha256() {
 	fi
 }
 
+# Decide whether provenance checks run for a product and validate the block.
+# Usage: provenance_mode '<json>' <binary|pypi> <label>
+# Prints "skip" when the config has no provenance block, "verify" when the
+# block is complete for the caller kind; returns 1 (naming the key) when
+# the block is present but incomplete.
+provenance_mode() {
+	local provenance_json="$1"
+	local kind="$2"
+	local label="$3"
+
+	local key_count
+	key_count="$(python3 -c 'import json, sys; print(len(json.loads(sys.argv[1]) or {}))' "$provenance_json")"
+	if [[ "$key_count" -eq 0 ]]; then
+		printf 'skip\n'
+		return 0
+	fi
+
+	local required=(repo tag-prefix sdist-signer-workflow pypi-publisher-workflow)
+	if [[ "$kind" == "binary" ]]; then
+		required+=(binary-signer-workflow)
+	fi
+	local key missing=0
+	for key in "${required[@]}"; do
+		if [[ -z "$(provenance_value "$provenance_json" "$key")" ]]; then
+			log_error "provenance.${key} is required for ${label}: the provenance block is present but incomplete"
+			missing=1
+		fi
+	done
+	if [[ "$missing" -eq 1 ]]; then
+		return 1
+	fi
+	printf 'verify\n'
+}
+
 # Verify a GitHub artifact attestation for a downloaded file.
 # Usage: verify_attestation <file> <label> <repo> <signer-workflow> <require>
 # The identity is `--repo <repo> --signer-workflow <signer-workflow>`; gh
 # rejects --signer-repo alongside --signer-workflow, and the workflow path
 # already names the signing repository. Needs egress to api.github.com and
-# tuf-repo-cdn.sigstore.dev.
+# tuf-repo-cdn.sigstore.dev. An empty identity is a configuration error,
+# never a skip (provenance_mode decides whether checks run at all).
 verify_attestation() {
 	local file="$1"
 	local label="$2"
@@ -58,12 +99,8 @@ verify_attestation() {
 	local identity="repo ${repo}, signer workflow ${workflow}"
 
 	if [[ -z "$repo" || -z "$workflow" ]]; then
-		if [[ "$require" == "true" ]]; then
-			log_error "require-attestation is true but no attestation identity (repo + signer workflow) is configured for ${label}"
-			return 1
-		fi
-		log_info "No attestation identity configured for ${label}; skipping attestation check"
-		return 0
+		log_error "No attestation identity (repo + signer workflow) configured for ${label}"
+		return 1
 	fi
 
 	log_info "Verifying attestation for ${label} (${identity})"
@@ -143,29 +180,19 @@ verify_sdist_provenance() {
 	sdist_workflow="$(provenance_value "$provenance_json" sdist-signer-workflow)"
 	pypi_workflow="$(provenance_value "$provenance_json" pypi-publisher-workflow)"
 
-	if [[ -z "$repo" ]]; then
-		if [[ "$require" == "true" ]]; then
-			log_error "require-attestation is true but provenance.repo is not configured for ${package}"
-			return 1
-		fi
-		log_info "No provenance.repo configured for ${package}; skipping sdist cross-checks"
-		return 0
+	if [[ -z "$repo" || -z "$tag_prefix" || -z "$sdist_workflow" || -z "$pypi_workflow" ]]; then
+		log_error "Incomplete provenance block for ${package} (repo, tag-prefix, sdist-signer-workflow and pypi-publisher-workflow are required)"
+		return 1
 	fi
 
 	local downloaded_sha release_sha
 	downloaded_sha="$(file_sha256 "$file")"
-	release_sha="$(release_asset_digest "$repo" "${tag_prefix:-v}${version}" "$filename")" || return 1
+	release_sha="$(release_asset_digest "$repo" "${tag_prefix}${version}" "$filename")" || return 1
 	check_sdist_digests "$filename" "$pypi_sha" "$downloaded_sha" "$release_sha" || return 1
 
-	local provenance_args=(
-		"$package" "$version" "$filename"
-		--sha256 "$pypi_sha"
-		--repo "$repo"
-	)
-	if [[ -n "$pypi_workflow" ]]; then
-		provenance_args+=(--workflow "$pypi_workflow")
-	fi
-	python3 "$_PROVENANCE_LIB_DIR/../check_pypi_provenance.py" "${provenance_args[@]}" || return 1
+	python3 "$_PROVENANCE_LIB_DIR/../check_pypi_provenance.py" \
+		"$package" "$version" "$filename" \
+		--sha256 "$pypi_sha" --repo "$repo" --workflow "$pypi_workflow" || return 1
 
 	verify_attestation "$file" "$filename" "$repo" "$sdist_workflow" "$require"
 }

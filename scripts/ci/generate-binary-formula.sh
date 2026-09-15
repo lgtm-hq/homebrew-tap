@@ -36,8 +36,8 @@ Environment (test seams):
   PYPI_FIXTURE_DIR   Read PyPI JSON from fixtures; the sdist is read from
                      ../sdist/<file> and the arm64 asset from
                      ../assets/<name> next to that directory.
-  SKIP_ASSET_VERIFY  Skip the arm64 download, sha256 check and every
-                     provenance check (local regeneration only).
+  SKIP_ASSET_VERIFY  Same as --skip-asset-verify; only the literal value 1
+                     is accepted, and never under GitHub Actions.
 
 Usage: generate-binary-formula.sh --config <formulas/*.yml> --formula-key <key> \
   --version <ver> --output <file> --binary-assets <json>
@@ -51,6 +51,10 @@ Options:
                     is validated but not used: the formula no longer ships
                     an x86_64 binary.
   --pypi-package    Override PyPI package name from config (Intel sdist)
+  --skip-asset-verify
+                    Local regeneration only: skip the arm64 download,
+                    sha256 check and every provenance check. Refused under
+                    GitHub Actions.
 EOF
 }
 
@@ -60,6 +64,7 @@ VERSION=""
 OUTPUT_FILE=""
 BINARY_ASSETS="{}"
 PYPI_PACKAGE_OVERRIDE=""
+SKIP_VERIFY_FLAG="false"
 
 require_option_value() {
 	local flag="$1"
@@ -102,6 +107,10 @@ while [[ $# -gt 0 ]]; do
 		require_option_value "$1" "${2:-}"
 		PYPI_PACKAGE_OVERRIDE="$2"
 		shift 2
+		;;
+	--skip-asset-verify)
+		SKIP_VERIFY_FLAG="true"
+		shift
 		;;
 	-h | --help)
 		usage
@@ -188,10 +197,13 @@ if [[ -z "$PACKAGE_NAME" ]]; then
 	exit 1
 fi
 
+# The rendered url carries the literal version: Homebrew scans the version
+# from it, so the formula declares no `version` line (brew audit --strict
+# flags one as redundant).
 build_binary_url() {
 	local arch="$1"
 	printf '%s\n' "$BINARY_URL_PATTERN" | sed \
-		-e 's/{version}/#{version}/g' \
+		-e "s/{version}/${VERSION}/g" \
 		-e "s/{arch}/${arch}/g"
 }
 
@@ -240,12 +252,9 @@ fetch_asset() {
 		return 0
 	fi
 
-	# Formula URLs embed the literal Ruby token '#{version}'; substitute the
-	# concrete version so the asset can actually be downloaded.
-	local download_url="${formula_url//\#\{version\}/$VERSION}"
-	log_info "Downloading ${label} asset from ${download_url}"
-	if ! curl -sSfL "$download_url" -o "$dest"; then
-		log_error "Failed to download ${label} asset from ${download_url}"
+	log_info "Downloading ${label} asset from ${formula_url}"
+	if ! curl -sSfL "$formula_url" -o "$dest"; then
+		log_error "Failed to download ${label} asset from ${formula_url}"
 		return 1
 	fi
 }
@@ -274,22 +283,29 @@ SDIST_FILE="$TMPDIR/$(basename "$SDIST_URL")"
 fetch_asset "sdist" "$SDIST_URL" "$SDIST_FILE" "sdist" || exit 1
 verify_asset_sha "sdist" "$SDIST_FILE" "$SDIST_SHA" || exit 1
 
-if [[ -n "${SKIP_ASSET_VERIFY:-}" ]]; then
-	log_warning "SKIP_ASSET_VERIFY set; skipping arm64 asset verification and every provenance check"
-else
-	# 1. arm64 binary: bytes match the dispatched digest AND the asset carries
-	#    a GitHub attestation from the configured release workflow.
+SKIP_VERIFY="$(resolve_skip_asset_verify "$SKIP_VERIFY_FLAG")" || exit 1
+if [[ "$SKIP_VERIFY" != "true" ]]; then
+	# 1. arm64 binary: bytes match the dispatched digest.
 	ARM64_FILE="$TMPDIR/$ARM64_ASSET"
 	fetch_asset "arm64" "$ARM64_URL" "$ARM64_FILE" "assets" || exit 1
 	verify_asset_sha "arm64" "$ARM64_FILE" "$ARM64_SHA" || exit 1
-	verify_attestation "$ARM64_FILE" "$ARM64_ASSET" "$PROVENANCE_REPO" \
-		"$BINARY_SIGNER_WORKFLOW" "$REQUIRE_ATTESTATION" || exit 1
 
-	# 2. sdist: PyPI JSON digest == downloaded digest == GitHub Release digest,
-	#    PEP 740 provenance names the same file/digest/publisher, and the sdist
-	#    carries an attestation from the configured build workflow.
-	verify_sdist_provenance "$SDIST_FILE" "$PACKAGE_NAME" "$VERSION" "$SDIST_SHA" \
-		"$PROVENANCE_JSON" || exit 1
+	# 2. Provenance: an incomplete provenance block is an error; no block at
+	#    all means the product has not adopted the checks yet (logged).
+	PROVENANCE_MODE="$(provenance_mode "$PROVENANCE_JSON" binary "$FORMULA_KEY")" || exit 1
+	if [[ "$PROVENANCE_MODE" == "skip" ]]; then
+		log_warning "No provenance block in config for ${FORMULA_KEY}: attestation and sdist cross-checks not run (sha256 checks only)"
+	else
+		# The arm64 asset carries a GitHub attestation from the configured
+		# release workflow.
+		verify_attestation "$ARM64_FILE" "$ARM64_ASSET" "$PROVENANCE_REPO" \
+			"$BINARY_SIGNER_WORKFLOW" "$REQUIRE_ATTESTATION" || exit 1
+		# sdist: PyPI JSON digest == downloaded digest == GitHub Release digest,
+		# PEP 740 provenance names the same file/digest/publisher, and the
+		# sdist carries an attestation from the configured build workflow.
+		verify_sdist_provenance "$SDIST_FILE" "$PACKAGE_NAME" "$VERSION" "$SDIST_SHA" \
+			"$PROVENANCE_JSON" || exit 1
+	fi
 fi
 
 log_info "Generating binary formula '${FORMULA_KEY}' for version ${VERSION}"
@@ -333,13 +349,23 @@ generate_pinned_resources "$PACKAGE_NAME" "$SDIST_FILE" "$PYTHON_VERSION" \
 indent_block 4 "$TMPDIR/resources.txt"
 indent_block 4 "$TMPDIR/wheels.txt"
 indent_block 2 "$TMPDIR/install_resources.txt"
-# The wheel placeholder sits at the end of the resources placeholder, so a
-# non-empty wheel block needs its own blank-line separator.
+# Separator accounting for {{INTEL_RESOURCES}}{{INTEL_WHEEL_RESOURCES}}: the
+# placeholders are adjacent (an empty wheel block must not leave a blank
+# line before `end`), render_formula.py rstrips every replacement, and
+# generate_pinned_resources prepends exactly one newline to a non-empty
+# wheels.txt. That newline only terminates the last resource line, so one
+# more is needed for the single blank line between the two sections.
 if [[ -s "$TMPDIR/wheels.txt" ]]; then
 	printf '\n' | cat - "$TMPDIR/wheels.txt" >"$TMPDIR/wheels.txt.tmp"
 	mv "$TMPDIR/wheels.txt.tmp" "$TMPDIR/wheels.txt"
 fi
 PYPI_EXTRAS_LABEL="${PACKAGE_NAME}${PYPI_EXTRAS:+[${PYPI_EXTRAS}]}"
+# pip accepts "<path>[extra]" for a local project, so the formula installs
+# the same extras spec the resource walk followed.
+INTEL_INSTALL_TARGET="buildpath"
+if [[ -n "$PYPI_EXTRAS" ]]; then
+	INTEL_INSTALL_TARGET="\"#{buildpath}[${PYPI_EXTRAS}]\""
+fi
 
 # Homebrew dependencies of the Intel branch (intel-pypi.homebrew-deps, e.g.
 # libyaml for pyyaml) plus the Python runtime, sorted like the full formula.
@@ -368,7 +394,6 @@ python3 "$SCRIPT_DIR/render_formula.py" \
 	--replace "CLASS_NAME=${CLASS_NAME}" \
 	--replace "DESCRIPTION=${DESCRIPTION}" \
 	--replace "HOMEPAGE=${HOMEPAGE}" \
-	--replace "VERSION=${VERSION}" \
 	--replace "LICENSE=${LICENSE}" \
 	--replace "ARM64_URL=${ARM64_URL}" \
 	--replace "ARM64_SHA=${ARM64_SHA}" \
@@ -377,6 +402,7 @@ python3 "$SCRIPT_DIR/render_formula.py" \
 	--replace "ARM64_ASSET=${ARM64_ASSET}" \
 	--replace "PYTHON_VERSION=${PYTHON_VERSION}" \
 	--replace "PYPI_EXTRAS_LABEL=${PYPI_EXTRAS_LABEL}" \
+	--replace "INTEL_INSTALL_TARGET=${INTEL_INSTALL_TARGET}" \
 	--replace-file "INTEL_DEPS=${TMPDIR}/intel_deps.txt" \
 	--replace-file "INTEL_RESOURCES=${TMPDIR}/resources.txt" \
 	--replace-file "INTEL_WHEEL_RESOURCES=${TMPDIR}/wheels.txt" \

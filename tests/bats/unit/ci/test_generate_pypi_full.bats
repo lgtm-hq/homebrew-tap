@@ -10,6 +10,7 @@ setup() {
 	REPO_ROOT="$(repo_root)"
 	bootstrap_test_env "$REPO_ROOT"
 	SCRIPTS_DIR="$REPO_ROOT/scripts/ci"
+	unset GITHUB_ACTIONS SKIP_ASSET_VERIFY
 }
 
 teardown() {
@@ -143,6 +144,7 @@ description: "Organize, deduplicate, and keep the best from your media library"
 provenance:
   require-attestation: true
   repo: lgtm-hq/winnow
+  tag-prefix: v
   sdist-signer-workflow: lgtm-hq/lgtm-ci/.github/workflows/reusable-build-python-dist.yml
   pypi-publisher-workflow: publish-pypi-on-tag.yml
 
@@ -204,7 +206,7 @@ run_generate_provenance() {
 	[ ! -f "$TEST_TEMP_DIR/winnow.rb" ]
 }
 
-@test "generate-pypi-formula: winnow without a provenance block skips the cross-checks" {
+@test "generate-pypi-formula: winnow without a provenance block logs the skip" {
 	export PYPI_FIXTURE_DIR="$REPO_ROOT/tests/fixtures/pypi"
 
 	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
@@ -214,7 +216,56 @@ run_generate_provenance() {
 		--output "$TEST_TEMP_DIR/winnow.rb"
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"skipping sdist cross-checks"* ]]
+	[[ "$output" == *"[WARN]"*"No provenance block in config for winnow"* ]]
+}
+
+@test "generate-pypi-formula: an incomplete provenance block fails naming the key" {
+	mock_gh_provenance "$TEST_TEMP_DIR/mock-bin"
+	write_provenance_fixtures "$SDIST_SHA"
+	sed -i.bak '/^  tag-prefix: v$/d' "$TEST_TEMP_DIR/winnow-provenance.yml"
+
+	run_generate_provenance
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance.tag-prefix is required for winnow"* ]]
+	[ ! -f "$TEST_TEMP_DIR/winnow.rb" ]
+}
+
+@test "generate-pypi-formula: SKIP_ASSET_VERIFY is refused under GitHub Actions" {
+	export PYPI_FIXTURE_DIR="$REPO_ROOT/tests/fixtures/pypi"
+	export GITHUB_ACTIONS=true
+	export SKIP_ASSET_VERIFY=1
+
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$REPO_ROOT/formulas/winnow.yml" \
+		--formula-key winnow \
+		--version 0.0.1 \
+		--output "$TEST_TEMP_DIR/winnow.rb"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Refusing to skip asset verification under GitHub Actions"* ]]
+}
+
+@test "generate-pypi-formula: --skip-asset-verify skips the provenance checks locally" {
+	unset GITHUB_ACTIONS
+	mock_gh_provenance "$TEST_TEMP_DIR/mock-bin"
+	write_provenance_fixtures "$SDIST_SHA"
+
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$TEST_TEMP_DIR/winnow-provenance.yml" \
+		--formula-key winnow \
+		--version 0.0.1 \
+		--output "$TEST_TEMP_DIR/winnow.rb" \
+		--skip-asset-verify
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"ASSET VERIFICATION DISABLED"* ]]
+	[ ! -s "$MOCK_GH_LOG" ]
+}
+
+@test "generate-pypi-formula: lintro-full declares no redundant version line" {
+	! grep -qE '^  version "' "$REPO_ROOT/Formula/lintro-full.rb"
+	! grep -q 'version "' "$SCRIPTS_DIR/templates/pypi-full.rb.template"
 }
 
 @test "generate-pypi-formula: no bottle comment is rendered" {

@@ -22,6 +22,7 @@ PYPI_SDIST_PATTERN = re.compile(
     r"files\.pythonhosted\.org/[^\"\s]+/([^\"/\s]+)\.tar\.gz",
 )
 VERSION_LINE_PATTERN = re.compile(r'^\s*version\s+"([^\"]+)"', re.MULTILINE)
+RELEASE_URL_PATTERN = re.compile(r"/releases/download/v?([0-9][^\"/\s]*)/")
 
 
 @dataclass
@@ -50,8 +51,11 @@ class Product:
 def read_formula_version(formula_path: Path) -> str:
     """Parse the shipping version from a generated formula file.
 
-    Binary formulas carry an explicit ``version "X"``; PyPI formulas embed the
-    version in their sdist URL filename (``<package>-<version>.tar.gz``).
+    Generated formulas declare no ``version`` line (brew audit --strict flags
+    it as redundant): binary formulas embed the version in the release asset
+    URL (``/releases/download/v<version>/``) and PyPI formulas in their sdist
+    URL filename (``<package>-<version>.tar.gz``). An explicit ``version "X"``
+    is still honoured for hand-written formulas.
 
     Args:
         formula_path: Path to a ``Formula/<name>.rb`` file.
@@ -67,6 +71,10 @@ def read_formula_version(formula_path: Path) -> str:
     match = VERSION_LINE_PATTERN.search(text)
     if match:
         return match.group(1)
+
+    release = RELEASE_URL_PATTERN.search(text)
+    if release:
+        return release.group(1)
 
     sdist = PYPI_SDIST_PATTERN.search(text)
     if sdist:

@@ -68,7 +68,18 @@ generate_pinned_resources() {
 	log_info "Generating resource stanzas..."
 	local site_packages
 	site_packages=$("$analysis_venv/bin/python" -c "import site; print(site.getsitepackages()[0])")
-	local generate_args=("$script_dir/generate_resources.py" "$package")
+	# Markers are evaluated for the formula's target (macOS, the requested
+	# CPU), never for the machine running this generator; the root package's
+	# extras are followed so extras-only dependencies are pinned too.
+	local platform_machine="arm64"
+	if [[ "$arch" == "intel" ]]; then
+		platform_machine="x86_64"
+	fi
+	local generate_args=("$script_dir/generate_resources.py" "$package"
+		--platform-machine "$platform_machine")
+	if [[ -n "$extras" ]]; then
+		generate_args+=(--extras "$extras")
+	fi
 	if ((${#exclude_args[@]})); then
 		generate_args+=(--exclude "${exclude_args[@]}")
 	fi

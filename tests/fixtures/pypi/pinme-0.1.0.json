@@ -1,0 +1,20 @@
+{
+  "info": {
+    "version": "0.1.0",
+    "requires_dist": [
+      "click==8.1.7",
+      "idna==3.19; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+      "mdurl==0.1.2; extra == 'mcp'"
+    ]
+  },
+  "urls": [
+    {
+      "packagetype": "sdist",
+      "filename": "pinme-0.1.0.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/ab/cd/pinme-0.1.0.tar.gz",
+      "digests": {
+        "sha256": "c222c9d34672c56a7d58febc5171b742e444c33c0df27ce88f8b9458cfe3bf08"
+      }
+    }
+  ]
+}

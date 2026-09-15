@@ -183,6 +183,7 @@ EOF
 #   MOCK_BREW_AUDIT_FINDINGS newline-separated "* message" findings printed by
 #                            `brew audit` (non-empty => exit 1)
 #   MOCK_BREW_AUDIT_FORMULA  formula name the findings apply to (default: all)
+#   MOCK_BREW_AUDIT_CRASH    when set, `brew audit` exits 1 with no findings
 mock_brew() {
 	local mock_dir="$1"
 	mkdir -p "$mock_dir"
@@ -216,6 +217,10 @@ style)
 	;;
 audit)
 	name="$(basename "${!#}")"
+	if [[ -n "${MOCK_BREW_AUDIT_CRASH:-}" ]]; then
+		echo "Error: Your Command Line Tools are too outdated." >&2
+		exit 1
+	fi
 	if [[ -n "${MOCK_BREW_AUDIT_FINDINGS:-}" && ( -z "${MOCK_BREW_AUDIT_FORMULA:-}" || "$name" == "${MOCK_BREW_AUDIT_FORMULA}" ) ]]; then
 		echo "local/test-tap/$name"
 		printf '%s\n' "$MOCK_BREW_AUDIT_FINDINGS" | sed 's/^/  /'

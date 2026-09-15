@@ -32,8 +32,51 @@ teardown() {
 }
 
 provenance_json() { # $1 = require-attestation
-	printf '{"require-attestation": %s, "repo": "%s", "binary-signer-workflow": "%s", "sdist-signer-workflow": "%s", "pypi-publisher-workflow": "publish-pypi-on-tag.yml"}' \
+	printf '{"require-attestation": %s, "repo": "%s", "tag-prefix": "v", "binary-signer-workflow": "%s", "sdist-signer-workflow": "%s", "pypi-publisher-workflow": "publish-pypi-on-tag.yml"}' \
 		"$1" "$REPO" "$BINARY_WF" "$SDIST_WF"
+}
+
+# =============================================================================
+# provenance_mode
+# =============================================================================
+
+@test "provenance_mode: empty block prints skip" {
+	run provenance_mode '{}' binary winnow
+	[ "$status" -eq 0 ]
+	[ "$output" = "skip" ]
+}
+
+@test "provenance_mode: complete block prints verify" {
+	run provenance_mode "$(provenance_json true)" binary winnow
+	[ "$status" -eq 0 ]
+	[ "$output" = "verify" ]
+}
+
+@test "provenance_mode: pypi kind does not need binary-signer-workflow" {
+	local json
+	json="$(provenance_json false | sed 's|"binary-signer-workflow": "[^"]*", ||')"
+	run provenance_mode "$json" pypi winnow
+	[ "$status" -eq 0 ]
+	[ "$output" = "verify" ]
+	run provenance_mode "$json" binary winnow
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"provenance.binary-signer-workflow is required for winnow"* ]]
+}
+
+@test "provenance_mode: incomplete block fails naming every missing key" {
+	run provenance_mode '{"require-attestation": false, "repo": "lgtm-hq/winnow"}' binary winnow
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"provenance.tag-prefix is required"* ]]
+	[[ "$output" == *"provenance.sdist-signer-workflow is required"* ]]
+	[[ "$output" == *"provenance.pypi-publisher-workflow is required"* ]]
+	[[ "$output" == *"provenance.binary-signer-workflow is required"* ]]
+	[[ "$output" != *"skip"* ]]
+}
+
+@test "provenance_mode: require-attestation alone is an incomplete block, not a skip" {
+	run provenance_mode '{"require-attestation": true}' pypi winnow
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"provenance.repo is required for winnow"* ]]
 }
 
 # =============================================================================
@@ -87,19 +130,15 @@ provenance_json() { # $1 = require-attestation
 	[[ "$output" == *"require-attestation is false, continuing"* ]]
 }
 
-@test "verify_attestation: required but unconfigured identity fails" {
-	run verify_attestation "$ASSET" winnow-macos-arm64 "" "" true
-
-	[ "$status" -eq 1 ]
-	[[ "$output" == *"require-attestation is true but no attestation identity"* ]]
-	[ ! -s "$MOCK_GH_LOG" ]
-}
-
-@test "verify_attestation: unconfigured identity is skipped when not required" {
+@test "verify_attestation: unconfigured identity is an error even when not required" {
 	run verify_attestation "$ASSET" winnow-macos-arm64 "" "" false
 
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"skipping attestation check"* ]]
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"No attestation identity (repo + signer workflow) configured for winnow-macos-arm64"* ]]
+	[ ! -s "$MOCK_GH_LOG" ]
+
+	run verify_attestation "$ASSET" winnow-macos-arm64 "$REPO" "" true
+	[ "$status" -eq 1 ]
 	[ ! -s "$MOCK_GH_LOG" ]
 }
 
@@ -225,7 +264,7 @@ provenance_json() { # $1 = require-attestation
 @test "verify_sdist_provenance: uses the configured tag prefix" {
 	export MOCK_RELEASE_DIGEST="$SDIST_SHA"
 	local json
-	json="$(provenance_json true | sed 's|{|{"tag-prefix": "release-", |')"
+	json="$(provenance_json true | sed 's|"tag-prefix": "v"|"tag-prefix": "release-"|')"
 
 	run verify_sdist_provenance "$SDIST" winnow-media 0.0.1 "$SDIST_SHA" "$json"
 
@@ -233,19 +272,16 @@ provenance_json() { # $1 = require-attestation
 	grep -q "releases/tags/release-0.0.1" "$MOCK_GH_LOG"
 }
 
-@test "verify_sdist_provenance: no provenance repo skips the cross-checks" {
+@test "verify_sdist_provenance: an incomplete block is an error, never a skip" {
 	run verify_sdist_provenance "$SDIST" winnow-media 0.0.1 "$SDIST_SHA" '{}'
-
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"skipping sdist cross-checks"* ]]
-	[ ! -s "$MOCK_GH_LOG" ]
-}
-
-@test "verify_sdist_provenance: required attestation without a repo fails" {
-	run verify_sdist_provenance "$SDIST" winnow-media 0.0.1 "$SDIST_SHA" '{"require-attestation": true}'
-
 	[ "$status" -eq 1 ]
-	[[ "$output" == *"provenance.repo is not configured"* ]]
+	[[ "$output" == *"Incomplete provenance block for winnow-media"* ]]
+	[ ! -s "$MOCK_GH_LOG" ]
+
+	run verify_sdist_provenance "$SDIST" winnow-media 0.0.1 "$SDIST_SHA" '{"require-attestation": false, "repo": "lgtm-hq/winnow"}'
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Incomplete provenance block for winnow-media"* ]]
+	[ ! -s "$MOCK_GH_LOG" ]
 }
 
 @test "provenance_value: renders booleans as true/false and missing keys as empty" {

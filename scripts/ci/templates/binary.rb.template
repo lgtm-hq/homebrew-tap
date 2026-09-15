@@ -8,14 +8,14 @@ class {{CLASS_NAME}} < Formula
 
   desc "{{DESCRIPTION}}"
   homepage "{{HOMEPAGE}}"
-  version "{{VERSION}}"
   license "{{LICENSE}}"
 
-  # Track the latest GitHub release via the releases API rather than scanning all
-  # tags, so the stray single-component "v1" tag is ignored. The stable url is
-  # architecture-specific (release asset on arm, PyPI sdist on intel), so the
-  # homepage anchors github_latest instead; the semver regex is a defensive
-  # filter on the release tag.
+  # The version is scanned from the architecture-specific stable url (release
+  # asset on arm, PyPI sdist on intel); an explicit `version` would be
+  # redundant (brew audit --strict). Track the latest GitHub release via the
+  # releases API rather than scanning all tags, so the stray single-component
+  # "v1" tag is ignored; the homepage anchors github_latest and the semver
+  # regex is a defensive filter on the release tag.
   livecheck do
     url :homepage
     strategy :github_latest
@@ -51,9 +51,9 @@ class {{CLASS_NAME}} < Formula
 {{INTEL_INSTALL_RESOURCES}}
 
       # Install the package itself. Homebrew's pip_install runs pip with
-      # --no-deps; the dependency closure ({{PYPI_EXTRAS_LABEL}}) is the
+      # --no-deps; the dependency closure of {{PYPI_EXTRAS_LABEL}} is the
       # pinned resource set above.
-      venv.pip_install_and_link buildpath
+      venv.pip_install_and_link {{INTEL_INSTALL_TARGET}}
     end
   end{{CAVEATS_BLOCK}}
 

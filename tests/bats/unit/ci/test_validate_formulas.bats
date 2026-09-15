@@ -224,3 +224,26 @@ log_line_number() {
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"Unaccepted audit finding: Version 'v' not found in URL"* ]]
 }
+
+@test "audit_local_formula: nonzero exit without findings fails (tool crash)" {
+	export MOCK_BREW_AUDIT_CRASH=1
+	export AUDIT_ACCEPTED_WARNINGS=""
+	# shellcheck source=../../../../scripts/ci/lib/local-tap.sh disable=SC1091
+	source "$REPO_ROOT/scripts/ci/lib/local-tap.sh"
+
+	run audit_local_formula lintro
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Command Line Tools are too outdated"* ]]
+	[[ "$output" == *"brew audit exited 1 for lintro without any findings to evaluate"* ]]
+}
+
+@test "validate-formulas: a crashing brew audit fails the run" {
+	export MOCK_BREW_AUDIT_CRASH=1
+
+	run bash "$REPO_ROOT/scripts/ci/validate-formulas.sh"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"without any findings to evaluate"* ]]
+	grep -q "^uninstall --force lintro-full$" "$MOCK_BREW_LOG"
+}

@@ -121,9 +121,10 @@ audit_local_formula() {
 
 	# Every "* <message>" line must match an accepted pattern for the
 	# failure to be tolerated; unmatched findings fail the audit.
-	local line unaccepted=0 pattern accepted
+	local line unaccepted=0 findings=0 pattern accepted
 	while IFS= read -r line; do
 		[[ "$line" == "  * "* || "$line" == "* "* ]] || continue
+		findings=$((findings + 1))
 		accepted=0
 		while IFS= read -r pattern; do
 			[[ -z "$pattern" ]] && continue
@@ -140,6 +141,12 @@ audit_local_formula() {
 		fi
 	done <<<"$audit_output"
 
+	if [[ "$findings" -eq 0 ]]; then
+		# Non-zero exit with nothing to parse: brew itself failed (crash,
+		# transport error, outdated toolchain). Never treat that as clean.
+		log_error "brew audit exited ${audit_status} for $formula without any findings to evaluate"
+		return 1
+	fi
 	if [[ "$unaccepted" -eq 1 ]]; then
 		log_error "brew audit failed for $formula"
 		return 1

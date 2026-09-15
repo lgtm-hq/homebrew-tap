@@ -23,6 +23,9 @@ setup() {
 	SCRIPTS_DIR="$REPO_ROOT/scripts/ci"
 	mock_gh_provenance "$TEST_TEMP_DIR/mock-bin"
 	export MOCK_RELEASE_DIGEST="$SDIST_SHA"
+	# The suite itself runs under GitHub Actions; the bypass tests below set
+	# or unset this deliberately.
+	unset GITHUB_ACTIONS SKIP_ASSET_VERIFY
 	setup_fixtures
 }
 
@@ -62,15 +65,16 @@ with open(path, "w", encoding="utf-8") as handle:
 PY
 }
 
-write_config() { # $1 = require-attestation (true|false|none)
+write_config() { # $1 = require-attestation (true|false|none), $2 = key to omit
 	CONFIG="$TEST_TEMP_DIR/winnow-binary.yml"
 	local provenance=""
 	if [[ "$1" != "none" ]]; then
 		provenance="$(
-			cat <<YAML
+			cat <<YAML | grep -v "^  ${2:-__none__}:"
 provenance:
   require-attestation: $1
   repo: ${REPO}
+  tag-prefix: v
   binary-signer-workflow: ${BINARY_WF}
   sdist-signer-workflow: ${SDIST_WF}
   pypi-publisher-workflow: publish-pypi-on-tag.yml
@@ -130,6 +134,7 @@ run_generate() { # $1 = binary-assets json, rest = extra args
 	sed "s/{{ARM64_SHA}}/${ARM64_SHA}/" \
 		"$REPO_ROOT/tests/fixtures/expected/winnow-binary.rb" >"$TEST_TEMP_DIR/expected.rb"
 	assert_files_equal "$TEST_TEMP_DIR/expected.rb" "$OUTPUT_FILE"
+	! awk 'prev == "" && $0 == "" { found = 1 } { prev = $0 } END { exit !found }' "$OUTPUT_FILE"
 }
 
 @test "generate-binary-formula: on_arm installs the release binary" {
@@ -138,8 +143,11 @@ run_generate() { # $1 = binary-assets json, rest = extra args
 	run_generate "$(assets_json)"
 
 	[ "$status" -eq 0 ]
+	# The url carries the literal version (Homebrew scans it from there) and
+	# the formula declares no redundant `version` line (brew audit --strict).
 	awk '/on_arm do/,/end/' "$OUTPUT_FILE" |
-		grep -q 'releases/download/v#{version}/winnow-macos-arm64'
+		grep -q 'releases/download/v0.0.1/winnow-macos-arm64'
+	! grep -qE '^  version "' "$OUTPUT_FILE"
 	awk '/on_arm do/,/end/' "$OUTPUT_FILE" |
 		grep -q "sha256 \"${ARM64_SHA}\""
 	grep -q 'bin.install "winnow-macos-arm64" => "winnow"' "$OUTPUT_FILE"
@@ -160,29 +168,101 @@ run_generate() { # $1 = binary-assets json, rest = extra args
 	grep -q '^      resource "click" do' <<<"$intel_block"
 	grep -q 'click-8.1.7.tar.gz' <<<"$intel_block"
 	[ "$(grep -c '^      resource "' "$OUTPUT_FILE")" -eq 1 ]
-	# Install: virtualenv + pinned resources + --no-deps package install.
+	# Install: virtualenv, then only Homebrew's pip_install helpers, which
+	# pass std_pip_args (--no-deps among them) so pip never resolves from
+	# PyPI; the resources above are the whole dependency closure.
 	grep -q 'venv = virtualenv_create(libexec, "python3.13")' "$OUTPUT_FILE"
 	grep -q 'venv.pip_install resources' "$OUTPUT_FILE"
 	grep -q 'venv.pip_install_and_link buildpath' "$OUTPUT_FILE"
-	grep -q -- '--no-deps' "$OUTPUT_FILE"
 	# No unpinned pip resolution left anywhere in the formula.
 	! grep -q '"#{buildpath}\[' "$OUTPUT_FILE"
 	! grep -q '"--python=#{libexec}/bin/python", "install"' "$OUTPUT_FILE"
 }
 
-@test "generate-binary-formula: extras are installed into the analysis venv and labelled" {
-	write_config true
-	cat >>"$CONFIG" <<'YAML'
-      extras:
-        - mcp
+# pinme fixture: click (always), mdurl (only via the mcp extra) and idna
+# (only on macOS x86_64, so never installed in the analysis venv).
+write_pinme_config() { # $1 = extras yaml list ("" for none)
+	CONFIG="$TEST_TEMP_DIR/pinme-binary.yml"
+	cp "$REPO_ROOT/tests/fixtures/pypi/pinme-0.1.0.json" \
+		"$REPO_ROOT/tests/fixtures/pypi/mdurl-0.1.2.json" \
+		"$REPO_ROOT/tests/fixtures/pypi/idna-3.19.json" \
+		"$REPO_ROOT/tests/fixtures/pypi/idna.json" "$FIXTURES/pypi/"
+	cp "$REPO_ROOT/tests/fixtures/sdist/pinme-0.1.0.tar.gz" "$FIXTURES/sdist/"
+	printf 'pinme binary\n' >"$FIXTURES/assets/pinme-macos-arm64"
+	ARM64_SHA="$(shasum -a 256 "$FIXTURES/assets/pinme-macos-arm64" | cut -d' ' -f1)"
+	cat >"$CONFIG" <<YAML
+---
+package: pinme
+source-repo: lgtm-hq/pinme
+homepage: https://github.com/lgtm-hq/pinme
+license: MIT
+description: "Fixture package for resource pinning"
+
+formulas:
+  pinme:
+    type: binary
+    test-command: "pinme --version"
+    binary-url-pattern: >-
+      https://github.com/lgtm-hq/pinme/releases/download/v{version}/pinme-macos-{arch}
+    binary-names:
+      arm64: pinme-macos-arm64
+    install-name: pinme
+    intel-pypi:
+      python-version: "3.13"
+${1}
 YAML
+}
 
-	run_generate "$(assets_json)"
+run_generate_pinme() {
+	OUTPUT_FILE="$TEST_TEMP_DIR/pinme.rb"
+	run bash "$SCRIPTS_DIR/generate-binary-formula.sh" \
+		--config "$CONFIG" \
+		--formula-key pinme \
+		--version 0.1.0 \
+		--output "$OUTPUT_FILE" \
+		--binary-assets "$(assets_json)"
+}
 
-	# The fixture sdist has no [mcp] extra; pip ignores unknown extras with a
-	# warning, so generation still succeeds and the label names the extra.
+@test "generate-binary-formula: extras-only dependencies are pinned and installed with the extras" {
+	write_pinme_config $'      extras:\n        - mcp'
+
+	run_generate_pinme
+
 	[ "$status" -eq 0 ]
-	grep -q 'dependency closure (winnow-media\[mcp\])' "$OUTPUT_FILE"
+	intel_block="$(awk '/^    on_intel do/,/^    end$/' "$OUTPUT_FILE")"
+	# mdurl is reachable only through pinme[mcp]; the walk followed the extra.
+	grep -q '^      resource "mdurl" do' <<<"$intel_block"
+	grep -q 'mdurl-0.1.2.tar.gz' <<<"$intel_block"
+	grep -q '^      resource "click" do' <<<"$intel_block"
+	# The formula installs the same extras spec against the pinned set.
+	grep -q 'venv.pip_install_and_link "#{buildpath}\[mcp\]"' "$OUTPUT_FILE"
+	grep -q 'dependency closure of pinme\[mcp\]' "$OUTPUT_FILE"
+}
+
+@test "generate-binary-formula: without extras the extras-only dependency is not pinned" {
+	write_pinme_config ""
+
+	run_generate_pinme
+
+	[ "$status" -eq 0 ]
+	! grep -q 'resource "mdurl"' "$OUTPUT_FILE"
+	grep -q 'venv.pip_install_and_link buildpath' "$OUTPUT_FILE"
+}
+
+@test "generate-binary-formula: Intel markers resolve for macOS x86_64, not the generator host" {
+	write_pinme_config ""
+
+	run_generate_pinme
+
+	[ "$status" -eq 0 ]
+	# idna is gated on sys_platform == darwin and platform_machine == x86_64:
+	# the analysis venv (whatever host runs CI) never installs it, so it is
+	# resolved from PyPI metadata and pinned for the Intel branch.
+	[[ "$output" == *"Resolved idna==3.19 from PyPI for the target environment"* ]]
+	intel_block="$(awk '/^    on_intel do/,/^    end$/' "$OUTPUT_FILE")"
+	grep -q '^      resource "idna" do' <<<"$intel_block"
+	grep -q 'idna-3.19.tar.gz' <<<"$intel_block"
+	[ "$(grep -c '^      resource "' "$OUTPUT_FILE")" -eq 2 ]
 }
 
 @test "generate-binary-formula: Intel homebrew-deps render sorted with the Python dependency" {
@@ -331,19 +411,64 @@ YAML
 	[ ! -f "$OUTPUT_FILE" ]
 }
 
-@test "generate-binary-formula: without a provenance block the digest checks still run" {
+@test "generate-binary-formula: without a provenance block the sha256 checks still run and the skip is logged" {
 	write_config none
 
 	run_generate "$(assets_json)"
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"arm64 asset sha256 verified"* ]]
-	[[ "$output" == *"skipping attestation check"* ]]
-	[[ "$output" == *"skipping sdist cross-checks"* ]]
+	[[ "$output" == *"sdist asset sha256 verified"* ]]
+	[[ "$output" == *"[WARN]"*"No provenance block in config for winnow"* ]]
 	[ ! -s "$MOCK_GH_LOG" ]
 }
 
-@test "generate-binary-formula: SKIP_ASSET_VERIFY skips the arm64 download and provenance" {
+@test "generate-binary-formula: an incomplete provenance block fails naming the key (required)" {
+	write_config true binary-signer-workflow
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance.binary-signer-workflow is required for winnow"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
+}
+
+@test "generate-binary-formula: an incomplete provenance block fails even when attestation is not required" {
+	write_config false repo
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance.repo is required for winnow"* ]]
+	[[ "$output" != *"skipping"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
+}
+
+@test "generate-binary-formula: a provenance block without tag-prefix fails" {
+	write_config true tag-prefix
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"provenance.tag-prefix is required for winnow"* ]]
+}
+
+# =============================================================================
+# Verification bypass (local regeneration only)
+# =============================================================================
+
+@test "generate-binary-formula: --skip-asset-verify skips the arm64 download and provenance locally" {
+	write_config true
+	rm "$FIXTURES/assets/winnow-macos-arm64"
+
+	run_generate "$(assets_json)" --skip-asset-verify
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"ASSET VERIFICATION DISABLED"* ]]
+	[ ! -s "$MOCK_GH_LOG" ]
+}
+
+@test "generate-binary-formula: SKIP_ASSET_VERIFY=1 is accepted locally" {
 	write_config true
 	rm "$FIXTURES/assets/winnow-macos-arm64"
 	export SKIP_ASSET_VERIFY=1
@@ -351,8 +476,51 @@ YAML
 	run_generate "$(assets_json)"
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"SKIP_ASSET_VERIFY set"* ]]
-	[ ! -s "$MOCK_GH_LOG" ]
+	[[ "$output" == *"ASSET VERIFICATION DISABLED"* ]]
+}
+
+@test "generate-binary-formula: SKIP_ASSET_VERIFY=0 is refused, not treated as a skip" {
+	write_config true
+	export SKIP_ASSET_VERIFY=0
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"SKIP_ASSET_VERIFY must be exactly 1"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
+}
+
+@test "generate-binary-formula: SKIP_ASSET_VERIFY is refused under GitHub Actions" {
+	write_config true
+	export GITHUB_ACTIONS=true
+	export SKIP_ASSET_VERIFY=1
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Refusing to skip asset verification under GitHub Actions"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
+}
+
+@test "generate-binary-formula: --skip-asset-verify is refused under GitHub Actions" {
+	write_config true
+	export GITHUB_ACTIONS=true
+
+	run_generate "$(assets_json)" --skip-asset-verify
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Refusing to skip asset verification under GitHub Actions"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
+}
+
+@test "generate-binary-formula: under GitHub Actions without a bypass the checks run" {
+	write_config true
+	export GITHUB_ACTIONS=true
+
+	run_generate "$(assets_json)"
+
+	[ "$status" -eq 0 ]
+	grep -q "^attestation verify" "$MOCK_GH_LOG"
 }
 
 # =============================================================================
@@ -435,13 +603,21 @@ assert p["pypi-publisher-workflow"] == "publish-pypi-on-tag.yml", p
 	[ "$status" -eq 0 ]
 }
 
-@test "committed lintro.rb: Intel branch is fully pinned" {
+@test "committed lintro.rb: Intel branch is fully pinned, mcp extra included, no version line" {
 	formula="$REPO_ROOT/Formula/lintro.rb"
 	intel_block="$(awk '/^    on_intel do/,/^    end$/' "$formula")"
 	# At least the runtime set is pinned (mirrors intel-pypi.min-resource-count).
 	[ "$(grep -c '^      resource "' <<<"$intel_block")" -ge 5 ]
+	# lintro[mcp] pulls the mcp SDK; it must be pinned like everything else.
+	grep -q '^      resource "mcp" do' <<<"$intel_block"
 	grep -q 'depends_on "libyaml"' <<<"$intel_block"
-	grep -q -- '--no-deps' "$formula"
-	grep -q 'venv.pip_install_and_link buildpath' "$formula"
-	! grep -q '"#{buildpath}\[' "$formula"
+	grep -q 'venv.pip_install_and_link "#{buildpath}\[mcp\]"' "$formula"
+	# Exactly one blank line separates the sdist resources from the wheel
+	# resources, and no double blank line exists anywhere (brew style).
+	grep -q -B2 'pydantic-core requires Rust' "$formula"
+	[ "$(grep -B2 'pydantic-core requires Rust' "$formula" | head -1)" = "      end" ]
+	[ "$(grep -B1 'pydantic-core requires Rust' "$formula" | head -1)" = "" ]
+	! awk 'prev == "" && $0 == "" { found = 1 } { prev = $0 } END { exit !found }' "$formula"
+	! grep -qE '^  version "' "$formula"
+	grep -q 'releases/download/v[0-9][0-9.]*/lintro-macos-arm64' "$formula"
 }

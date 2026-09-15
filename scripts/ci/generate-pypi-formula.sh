@@ -29,6 +29,9 @@ Options:
   --version        Package version (without v prefix)
   --output         Output formula path (e.g., Formula/winnow.rb)
   --pypi-package   Override PyPI package name from config
+  --skip-asset-verify
+                   Local regeneration only: skip every provenance check.
+                   Refused under GitHub Actions.
 
 Before rendering, the sdist digest is cross-checked against the GitHub
 Release asset digest and PyPI's PEP 740 provenance, and its attestation is
@@ -37,7 +40,8 @@ verified (config block provenance:, see scripts/ci/lib/provenance.sh).
 Environment (test seams):
   PYPI_FIXTURE_DIR   Read PyPI JSON from fixtures; the sdist comes from
                      ../sdist/ next to that directory when present.
-  SKIP_ASSET_VERIFY  Skip every provenance check (local regeneration only).
+  SKIP_ASSET_VERIFY  Same as --skip-asset-verify; only the literal value 1
+                     is accepted, and never under GitHub Actions.
 EOF
 }
 
@@ -46,6 +50,7 @@ FORMULA_KEY=""
 VERSION=""
 OUTPUT_FILE=""
 PYPI_PACKAGE_OVERRIDE=""
+SKIP_VERIFY_FLAG="false"
 
 require_option_value() {
 	local flag="$1"
@@ -83,6 +88,10 @@ while [[ $# -gt 0 ]]; do
 		require_option_value "$1" "${2:-}"
 		PYPI_PACKAGE_OVERRIDE="$2"
 		shift 2
+		;;
+	--skip-asset-verify)
+		SKIP_VERIFY_FLAG="true"
+		shift
 		;;
 	-h | --help)
 		usage
@@ -193,12 +202,18 @@ validate_sdist "$TARBALL_FILE"
 # and the sdist attestation (scripts/ci/lib/provenance.sh). Skipped in the
 # fixture seam when no sdist file is available.
 PROVENANCE_JSON=$(python3 -c "import json, sys; print(json.dumps(json.loads(sys.argv[1]).get('provenance') or {}))" "$CONFIG_JSON")
-if [[ -n "${SKIP_ASSET_VERIFY:-}" ]]; then
-	log_warning "SKIP_ASSET_VERIFY set; skipping every provenance check (local regeneration only)"
-elif [[ -f "$TARBALL_FILE" ]]; then
-	verify_sdist_provenance "$TARBALL_FILE" "$PACKAGE_NAME" "$VERSION" "$TARBALL_SHA" "$PROVENANCE_JSON"
-else
-	log_info "No sdist file available in fixture mode; skipping provenance cross-checks"
+SKIP_VERIFY="$(resolve_skip_asset_verify "$SKIP_VERIFY_FLAG")" || exit 1
+if [[ "$SKIP_VERIFY" != "true" ]]; then
+	# An incomplete provenance block is an error; no block at all means the
+	# product has not adopted the checks yet (logged).
+	PROVENANCE_MODE="$(provenance_mode "$PROVENANCE_JSON" pypi "$FORMULA_KEY")" || exit 1
+	if [[ "$PROVENANCE_MODE" == "skip" ]]; then
+		log_warning "No provenance block in config for ${FORMULA_KEY}: sdist cross-checks not run (sha256 check only)"
+	elif [[ -f "$TARBALL_FILE" ]]; then
+		verify_sdist_provenance "$TARBALL_FILE" "$PACKAGE_NAME" "$VERSION" "$TARBALL_SHA" "$PROVENANCE_JSON"
+	else
+		log_info "No sdist file available in fixture mode; skipping provenance cross-checks"
+	fi
 fi
 
 if [[ "$GENERATE_RESOURCES" == "true" ]]; then

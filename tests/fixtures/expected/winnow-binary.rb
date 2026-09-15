@@ -8,14 +8,14 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  version "0.0.1"
   license "MIT"
 
-  # Track the latest GitHub release via the releases API rather than scanning all
-  # tags, so the stray single-component "v1" tag is ignored. The stable url is
-  # architecture-specific (release asset on arm, PyPI sdist on intel), so the
-  # homepage anchors github_latest instead; the semver regex is a defensive
-  # filter on the release tag.
+  # The version is scanned from the architecture-specific stable url (release
+  # asset on arm, PyPI sdist on intel); an explicit `version` would be
+  # redundant (brew audit --strict). Track the latest GitHub release via the
+  # releases API rather than scanning all tags, so the stray single-component
+  # "v1" tag is ignored; the homepage anchors github_latest and the semver
+  # regex is a defensive filter on the release tag.
   livecheck do
     url :homepage
     strategy :github_latest
@@ -24,7 +24,7 @@ class Winnow < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/winnow/releases/download/v#{version}/winnow-macos-arm64"
+      url "https://github.com/lgtm-hq/winnow/releases/download/v0.0.1/winnow-macos-arm64"
       sha256 "{{ARM64_SHA}}"
     end
     on_intel do
@@ -54,7 +54,7 @@ class Winnow < Formula
       venv.pip_install resources
 
       # Install the package itself. Homebrew's pip_install runs pip with
-      # --no-deps; the dependency closure (winnow-media) is the
+      # --no-deps; the dependency closure of winnow-media is the
       # pinned resource set above.
       venv.pip_install_and_link buildpath
     end
