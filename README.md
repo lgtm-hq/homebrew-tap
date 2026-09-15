@@ -265,7 +265,7 @@ generated: the tap builds no bottles.
 Tap scripts reuse [lgtm-ci](https://github.com/lgtm-hq/lgtm-ci) for PyPI
 registry helpers (`wait_for_package`, `get_pypi_download_url`, `get_pypi_sha256`).
 CI workflows sparse-checkout lgtm-ci at the same ref as the reusable quality
-workflows (`97cb6ddb0d00eaaa38c208033020abc85f2ff1d0`, v0.73.2). The `uses:`
+workflows (`7c82f643fd70415c58d55c182c9d994cbd45075e`, v0.74.0). The `uses:`
 refs and the `tooling-ref` / `LGTM_CI_TOOLING_REF` inputs (`ci.yml`,
 `ai-review.yml`, `pr-auto-assign.yml`, `update-formula.yml`,
 `deploy-pages.yml`, `scripts/ci/lib/lgtm-ci-tooling.sh`) are kept in
