@@ -40,7 +40,7 @@ jobs:
     name: Report Version Drift
     needs: validate-formula
     if: needs.validate-formula.outputs.has_drift == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
         # yamllint disable-line rule:line-length
@@ -59,7 +59,7 @@ jobs:
     name: Notify on Failure
     needs: validate-formula
     if: failure()
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
         # yamllint disable-line rule:line-length
