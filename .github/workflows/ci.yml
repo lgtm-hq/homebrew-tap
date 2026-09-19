@@ -19,7 +19,7 @@ jobs:
     # yamllint disable-line rule:line-length
     uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-quality-lint.yml@86e29ba560701a8d73f31713eb0841ef50f6029c  # v0.74.5
     with:
-      tooling-ref: "86e29ba560701a8d73f31713eb0841ef50f6029c" # v0.74.5
+      tooling-ref: "86e29ba560701a8d73f31713eb0841ef50f6029c"  # v0.74.5
       job-name: "🛠️ Lintro Code Quality"
       egress-policy: block
       egress-preset: quality
@@ -37,7 +37,7 @@ jobs:
     # yamllint disable-line rule:line-length
     uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-publish-quality-summary.yml@86e29ba560701a8d73f31713eb0841ef50f6029c  # v0.74.5
     with:
-      tooling-ref: "86e29ba560701a8d73f31713eb0841ef50f6029c" # v0.74.5
+      tooling-ref: "86e29ba560701a8d73f31713eb0841ef50f6029c"  # v0.74.5
       # yamllint disable-line rule:line-length
       exit-code: ${{ needs.quality.outputs.exit-code != '' && needs.quality.outputs.exit-code || '1' }}
       job-name: "PR Lint Comment"
@@ -51,7 +51,7 @@ jobs:
     # yamllint disable-line rule:line-length
     uses: lgtm-hq/lgtm-ci/.github/workflows/reusable-test-shell.yml@86e29ba560701a8d73f31713eb0841ef50f6029c  # v0.74.5
     with:
-      tooling-ref: "86e29ba560701a8d73f31713eb0841ef50f6029c" # v0.74.5
+      tooling-ref: "86e29ba560701a8d73f31713eb0841ef50f6029c"  # v0.74.5
       job-name: "🐚 Shell Tests"
       test-path: tests/bats
       coverage: true
