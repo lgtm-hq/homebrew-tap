@@ -24,16 +24,16 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.168.3/lintro-macos-arm64"
-      sha256 "9f8910a876161908cdf0ee8a20c731f007a690b45349c9ce6beb7771850428c0"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.168.4/lintro-macos-arm64"
+      sha256 "866f635e00217f47395dca131afb340dffe8b7ac79b6c29f879161a2f85e3fed"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv. Every Python dependency is a url+sha256
       # pinned resource below; nothing is resolved from PyPI at install time.
-      url "https://files.pythonhosted.org/packages/8c/38/65f31b4788d763a696d7c4d62cc61a1872a53604d74e95fce9799701e9c7/lintro-0.168.3.tar.gz"
-      sha256 "b82c1706835a47b2e1b8607b8f641896f71e423fd42e5a4a66950e4530ccc2e1"
+      url "https://files.pythonhosted.org/packages/41/36/9fa755f958669e97c867faba01cb9da9c23c5f1db8bb2bf1a2c2adf73e83/lintro-0.168.4.tar.gz"
+      sha256 "c29bbde2694c84e2d54c39404c34f687ad3cf1add85d1961cb608d79fff9c032"
 
       depends_on "rust" => :build
       depends_on "libyaml"
@@ -91,8 +91,8 @@ class Lintro < Formula
       end
 
       resource "httpcore2" do
-        url "https://files.pythonhosted.org/packages/15/8c/e925b1c92018abb3a1863ce1549d76d2381e334d21d65d4ac8f65dabd78a/httpcore2-2.13.0.tar.gz"
-        sha256 "2adc8be4fb285fbcd6d894298db3b52c177e74b6674eda3a76bd36be3292a3db"
+        url "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz"
+        sha256 "e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103"
       end
 
       resource "httpx" do
@@ -101,8 +101,8 @@ class Lintro < Formula
       end
 
       resource "httpx2" do
-        url "https://files.pythonhosted.org/packages/b9/a0/e9deef4654132857b5a5dbe4eddd0ac59c2814500e11f2f5044cd81103ee/httpx2-2.13.0.tar.gz"
-        sha256 "81bd07dc67a3701729ef1f777a3c00c915d4539604fdb5afd327f8682f6b7b44"
+        url "https://files.pythonhosted.org/packages/d5/44/474bef2a0e9d90f1715d32cb98b0738695ca17ba324095fb2497ed7fbd59/httpx2-2.13.1.tar.gz"
+        sha256 "e48744a19e3af5ee48313d0ce5fe941d5422fae5705ea922a4aabf94d7800dfa"
       end
 
       resource "identify" do
@@ -181,8 +181,8 @@ class Lintro < Formula
       end
 
       resource "pyjwt" do
-        url "https://files.pythonhosted.org/packages/af/c3/8a3b59c25070cc61dc517fbdfa5dc0904670c96f605cc69759dc09166b99/pyjwt-2.14.0.tar.gz"
-        sha256 "77283c83fb56ecf566a886c757a714bc83668e38156de2cce8263302f42e0b86"
+        url "https://files.pythonhosted.org/packages/02/a5/5197bfd06417837ac079921c66fa6393f1dea3557272a263cebfef69e432/pyjwt-2.15.0.tar.gz"
+        sha256 "b11c5f9791d7bf51c2b39a81ed669f6b2dbbd669df2942f6c60167e9e3d1abe4"
       end
 
       resource "python-multipart" do
@@ -216,8 +216,8 @@ class Lintro < Formula
       end
 
       resource "starlette" do
-        url "https://files.pythonhosted.org/packages/b5/b4/205b0d5241d934e8add0c38aa924c4f9fb7330834ff11e5444db964ec3f9/starlette-1.6.0.tar.gz"
-        sha256 "d4e3ac5e546444960c710297a3c9fc3f7ebae1b7e963f3d36173b49da535be9b"
+        url "https://files.pythonhosted.org/packages/7b/2b/3850dc6bf7ef71b088962eba31dafc6cffd2f96e577ebb0bb316df96da3e/starlette-1.7.0.tar.gz"
+        sha256 "c79f74ea63cff761804fbbfb182f1e0b440c2d07b164d24700c5a1bab5d6ff5d"
       end
 
       resource "tabulate" do
