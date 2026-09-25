@@ -234,3 +234,23 @@ EOF
 	[[ "$output" != *"Waiting for PyPI"* ]]
 	[ ! -s "$MOCK_GH_LOG" ]
 }
+
+@test "lgtm-ci tooling ref is the same in the local fallback and both workflows" {
+	local root ref wf
+	root="$(repo_root)"
+	# The fallback default in lgtm-ci-tooling.sh is what local runs and the
+	# signed-commit integration test use; it must match what CI checks out.
+	ref="$(
+		unset LGTM_CI_TOOLING_REF
+		# shellcheck source=/dev/null
+		source "$root/scripts/ci/lib/lgtm-ci-tooling.sh"
+		printf '%s' "$LGTM_CI_TOOLING_REF"
+	)"
+	[[ "$ref" =~ ^[0-9a-f]{40}$ ]]
+	for wf in update-formula deploy-pages; do
+		run grep -E "^[[:space:]]+LGTM_CI_TOOLING_REF: ${ref}([[:space:]]|$)" \
+			"$root/.github/workflows/${wf}.yml"
+		assert_success
+	done
+}
+
