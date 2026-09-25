@@ -285,6 +285,11 @@ bash scripts/ci/ensure-lgtm-ci-tooling.sh
 bash scripts/ci/run-tests.sh
 ```
 
+`ensure-lgtm-ci-tooling.sh` takes an optional target directory (default
+`.lgtm-ci-tooling`). The signed-commit integration test uses it to fetch the
+pinned lgtm-ci ref into a temporary directory, because the shell-test job's own
+tooling checkout can be at an older lgtm-ci release.
+
 Advanced PyPI resource generation (`lintro-full`, `winnow`) uses tap-local Python
 helpers; simple PyPI formulas and PyPI polling delegate to lgtm-ci.
 

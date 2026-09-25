@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Purpose: Ensure a sparse lgtm-ci checkout exists for local scripts and tests.
+#
+# Usage: ensure-lgtm-ci-tooling.sh [<dir>]
+#   <dir> defaults to <repo>/.lgtm-ci-tooling. Tests pass their own directory
+#   when they need the checkout at exactly LGTM_CI_TOOLING_REF (in CI,
+#   .lgtm-ci-tooling is the reusable workflow's own tooling checkout).
 
 set -euo pipefail
 
@@ -9,7 +14,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=lib/lgtm-ci-tooling.sh disable=SC1091
 source "$SCRIPT_DIR/lib/lgtm-ci-tooling.sh"
 
-TOOLING_DIR="$REPO_ROOT/.lgtm-ci-tooling"
+TOOLING_DIR="${1:-$REPO_ROOT/.lgtm-ci-tooling}"
 
 if _lgtm_ci_tooling_ready "$TOOLING_DIR"; then
 	export LGTM_CI_TOOLING_DIR="$TOOLING_DIR"

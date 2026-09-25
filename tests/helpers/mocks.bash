@@ -108,6 +108,89 @@ EOF
 	: >"$MOCK_SIGNED_COMMIT_ARGS"
 }
 
+# Strict gh mock of the GitHub REST/GraphQL calls made by lgtm-ci's shared
+# scripts/ci/git/create-signed-commit.sh in reset mode. Only the exact argv
+# that script sends is answered; anything else exits 1 ("unexpected gh
+# call"), so a change to the shared script's gh usage fails the tests.
+# Every call is appended (space-joined) to $MOCK_GH_LOG and every ref write
+# to $MOCK_GH_REF_EVENTS as "create <branch> <sha>", "update <branch> <sha>"
+# or "delete <branch>". Responds based on:
+#   MOCK_GH_REPO             owner/repo every call must target (required)
+#   MOCK_DEFAULT_BRANCH      default branch name (default: main)
+#   MOCK_EXISTING_BRANCH     branch whose lookup returns MOCK_EXISTING_BRANCH_OID
+#                            (every other branch lookup is a 404)
+#   MOCK_EXISTING_BRANCH_OID head sha of MOCK_EXISTING_BRANCH
+#   MOCK_GH_GRAPHQL_PAYLOAD  file capturing the GraphQL request payload
+#   MOCK_GRAPHQL_RESPONSE    JSON body returned for `gh api graphql`
+#                            (default: a createCommitOnBranch success with
+#                            oid MOCK_COMMIT_OID)
+#   MOCK_COMMIT_OID          commit oid in the default GraphQL response
+mock_gh_signed_commit_api() {
+	local mock_dir="$1"
+	mkdir -p "$mock_dir"
+	cat >"$mock_dir/gh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+joined="$*"
+echo "$joined" >>"${MOCK_GH_LOG:?MOCK_GH_LOG is required}"
+events="${MOCK_GH_REF_EVENTS:?MOCK_GH_REF_EVENTS is required}"
+repo="${MOCK_GH_REPO:?MOCK_GH_REPO is required}"
+sha_re='[0-9a-f]{40}'
+
+if [[ "$joined" == "api repos/${repo} --jq .default_branch" ]]; then
+	echo "${MOCK_DEFAULT_BRANCH:-main}"
+	exit 0
+fi
+
+if [[ "$joined" =~ ^api\ repos/${repo}/branches/([^ ]+)\ --jq\ \.commit\.sha$ ]]; then
+	if [[ -n "${MOCK_EXISTING_BRANCH:-}" && "${BASH_REMATCH[1]}" == "$MOCK_EXISTING_BRANCH" ]]; then
+		echo "${MOCK_EXISTING_BRANCH_OID:?MOCK_EXISTING_BRANCH_OID is required}"
+		exit 0
+	fi
+	echo "gh: Branch not found (HTTP 404)" >&2
+	exit 1
+fi
+
+if [[ "$joined" =~ ^api\ repos/${repo}/git/refs\ -f\ ref=refs/heads/([^ ]+)\ -f\ sha=(${sha_re})$ ]]; then
+	echo "create ${BASH_REMATCH[1]} ${BASH_REMATCH[2]}" >>"$events"
+	echo "{}"
+	exit 0
+fi
+
+if [[ "$joined" =~ ^api\ -X\ PATCH\ repos/${repo}/git/refs/heads/([^ ]+)\ -f\ sha=(${sha_re})\ -F\ force=true$ ]]; then
+	echo "update ${BASH_REMATCH[1]} ${BASH_REMATCH[2]}" >>"$events"
+	echo "{}"
+	exit 0
+fi
+
+if [[ "$joined" =~ ^api\ -X\ DELETE\ repos/${repo}/git/refs/heads/([^ ]+)$ ]]; then
+	echo "delete ${BASH_REMATCH[1]}" >>"$events"
+	exit 0
+fi
+
+if [[ "$joined" == "api graphql --input -" ]]; then
+	cat >"${MOCK_GH_GRAPHQL_PAYLOAD:-/dev/null}"
+	if [[ -n "${MOCK_GRAPHQL_RESPONSE:-}" ]]; then
+		echo "$MOCK_GRAPHQL_RESPONSE"
+	else
+		printf '{"data":{"createCommitOnBranch":{"commit":{"oid":"%s","url":"https://example.invalid/commit/%s"}}}}\n' \
+			"${MOCK_COMMIT_OID:?MOCK_COMMIT_OID is required}" "$MOCK_COMMIT_OID"
+	fi
+	exit 0
+fi
+
+echo "unexpected gh call: $joined" >&2
+exit 1
+EOF
+	chmod +x "$mock_dir/gh"
+	export PATH="$mock_dir:$PATH"
+	export MOCK_GH_LOG="${MOCK_GH_LOG:-$mock_dir/gh.log}"
+	export MOCK_GH_REF_EVENTS="${MOCK_GH_REF_EVENTS:-$mock_dir/ref-events.log}"
+	: >"$MOCK_GH_LOG"
+	: >"$MOCK_GH_REF_EVENTS"
+}
+
 mock_gh() {
 	local mock_dir="$1"
 	mkdir -p "$mock_dir"
