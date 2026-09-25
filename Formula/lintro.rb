@@ -24,16 +24,16 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.171.0/lintro-macos-arm64"
-      sha256 "fad72488b37cb62b160648ffa236d0fd0c528cf8260af6319339758d517ba5c7"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.171.1/lintro-macos-arm64"
+      sha256 "fe0a65c50bbb8aa9d64a7170f0ec93e6451222b4245dfc30ee8fecad7ebba197"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv. Every Python dependency is a url+sha256
       # pinned resource below; nothing is resolved from PyPI at install time.
-      url "https://files.pythonhosted.org/packages/06/43/e71956f7d133aa9e321229ff2ffb823503dd8cde07de9cb951bb93e6e3cb/lintro-0.171.0.tar.gz"
-      sha256 "860198fdaf14f97c81b84e8ff28da00fd78cc6a7e99aab0e64317808063ba7f1"
+      url "https://files.pythonhosted.org/packages/4d/ff/061e6a53e846800aa9c543ed1bc2d5feb940e5353385f91f5b5f232ac9ad/lintro-0.171.1.tar.gz"
+      sha256 "887bcacea9d064412a19a2a8592936d85a9c816fbe383c8eb606b1f14db63a18"
 
       depends_on "rust" => :build
       depends_on "libyaml"
@@ -151,8 +151,8 @@ class Lintro < Formula
       end
 
       resource "opentelemetry-api" do
-        url "https://files.pythonhosted.org/packages/ee/8b/aa9e2d8b8dfa7c946f7dec5d1f8f6ba8eca062f43509a06bdb5ce93d26c0/opentelemetry_api-1.44.0.tar.gz"
-        sha256 "67647e5e9566edcf421166fdf022b3537f818635daa852b289e34604dc6fb33a"
+        url "https://files.pythonhosted.org/packages/1f/dc/e12c1fe1ed8a7b7149777127b1a0e12ce5bd5a81d97408bedc2128c260f5/opentelemetry_api-1.45.0.tar.gz"
+        sha256 "711ede81773c8025c2c03dac0450bc89f3d30aea6eabcc815c570d4e35a963f7"
       end
 
       resource "packaging" do
@@ -241,8 +241,8 @@ class Lintro < Formula
       end
 
       resource "uvicorn" do
-        url "https://files.pythonhosted.org/packages/5d/ad/04bbb797c84fc1f26cb171f7394716f4865ffb8d8c5e1eef42565c2dfa6b/uvicorn-0.53.0.tar.gz"
-        sha256 "a9356f0cb89b3b8621529c5d5eebd69bfe154f4c3f68b4cf2de47e45fa855c2e"
+        url "https://files.pythonhosted.org/packages/da/34/30e9280707135d2cfc589dfff3cb796bd07a3aeb1a3e415ba09dd89d7bb4/uvicorn-0.54.0.tar.gz"
+        sha256 "a2e33cbfaa0306f8e6b0c13e0cb89d7d7a2da3e62b90c66e18c33d9807b28620"
       end
 
       resource "watchdog" do
