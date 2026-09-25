@@ -252,7 +252,7 @@ EOF
 	for wf in update-formula deploy-pages; do
 		found=""
 		while IFS= read -r line || [[ -n "$line" ]]; do
-			if [[ "$line" =~ ^[[:space:]]+LGTM_CI_TOOLING_REF:[[:space:]]+([0-9a-f]{40}) ]]; then
+			if [[ "$line" =~ ^[[:space:]]+LGTM_CI_TOOLING_REF:[[:space:]]+([0-9a-f]{40})([[:space:]]|$) ]]; then
 				found="${BASH_REMATCH[1]}"
 				break
 			fi
