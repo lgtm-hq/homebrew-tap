@@ -247,10 +247,20 @@ EOF
 		printf '%s' "$LGTM_CI_TOOLING_REF"
 	)"
 	[[ "$ref" =~ ^[0-9a-f]{40}$ ]]
+	# Bash built-ins only: this file's mocks can leave grep off PATH.
+	local line found
 	for wf in update-formula deploy-pages; do
-		run grep -E "^[[:space:]]+LGTM_CI_TOOLING_REF: ${ref}([[:space:]]|$)" \
-			"$root/.github/workflows/${wf}.yml"
-		assert_success
+		found=""
+		while IFS= read -r line || [[ -n "$line" ]]; do
+			if [[ "$line" =~ ^[[:space:]]+LGTM_CI_TOOLING_REF:[[:space:]]+([0-9a-f]{40}) ]]; then
+				found="${BASH_REMATCH[1]}"
+				break
+			fi
+		done <"$root/.github/workflows/${wf}.yml"
+		[[ "$found" == "$ref" ]] || {
+			echo "${wf}.yml LGTM_CI_TOOLING_REF=${found:-missing}, fallback=${ref}" >&2
+			return 1
+		}
 	done
 }
 
