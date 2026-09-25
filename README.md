@@ -263,13 +263,16 @@ generated: the tap builds no bottles.
 ### Tooling dependencies
 
 Tap scripts reuse [lgtm-ci](https://github.com/lgtm-hq/lgtm-ci) for PyPI
-registry helpers (`wait_for_package`, `get_pypi_download_url`, `get_pypi_sha256`).
-CI workflows sparse-checkout lgtm-ci at the same ref as the reusable quality
-workflows (`7c82f643fd70415c58d55c182c9d994cbd45075e`, v0.74.0). The `uses:`
-refs and the `tooling-ref` / `LGTM_CI_TOOLING_REF` inputs (`ci.yml`,
-`ai-review.yml`, `pr-auto-assign.yml`, `update-formula.yml`,
-`deploy-pages.yml`, `scripts/ci/lib/lgtm-ci-tooling.sh`) are kept in
-lockstep; bump them together.
+registry helpers (`wait_for_package`, `get_pypi_download_url`, `get_pypi_sha256`)
+and for GitHub-signed commits: `update-formula.sh` runs lgtm-ci's
+`scripts/ci/git/create-signed-commit.sh` from `LGTM_CI_TOOLING_DIR` in reset
+mode (added in lgtm-ci v0.75.0). `update-formula.yml` and `deploy-pages.yml`
+sparse-checkout lgtm-ci at `LGTM_CI_TOOLING_REF`
+(`234e84901ae4ac14f2d44f02fad517d95712cec3`, v0.75.0), and
+`scripts/ci/lib/lgtm-ci-tooling.sh` uses the same ref as its local default;
+bump those three together. The reusable-workflow `uses:` refs and their
+`tooling-ref` inputs (`ci.yml`, `ai-review.yml`, `pr-auto-assign.yml`) must
+match each other within each workflow.
 
 Shared shell libraries live in `scripts/ci/lib/` (the path lgtm-ci's
 `reusable-test-shell.yml` instruments with kcov), and the bats suite enforces

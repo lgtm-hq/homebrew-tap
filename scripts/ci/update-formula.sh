@@ -21,12 +21,14 @@ Environment:
                          accepted and ignored: Intel Macs install from PyPI)
   GH_TOKEN               GitHub App token (contents + pull-requests write)
   GITHUB_REPOSITORY      Target repository (owner/repo)
+  LGTM_CI_TOOLING_DIR    lgtm-ci tooling checkout providing
+                         scripts/ci/git/create-signed-commit.sh
 
-Commits are created via the GraphQL createCommitOnBranch API (see
-scripts/ci/create-signed-commit.sh) so they are GitHub-signed and satisfy
-the org main ruleset's required_signatures rule. The bump branch is created
-from the CURRENT origin/main head at run time, not the workflow checkout,
-so a stale checkout cannot produce conflicting PRs.
+Commits are created via the GraphQL createCommitOnBranch API (lgtm-ci's
+shared scripts/ci/git/create-signed-commit.sh, reset mode) so they are
+GitHub-signed and satisfy the org main ruleset's required_signatures rule.
+The bump branch is rebuilt on the CURRENT origin/main head at run time, not
+the workflow checkout, so a stale checkout cannot produce conflicting PRs.
 EOF
 }
 
@@ -92,6 +94,48 @@ resolve_binary_assets() {
 	printf '%s' "$raw"
 }
 
+signed_commit_helper() {
+	# Prints the path of lgtm-ci's shared create-signed-commit.sh inside
+	# LGTM_CI_TOOLING_DIR; fails if the variable is unset or the script is
+	# missing (tooling ref too old, or sparse checkout without scripts/ci/).
+	local tooling_dir="${LGTM_CI_TOOLING_DIR:-}"
+	if [[ -z "$tooling_dir" ]]; then
+		log_error "LGTM_CI_TOOLING_DIR is required (lgtm-ci tooling checkout providing scripts/ci/git/create-signed-commit.sh)"
+		return 1
+	fi
+	local helper="${tooling_dir}/scripts/ci/git/create-signed-commit.sh"
+	if [[ ! -f "$helper" ]]; then
+		log_error "Shared signed-commit script not found: ${helper} (lgtm-ci tooling ref older than v0.75.0 or incomplete checkout)"
+		return 1
+	fi
+	printf '%s\n' "$helper"
+}
+
+create_signed_commit() {
+	# Usage: create_signed_commit <branch> <base-oid> <message> <file>...
+	# Commits <file>... via lgtm-ci's shared create-signed-commit.sh in reset
+	# mode: <branch> ends as exactly <base-oid> plus one GitHub-signed commit,
+	# and is moved in one step (never parked at <base-oid>).
+	local branch="$1"
+	local base_oid="$2"
+	local message="$3"
+	shift 3
+	local helper
+	helper="$(signed_commit_helper)" || return 1
+	local args=(
+		--mode reset
+		--base "$base_oid"
+		--branch "$branch"
+		--message "$message"
+		--repository "$GITHUB_REPOSITORY"
+	)
+	local path
+	for path in "$@"; do
+		args+=(--file "$path")
+	done
+	bash "$helper" "${args[@]}"
+}
+
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
 	usage
 	exit 0
@@ -109,6 +153,10 @@ if [[ ! -f "$CONFIG_PATH" ]]; then
 	log_error "Missing product config: $CONFIG_PATH"
 	exit 1
 fi
+
+# Fail before waiting on PyPI or generating anything if the shared commit
+# helper is unavailable.
+signed_commit_helper >/dev/null
 
 # Binary formulas with an intel-pypi block install from the PyPI sdist on
 # Intel Macs, so they need the release on PyPI just like pypi formulas do.
@@ -256,17 +304,9 @@ if [[ ${#COMMIT_FILES[@]} -eq 0 ]]; then
 	exit 0
 fi
 
-# Create the bump branch from the current main head and commit via the
-# GraphQL API so the commit is GitHub-signed (required_signatures).
-create_commit_args=(
-	--branch "$PR_BRANCH"
-	--base-oid "$MAIN_OID"
-	--message "$PR_TITLE"
-)
-for rel_path in "${COMMIT_FILES[@]}"; do
-	create_commit_args+=(--file "$rel_path")
-done
-bash "$SCRIPT_DIR/create-signed-commit.sh" "${create_commit_args[@]}"
+# Point the bump branch at the current main head plus one commit created via
+# the GraphQL API, so the commit is GitHub-signed (required_signatures).
+create_signed_commit "$PR_BRANCH" "$MAIN_OID" "$PR_TITLE" "${COMMIT_FILES[@]}"
 
 existing_pr="$(
 	gh pr list \

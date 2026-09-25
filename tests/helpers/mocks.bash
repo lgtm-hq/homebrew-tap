@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 # Mock gh CLI for merge bot tests.
 
-# Recording gh mock for signed-commit and supersede tests.
+# Recording gh mock for update-formula and supersede tests.
 # Logs every invocation (one line, space-joined) to $MOCK_GH_LOG and
 # responds based on MOCK_* environment variables:
 #   MOCK_MAIN_OID           SHA returned for git/ref/heads/main lookups
-#   MOCK_REF_EXISTS         "true" fails ref creation (forces PATCH fallback)
-#   MOCK_GRAPHQL_RESPONSE   JSON body returned for `gh api graphql`
-#   MOCK_GH_GRAPHQL_PAYLOAD file capturing the GraphQL request payload
 #   MOCK_REMOTE_FILE        file whose contents answer raw contents requests
 #   MOCK_REMOTE_BLOB_SHA    sha answered for contents --jq .sha requests
 #   MOCK_OPEN_PRS           JSON array answered for `gh pr list`
@@ -23,36 +20,8 @@ if [[ -n "${MOCK_GH_LOG:-}" ]]; then
 	echo "$joined" >>"$MOCK_GH_LOG"
 fi
 
-if [[ "$joined" == "api graphql --input -" ]]; then
-	if [[ -n "${MOCK_GH_GRAPHQL_PAYLOAD:-}" ]]; then
-		cat >"$MOCK_GH_GRAPHQL_PAYLOAD"
-	else
-		cat >/dev/null
-	fi
-	graphql_response="${MOCK_GRAPHQL_RESPONSE:-}"
-	if [[ -z "$graphql_response" ]]; then
-		graphql_response='{"data":{"createCommitOnBranch":{"commit":{"oid":"c0ffee","url":"https://example.invalid"}}}}'
-	fi
-	echo "$graphql_response"
-	exit 0
-fi
-
 if [[ "$joined" == api\ repos/*/git/ref/heads/main* ]]; then
 	echo "${MOCK_MAIN_OID:-1111111111111111111111111111111111111111}"
-	exit 0
-fi
-
-if [[ "$joined" == api\ repos/*/git/refs\ -f\ ref=* ]]; then
-	if [[ "${MOCK_REF_EXISTS:-}" == "true" ]]; then
-		echo "Reference already exists" >&2
-		exit 1
-	fi
-	echo "{}"
-	exit 0
-fi
-
-if [[ "$joined" == api\ -X\ PATCH\ repos/*/git/refs/heads/* ]]; then
-	echo "{}"
 	exit 0
 fi
 
@@ -111,6 +80,32 @@ EOF
 	export MOCK_GH_LOG="${MOCK_GH_LOG:-$mock_dir/gh.log}"
 	: >"$MOCK_GH_LOG"
 	export PATH="$mock_dir:$PATH"
+}
+
+# Stub for lgtm-ci's shared scripts/ci/git/create-signed-commit.sh under a
+# fake LGTM_CI_TOOLING_DIR (<tooling_dir>). The stub writes each argument on
+# its own line to $MOCK_SIGNED_COMMIT_ARGS and responds based on:
+#   MOCK_SIGNED_COMMIT_FAIL  when set, prints it to stderr and exits 1
+mock_signed_commit_helper() {
+	local tooling_dir="$1"
+	local helper_dir="$tooling_dir/scripts/ci/git"
+	mkdir -p "$helper_dir"
+	cat >"$helper_dir/create-signed-commit.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' "$@" >"${MOCK_SIGNED_COMMIT_ARGS:?MOCK_SIGNED_COMMIT_ARGS is required}"
+if [[ -n "${MOCK_SIGNED_COMMIT_FAIL:-}" ]]; then
+	echo "$MOCK_SIGNED_COMMIT_FAIL" >&2
+	exit 1
+fi
+echo "commit-sha=c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff"
+echo "commit-url=https://example.invalid/commit/c0ffee"
+EOF
+	chmod +x "$helper_dir/create-signed-commit.sh"
+	export LGTM_CI_TOOLING_DIR="$tooling_dir"
+	export MOCK_SIGNED_COMMIT_ARGS="${MOCK_SIGNED_COMMIT_ARGS:-$tooling_dir/signed-commit.args}"
+	: >"$MOCK_SIGNED_COMMIT_ARGS"
 }
 
 mock_gh() {
