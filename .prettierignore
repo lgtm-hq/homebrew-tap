@@ -1,0 +1,11 @@
+# Ignore artifacts
+build
+dist
+node_modules
+.venv
+.lintro
+.test-venv
+coverage
+
+# PyPI JSON API fixtures are recorded responses; keep them verbatim.
+tests/fixtures/

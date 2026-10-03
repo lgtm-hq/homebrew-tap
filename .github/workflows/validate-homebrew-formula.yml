@@ -6,7 +6,7 @@ name: Quality Check - Homebrew Formula Validation (Tap)
 # on all PRs; the `changes` job decides whether the full macOS validation is
 # needed, and the `validate-formula` job reports success cheaply when it is not.
 
-"on":
+'on':
   workflow_dispatch:
   pull_request:
     branches: [main]
@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: Checkout
         # yamllint disable-line rule:line-length
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -54,7 +54,7 @@ jobs:
       - name: Checkout
         if: needs.changes.outputs.formula == 'true'
         # yamllint disable-line rule:line-length
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 

@@ -5,15 +5,15 @@ concurrency:
   group: deploy-pages-${{ github.repository }}
   cancel-in-progress: false
 
-"on":
+'on':
   push:
     branches: [main]
     paths:
-      - "Formula/**"
-      - "formulas/**"
-      - "scripts/ci/build_pages.py"
-      - "scripts/ci/templates/**"
-      - ".github/workflows/deploy-pages.yml"
+      - 'Formula/**'
+      - 'formulas/**'
+      - 'scripts/ci/build_pages.py'
+      - 'scripts/ci/templates/**'
+      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -26,7 +26,7 @@ jobs:
     permissions:
       contents: read
     env:
-      LGTM_CI_TOOLING_REF: 234e84901ae4ac14f2d44f02fad517d95712cec3  # v0.75.0
+      LGTM_CI_TOOLING_REF: 234e84901ae4ac14f2d44f02fad517d95712cec3 # v0.75.0
     steps:
       # Direct remote harden-runner step: the lgtm-ci local composite was
       # removed in v0.50.0 (lgtm-ci#467), and GitHub skips pre hooks for
@@ -35,7 +35,7 @@ jobs:
       # equivalent plus setup-uv/astral download and Pages artifact endpoints.
       - name: Harden runner
         # yamllint disable-line rule:line-length
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: block
           allowed-endpoints: >-
@@ -57,13 +57,13 @@ jobs:
 
       - name: Checkout
         # yamllint disable-line rule:line-length
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Checkout lgtm-ci tooling
         # yamllint disable-line rule:line-length
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: lgtm-hq/lgtm-ci
           path: .lgtm-ci-tooling
@@ -77,16 +77,16 @@ jobs:
       - name: Set up Python
         uses: ./.lgtm-ci-tooling/.github/actions/setup-python
         with:
-          python-version: "3.14"
-          install-dependencies: "true"
-          cache: "false"
+          python-version: '3.14'
+          install-dependencies: 'true'
+          cache: 'false'
 
       - name: Build landing page
         run: uv run python scripts/ci/build_pages.py --output _site/index.html
 
       - name: Upload Pages artifact
         # yamllint disable-line rule:line-length
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
 
@@ -95,8 +95,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
-      pages: write  # deploy to GitHub Pages
-      id-token: write  # verify deployment origin (OIDC)
+      pages: write # deploy to GitHub Pages
+      id-token: write # verify deployment origin (OIDC)
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -104,4 +104,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         # yamllint disable-line rule:line-length
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5.0.1
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -1,3 +1,18 @@
 # Homebrew tap — ignore generated/vendor paths from lintro
 
+build
+dist
+node_modules
+.venv
+venv
+env
+# Local shell-test virtualenv and coverage output (scripts/ci/run-tests.sh)
+.test-venv
+coverage
+# Claude Code project memory and config (not source code)
+.claude
+# Sparse lgtm-ci tooling checkout for reusable workflow scripts (not project source)
+.lgtm-ci-tooling
+
+__pycache__
 .lintro/*

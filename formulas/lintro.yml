@@ -3,7 +3,7 @@ package: lintro
 source-repo: lgtm-hq/py-lintro
 homepage: https://github.com/lgtm-hq/py-lintro
 license: MIT
-description: "Unified CLI for code formatting, linting, and quality assurance"
+description: 'Unified CLI for code formatting, linting, and quality assurance'
 
 # What the tap verifies before pinning a digest (lgtm-hq/homebrew-tap#471;
 # checks live in scripts/ci/lib/provenance.sh). Identities verified against
@@ -26,7 +26,7 @@ provenance:
 formulas:
   lintro:
     type: binary
-    test-command: "lintro --version"
+    test-command: 'lintro --version'
     binary-url-pattern: >-
       https://github.com/lgtm-hq/py-lintro/releases/download/v{version}/lintro-macos-{arch}
     binary-names:
@@ -44,7 +44,7 @@ formulas:
     # Linting tools are still not bundled (`lintro install` fetches them),
     # matching the arm64 binary's footprint.
     intel-pypi:
-      python-version: "3.13"
+      python-version: '3.13'
       extras:
         - mcp
       min-resource-count: 5
@@ -90,12 +90,12 @@ formulas:
 
   lintro-full:
     type: pypi
-    python-version: "3.13"
-    test-command: "lintro --version"
+    python-version: '3.13'
+    test-command: 'lintro --version'
     generate-resources: true
     min-resource-count: 5
     class-name: LintroFull
-    description: "Unified CLI for code quality (all tools included)"
+    description: 'Unified CLI for code quality (all tools included)'
     head: true
     conflicts-with:
       formula: lintro
@@ -137,7 +137,7 @@ formulas:
     wheel-only-packages:
       pydoclint:
         type: universal
-        comment: "pydoclint - use wheel for consistency"
+        comment: 'pydoclint - use wheel for consistency'
       pydantic-core:
         type: platform
         resolve-version-from: pydantic-core

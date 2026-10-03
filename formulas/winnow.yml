@@ -3,14 +3,14 @@ package: winnow-media
 source-repo: lgtm-hq/winnow
 homepage: https://github.com/lgtm-hq/winnow
 license: MIT
-description: "Organize, deduplicate, and keep the best from your media library"
+description: 'Organize, deduplicate, and keep the best from your media library'
 
 formulas:
   winnow:
     type: pypi
     generate-resources: true
-    python-version: "3.13"
-    test-command: "winnow --version"
+    python-version: '3.13'
+    test-command: 'winnow --version'
     wheel-only-packages:
       numpy:
         type: platform
