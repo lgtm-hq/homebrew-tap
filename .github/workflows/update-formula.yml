@@ -6,7 +6,7 @@ concurrency:
   group: update-formula-${{ github.repository }}-${{ github.event.client_payload.formula }}
   cancel-in-progress: true
 
-"on":
+'on':
   repository_dispatch:
     types: [update-formula]
 
@@ -18,7 +18,7 @@ jobs:
       contents: read
       pull-requests: write
     env:
-      LGTM_CI_TOOLING_REF: 234e84901ae4ac14f2d44f02fad517d95712cec3  # v0.75.0
+      LGTM_CI_TOOLING_REF: 234e84901ae4ac14f2d44f02fad517d95712cec3 # v0.75.0
     steps:
       # Direct remote harden-runner step: the lgtm-ci local composite was
       # removed in v0.50.0 (lgtm-ci#467), and GitHub skips pre hooks for
@@ -30,7 +30,7 @@ jobs:
       # provenance from pypi.org).
       - name: Harden runner
         # yamllint disable-line rule:line-length
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: block
           allowed-endpoints: >-
@@ -53,13 +53,13 @@ jobs:
 
       - name: Checkout
         # yamllint disable-line rule:line-length
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Checkout lgtm-ci tooling
         # yamllint disable-line rule:line-length
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: lgtm-hq/lgtm-ci
           path: .lgtm-ci-tooling
@@ -73,9 +73,9 @@ jobs:
       - name: Set up Python
         uses: ./.lgtm-ci-tooling/.github/actions/setup-python
         with:
-          python-version: "3.14"
-          install-dependencies: "true"
-          cache: "false"
+          python-version: '3.14'
+          install-dependencies: 'true'
+          cache: 'false'
 
       - name: Parse dispatch payload
         id: payload
@@ -86,7 +86,7 @@ jobs:
       - name: Create Homebrew tap GitHub App token
         id: homebrew-app-token
         # yamllint disable-line rule:line-length
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ secrets.HOMEBREW_TAP_APP_ID }}
           private-key: ${{ secrets.HOMEBREW_TAP_APP_PRIVATE_KEY }}
