@@ -58,11 +58,11 @@ brew install --build-from-source ./Formula/<formula>.rb
 brew test <formula>
 ```
 
-`brew style`, `brew audit --strict --online`, a source install, `brew test`
-and a `--version` smoke check run in CI for every PR that touches a formula
-(`scripts/ci/validate-formulas.sh`); a formula that does not install or that
-has an audit finding outside the explicit accept list fails the check. To run
-the same sequence locally:
+`brew style`, `brew audit --strict --online`, a source install, `brew test` and
+a `--version` smoke check run in CI for every PR that touches a formula
+(`scripts/ci/validate-formulas.sh`); a formula that does not install or that has
+an audit finding outside the explicit accept list fails the check. To run the
+same sequence locally:
 
 ```bash
 bash scripts/ci/validate-formulas.sh

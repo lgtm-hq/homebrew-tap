@@ -2,7 +2,8 @@
 
 ## Supported Versions
 
-This repository contains only Homebrew formulae. Security issues related to the formula distribution are supported:
+This repository contains only Homebrew formulae. Security issues related to the
+formula distribution are supported:
 
 | Component | Supported |
 | --------- | --------- |
@@ -17,7 +18,8 @@ Found a security vulnerability in this tap? Here's how to report it:
 
 ### Private Reporting Only
 
-Please **do not** create public GitHub issues for security vulnerabilities. This helps prevent potential exploitation while we work on a fix.
+Please **do not** create public GitHub issues for security vulnerabilities. This
+helps prevent potential exploitation while we work on a fix.
 
 ### How to Report
 
