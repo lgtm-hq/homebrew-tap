@@ -24,16 +24,16 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.171.1/lintro-macos-arm64"
-      sha256 "fe0a65c50bbb8aa9d64a7170f0ec93e6451222b4245dfc30ee8fecad7ebba197"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.171.2/lintro-macos-arm64"
+      sha256 "93d1168ebc5fe24f66ee7aee21679c8fa9a41676cb10c69f394fcfc9e4b58523"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv. Every Python dependency is a url+sha256
       # pinned resource below; nothing is resolved from PyPI at install time.
-      url "https://files.pythonhosted.org/packages/4d/ff/061e6a53e846800aa9c543ed1bc2d5feb940e5353385f91f5b5f232ac9ad/lintro-0.171.1.tar.gz"
-      sha256 "887bcacea9d064412a19a2a8592936d85a9c816fbe383c8eb606b1f14db63a18"
+      url "https://files.pythonhosted.org/packages/db/7e/865f83cf57da4be044ac3959323931194a4f34ca5d68b9a136e7233394e3/lintro-0.171.2.tar.gz"
+      sha256 "145fc16634e66d01c6d14d3b152af353d110fbe6141ab48c8811528acd3e54e4"
 
       depends_on "rust" => :build
       depends_on "libyaml"
@@ -71,8 +71,8 @@ class Lintro < Formula
       end
 
       resource "cryptography" do
-        url "https://files.pythonhosted.org/packages/bb/ad/5d6702db60b1e40b41ef513b6967ff5848f307d50f8449baf1634f5908f1/cryptography-50.0.1.tar.gz"
-        sha256 "5dd9bda1c12b4162f6ff568eeb5e0ff956c28d14406e875cfe8a63a2d414ff20"
+        url "https://files.pythonhosted.org/packages/9d/af/182eb91b0df3fe75c4d9f26fe70684569566745f6ba7e5c9c73a862c5252/cryptography-50.0.2.tar.gz"
+        sha256 "7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5"
       end
 
       resource "defusedxml" do
@@ -106,8 +106,8 @@ class Lintro < Formula
       end
 
       resource "identify" do
-        url "https://files.pythonhosted.org/packages/52/63/51723b5f116cc04b061cb6f5a561790abf249d25931d515cd375e063e0f4/identify-2.6.19.tar.gz"
-        sha256 "6be5020c38fcb07da56c53733538a3081ea5aa70d36a156f83044bfbf9173842"
+        url "https://files.pythonhosted.org/packages/53/35/d70c0006c7cee65999ea94a6273e60b2094f600a3d8b71b04318253fc643/identify-2.6.20.tar.gz"
+        sha256 "ad729860a923858d26917c2f4fb0a1d83d27a75b1e090c06440c573f048f3285"
       end
 
       resource "idna" do
@@ -136,13 +136,13 @@ class Lintro < Formula
       end
 
       resource "mcp" do
-        url "https://files.pythonhosted.org/packages/76/31/ac54fb0fdd5b37de704486e288bba4fbbb463f24cfcfedbede407b854513/mcp-2.2.0.tar.gz"
-        sha256 "2dc37ecb1974becdcebdbf7561e7c15a07dbbf20ba21ba16c3593b3038b3afbd"
+        url "https://files.pythonhosted.org/packages/9d/8d/e0d339616f4810e9051d4aba6887afab289ab1f81875fe908b606cdfd0e3/mcp-2.3.0.tar.gz"
+        sha256 "8b147a50441cf059dc88c684e0aeed3687f0aa0f39c6cde7b90330effd2b34d8"
       end
 
       resource "mcp-types" do
-        url "https://files.pythonhosted.org/packages/ae/91/762d7755d971aff8a28d75f7961656148edf27875c8026e6385aaab08ae7/mcp_types-2.2.0.tar.gz"
-        sha256 "d3ed53703ddd10d9c6399f29d322bb66f3f67ab41348ac8556ba23e07fedefad"
+        url "https://files.pythonhosted.org/packages/9e/2d/7c251e34207f6c51000312fc8839111ac45cfe02023f90b44e7f1051dd8e/mcp_types-2.3.0.tar.gz"
+        sha256 "d1e46549edb35ee19a94940fcee6d1addd7e589ab7ea92dda83f5d84781fc362"
       end
 
       resource "mdurl" do
@@ -181,8 +181,8 @@ class Lintro < Formula
       end
 
       resource "pyjwt" do
-        url "https://files.pythonhosted.org/packages/02/a5/5197bfd06417837ac079921c66fa6393f1dea3557272a263cebfef69e432/pyjwt-2.15.0.tar.gz"
-        sha256 "b11c5f9791d7bf51c2b39a81ed669f6b2dbbd669df2942f6c60167e9e3d1abe4"
+        url "https://files.pythonhosted.org/packages/43/ea/5194e52748b0da83d71e082d75496eaec6e58f419f5e184786ded517e6a9/pyjwt-2.15.1.tar.gz"
+        sha256 "4f259e80cdfb6b3fc18a7de51fd1ef9ec79652f25019bae68975ca2468a34df8"
       end
 
       resource "python-multipart" do
@@ -211,8 +211,8 @@ class Lintro < Formula
       end
 
       resource "sse-starlette" do
-        url "https://files.pythonhosted.org/packages/2b/54/6767bb789b2f2fed6e0f953df949cd39dc263a384c1b65a95232598621d6/sse_starlette-3.4.11.tar.gz"
-        sha256 "1bae716c02f3e6f294be41ff333220692dae7c3cbab077c900f159676719dade"
+        url "https://files.pythonhosted.org/packages/e4/be/0123026f719d1a7936f214a88b553bb5701e04ff2511147c1dab0c5035eb/sse_starlette-3.5.0.tar.gz"
+        sha256 "75de713aa8a9441513cc283220826da079d982770965b951e9437720e8bafdb2"
       end
 
       resource "starlette" do
