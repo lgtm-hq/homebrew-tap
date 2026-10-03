@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/4d/ff/061e6a53e846800aa9c543ed1bc2d5feb940e5353385f91f5b5f232ac9ad/lintro-0.171.1.tar.gz"
-  sha256 "887bcacea9d064412a19a2a8592936d85a9c816fbe383c8eb606b1f14db63a18"
+  url "https://files.pythonhosted.org/packages/db/7e/865f83cf57da4be044ac3959323931194a4f34ca5d68b9a136e7233394e3/lintro-0.171.2.tar.gz"
+  sha256 "145fc16634e66d01c6d14d3b152af353d110fbe6141ab48c8811528acd3e54e4"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -88,8 +88,8 @@ class LintroFull < Formula
   end
 
   resource "identify" do
-    url "https://files.pythonhosted.org/packages/52/63/51723b5f116cc04b061cb6f5a561790abf249d25931d515cd375e063e0f4/identify-2.6.19.tar.gz"
-    sha256 "6be5020c38fcb07da56c53733538a3081ea5aa70d36a156f83044bfbf9173842"
+    url "https://files.pythonhosted.org/packages/53/35/d70c0006c7cee65999ea94a6273e60b2094f600a3d8b71b04318253fc643/identify-2.6.20.tar.gz"
+    sha256 "ad729860a923858d26917c2f4fb0a1d83d27a75b1e090c06440c573f048f3285"
   end
 
   resource "idna" do
