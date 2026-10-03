@@ -8,8 +8,8 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  url "https://files.pythonhosted.org/packages/49/dd/f6af498640b5407e582008573f3a10f399003f7c5b74b5100dfde633f548/winnow_media-0.37.4.tar.gz"
-  sha256 "d4470d7b2d1adbdfbf2828b47477578ceef449fa51c133fa8f078b1585350f4c"
+  url "https://files.pythonhosted.org/packages/d7/bc/a0aa28d8559f9259f82b739dbcc5ac7a1be963b3ef31a32d8ab1e0b44732/winnow_media-0.37.5.tar.gz"
+  sha256 "6fcc830ba809f3e7bb94ad9471a939750689583486db1df5d7313251175f0e7e"
   license "MIT"
 
   livecheck do
@@ -131,12 +131,12 @@ class Winnow < Formula
   # pillow_heif bundles libheif and needs it to build from source - use platform-specific wheels
   resource "pillow-heif" do
     on_arm do
-      url "https://files.pythonhosted.org/packages/0d/32/59dfe8f1799eef6a442fe5007e5c199b1961d33c7a56c64e0babc9d4a95c/pillow_heif-1.7.0-cp313-cp313-macosx_11_0_arm64.whl"
-      sha256 "9912a8301d469012fe2ba1f2da539b56de048aab3db649857b4ab5fa9a07919b"
+      url "https://files.pythonhosted.org/packages/99/11/e1aa6d072d4778821d6cb81763dd1993527d4f2062be701360fe4d9f853c/pillow_heif-1.8.0-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "ec5ff22dac945f169d04b18b870f369e439370ba919c0f15ea3a37ac40048fb7"
     end
     on_intel do
-      url "https://files.pythonhosted.org/packages/c4/56/f5aa099875cc881aa19bcd1b8c5ef3d97376a05bdc3b56487e49d01dd9be/pillow_heif-1.7.0-cp313-cp313-macosx_10_15_x86_64.whl"
-      sha256 "2c602d5177e46fca3e0491572d76ed4de66c63ac5aaef999e5b3a4c1fe101395"
+      url "https://files.pythonhosted.org/packages/63/9f/2c601980b4cacc1cb44dfb9f8db88c67dc14adb77d544186f9cde8ca70e5/pillow_heif-1.8.0-cp313-cp313-macosx_10_15_x86_64.whl"
+      sha256 "01aeb134dbd99a6b2cbadffd312693c29dff6413c98ac6000674100b827c09ae"
     end
   end
   # pydantic_core requires Rust to build - use platform-specific wheels
