@@ -8,14 +8,29 @@ enforce:
 execution:
   tool_order: priority
   fail_fast: false
+  parallel: true
 
 defaults:
+  prettier:
+    semi: true
+    singleQuote: true
+    tabWidth: 2
+    printWidth: 100
+    trailingComma: es5
+    overrides:
+      - files: '*.md'
+        options:
+          # Matches MD013 line_length in .markdownlint-cli2.jsonc.
+          printWidth: 80
+
   yamllint:
     extends: default
     rules:
       comments-indentation: disable
       comments:
         min-spaces-from-content: 1
+      truthy:
+        check-keys: true
       line-length:
         max: 88
         allow-non-breakable-inline-mappings: true
