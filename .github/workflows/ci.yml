@@ -46,6 +46,7 @@ jobs:
 
   shell-tests:
     permissions:
+      actions: read # aggregate job polls run artifacts (lgtm-ci v0.76+)
       contents: read # checkout repository code
       pull-requests: write # post test results/coverage to PR
     # yamllint disable-line rule:line-length
