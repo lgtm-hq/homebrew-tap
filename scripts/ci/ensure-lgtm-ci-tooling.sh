@@ -32,8 +32,6 @@ git clone --filter=blob:none --sparse \
 	"https://github.com/lgtm-hq/lgtm-ci.git" \
 	"$TOOLING_DIR"
 git -C "$TOOLING_DIR" sparse-checkout set \
-	.github/actions/harden-runner \
-	.github/actions/resolve-egress-allowlist \
 	.github/actions/setup-python \
 	scripts/ci
 git -C "$TOOLING_DIR" checkout "$LGTM_CI_TOOLING_REF"
