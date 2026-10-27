@@ -21,7 +21,7 @@ jobs:
     with:
       tooling-ref: '9ea778eb4e6b876d60b7b3d7d0d0aee5182717bb' # v0.78.0
       job-name: '🛠️ Lintro Code Quality'
-      egress-policy: block
+      egress-policy: audit # TEMP: lgtm-hq/lgtm-ci#1207
       egress-preset: quality
       runner-image: ubuntu-24.04
 
@@ -41,7 +41,7 @@ jobs:
       # yamllint disable-line rule:line-length
       exit-code: ${{ needs.quality.outputs.exit-code != '' && needs.quality.outputs.exit-code || '1' }}
       job-name: 'PR Lint Comment'
-      egress-policy: block
+      egress-policy: audit # TEMP: lgtm-hq/lgtm-ci#1207
       egress-preset: github-tooling
 
   shell-tests:
