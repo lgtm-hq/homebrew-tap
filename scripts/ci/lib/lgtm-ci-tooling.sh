@@ -3,7 +3,7 @@
 # Purpose: Resolve and source lgtm-ci publish tooling for tap scripts.
 
 # shellcheck disable=SC2034
-LGTM_CI_TOOLING_REF="${LGTM_CI_TOOLING_REF:-9ea778eb4e6b876d60b7b3d7d0d0aee5182717bb}" # v0.78.0
+LGTM_CI_TOOLING_REF="${LGTM_CI_TOOLING_REF:-2097a900753e3e5ad0e336483501b278e99855ae}" # v0.78.1
 
 _lgtm_ci_tooling_ready() {
 	local dir="$1"
