@@ -276,7 +276,7 @@ registry helpers (`wait_for_package`, `get_pypi_download_url`,
 lgtm-ci's `scripts/ci/git/create-signed-commit.sh` from `LGTM_CI_TOOLING_DIR` in
 reset mode (added in lgtm-ci v0.75.0). `update-formula.yml` and
 `deploy-pages.yml` sparse-checkout lgtm-ci at `LGTM_CI_TOOLING_REF`
-(`2097a900753e3e5ad0e336483501b278e99855ae`, v0.78.1), and
+(`8f0fd9339df5d30a529aa572ceb51345b8be33a0`, v0.79.2), and
 `scripts/ci/lib/lgtm-ci-tooling.sh` uses the same ref as its local default; bump
 those three together. The reusable-workflow `uses:` refs and their `tooling-ref`
 inputs (`ci.yml`, `ai-review.yml`, `pr-auto-assign.yml`) must match each other
