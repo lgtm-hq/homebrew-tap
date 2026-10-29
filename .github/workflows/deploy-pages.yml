@@ -26,7 +26,7 @@ jobs:
     permissions:
       contents: read
     env:
-      LGTM_CI_TOOLING_REF: 2097a900753e3e5ad0e336483501b278e99855ae # v0.78.1
+      LGTM_CI_TOOLING_REF: 229e00aaa727ecd88de5ab3711b07f701c4aae21 # v0.79.0
     steps:
       # Direct remote harden-runner step: the lgtm-ci local composite was
       # removed in v0.50.0 (lgtm-ci#467), and GitHub skips pre hooks for
