@@ -24,16 +24,16 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.173.1/lintro-macos-arm64"
-      sha256 "bba13f377b227695260c7c84d68de6a113f927e5bbc237fe91742abf80acd9d4"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.173.2/lintro-macos-arm64"
+      sha256 "28f1261e090d8a92cfaded7df6e21c7f92eb2f2574d9aa1a51cefb186470d938"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv. Every Python dependency is a url+sha256
       # pinned resource below; nothing is resolved from PyPI at install time.
-      url "https://files.pythonhosted.org/packages/28/60/c85016fd185002153eee8f1a09292b138133ea3e6eea951e1706e33cc271/lintro-0.173.1.tar.gz"
-      sha256 "231916038ee78fce497665a5ecf52b21820990935bb254294202f2d1b5e14fd6"
+      url "https://files.pythonhosted.org/packages/39/b2/a3b5dcc01e109b5135208f8b845220c19caf8aca9bab81e064630a408e2f/lintro-0.173.2.tar.gz"
+      sha256 "0475ebb43f2c20a56ba4c56496ad80993a1cc8d405ffcc66df3e126b24729ce1"
 
       depends_on "rust" => :build
       depends_on "libyaml"
@@ -56,8 +56,8 @@ class Lintro < Formula
       end
 
       resource "certifi" do
-        url "https://files.pythonhosted.org/packages/a6/bd/1436c50cc46699de0230fbaacc1d1de7bfec413176099949e9d5112e88f2/certifi-2026.10.19.tar.gz"
-        sha256 "035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae"
+        url "https://files.pythonhosted.org/packages/fd/11/b524cbd9bbdaca58608e4cf4053fd463417549e1959fa8d3aa18319f9555/certifi-2026.10.23.tar.gz"
+        sha256 "a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd"
       end
 
       resource "cffi" do
@@ -91,8 +91,8 @@ class Lintro < Formula
       end
 
       resource "httpcore2" do
-        url "https://files.pythonhosted.org/packages/c2/a9/11bc39967bb9dfaab0981ab4d49f519818acbee662a7e76d06813319c838/httpcore2-2.15.1.tar.gz"
-        sha256 "a94b6b3e6260e1a3f035915408d3dcd7dc8e844c2b544b642e227cf98a747af0"
+        url "https://files.pythonhosted.org/packages/c0/61/afa9d6b7452f9eca73f73d45324eb0bb52f098fd5e6049bf6b8263be9b4e/httpcore2-2.16.0.tar.gz"
+        sha256 "c72cd0413563b17e1cd8354677dff887466f8ec2551679759e93126534428643"
       end
 
       resource "httpx" do
@@ -101,8 +101,8 @@ class Lintro < Formula
       end
 
       resource "httpx2" do
-        url "https://files.pythonhosted.org/packages/7f/85/07978f4afd168d6b408fa75c1dc13e3010653a81e182aa1b6d89ab94d9c6/httpx2-2.15.1.tar.gz"
-        sha256 "ff75485308fbe441e75b1218546e4e78d884df41e1a9741c1f79335ed8fcfef7"
+        url "https://files.pythonhosted.org/packages/43/73/5ca2cedf5e4e50423d1c258877865a6b62793633b561c58499f8aeb33b7e/httpx2-2.16.0.tar.gz"
+        sha256 "0d54c98128e8f2ff7fbbde0fca8c359e5f032edeaaaac443cdb7f31f685bcd7f"
       end
 
       resource "identify" do
@@ -151,8 +151,8 @@ class Lintro < Formula
       end
 
       resource "opentelemetry-api" do
-        url "https://files.pythonhosted.org/packages/2e/02/6e0ae9cc61bd3169d401077b507b3ebc344745171e1051ab430be012dcd9/opentelemetry_api-1.45.1.tar.gz"
-        sha256 "aa38ed19bcc084ba42782a73255b3582283eced7ad6dddbd6695189e69adfb75"
+        url "https://files.pythonhosted.org/packages/19/14/cf3a6b6448849656e1e5f4e2101f3988dc6789724050096aba1bc5ccf592/opentelemetry_api-1.45.2.tar.gz"
+        sha256 "d7b0008e21e5fd61cbe7a7f34ca3b6905a78ab677d9bc395e299359c75cda6b4"
       end
 
       resource "packaging" do
@@ -166,13 +166,13 @@ class Lintro < Formula
       end
 
       resource "pycparser" do
-        url "https://files.pythonhosted.org/packages/da/a8/c5fdbeee588bb8ada9458774f43adf1bdd30bd59157055142183e769a024/pycparser-3.11.tar.gz"
-        sha256 "d875f09c3507d00e1aba0eecc6dcadc1352f30fff09dc6bff2f1c2935e97c2bc"
+        url "https://files.pythonhosted.org/packages/cb/27/eeb9f307bf07060f3d9f9aa0fb8c15b01bdfded0a941e4b2719c7f94cacd/pycparser-3.12.tar.gz"
+        sha256 "f03387877eab82ce01bbdfd0ba7252ee55a90b1c708d5129e2ce915475cf1db6"
       end
 
       resource "pydantic" do
-        url "https://files.pythonhosted.org/packages/7c/0b/8e10b2e693af8ec54346a14caf36221334775975a747c9ceaa3f8371d96d/pydantic-2.14.1.tar.gz"
-        sha256 "94f478203dd03404682a1ada216965651dd74b1d2d5ffd62e00e0837caab5c26"
+        url "https://files.pythonhosted.org/packages/9f/d5/b4867fa7c7f04c34997d7d8aad744f64d210bb99d67cf18bf3fb1eea1aed/pydantic-2.14.2.tar.gz"
+        sha256 "fb7b2db6cefe8414dd612edeede49c4c433acb0432b0f92b95024e45f66c505d"
       end
 
       resource "pygments" do
@@ -211,13 +211,13 @@ class Lintro < Formula
       end
 
       resource "sse-starlette" do
-        url "https://files.pythonhosted.org/packages/e4/be/0123026f719d1a7936f214a88b553bb5701e04ff2511147c1dab0c5035eb/sse_starlette-3.5.0.tar.gz"
-        sha256 "75de713aa8a9441513cc283220826da079d982770965b951e9437720e8bafdb2"
+        url "https://files.pythonhosted.org/packages/71/7f/3b8ec4f27833f7b8c270a3ef960b6d435e1065439847bc0fcd1e58ae898b/sse_starlette-3.6.0.tar.gz"
+        sha256 "623151d6c20dc0eebf1b3379c27faae91fff883bac7ab6665f16f46440a88b3a"
       end
 
       resource "starlette" do
-        url "https://files.pythonhosted.org/packages/ad/eb/4e197bf26b023abafc5e9043ec8710d7de0fcb032d0969045236d72aa0b1/starlette-1.9.0.tar.gz"
-        sha256 "3d931de246ed870e35ce605974440816ef895e592f255d1396cfdf191d4c4318"
+        url "https://files.pythonhosted.org/packages/48/bb/3d8757f21e9a53d9035c9eb039a777047139a16bfdbedfc7a58241c3d914/starlette-1.10.0.tar.gz"
+        sha256 "b8399098d4c1e3522734f7235dc79b1fc967f96cf139c81e0fa30479e0685f9b"
       end
 
       resource "tabulate" do
@@ -252,8 +252,8 @@ class Lintro < Formula
 
       # pydantic-core requires Rust to build - use platform-specific wheels
       resource "pydantic-core" do
-        url "https://files.pythonhosted.org/packages/ae/57/0e237d7091d2cd44a35d243b7344227f90440166860469cd036afc23a04d/pydantic_core-2.50.1-cp313-cp313-macosx_10_12_x86_64.whl"
-        sha256 "d5e062c01286d861fd6a1c4ff6e063547b3e713067f2df033c0ff97ac2ca006b"
+        url "https://files.pythonhosted.org/packages/c2/fc/ac3ae9d934932ce3c380e7fe53e01372b49ef5dcb49db56f1a1f005b4d8c/pydantic_core-2.50.2-cp313-cp313-macosx_10_12_x86_64.whl"
+        sha256 "93eb41d626d9a2749a678823c70bba8c25033cef474ae8001fd7621adbbd8437"
       end
     end
   end
