@@ -23,7 +23,7 @@ jobs:
       job-name: '🛠️ Lintro Code Quality'
       egress-policy: block
       egress-preset: quality
-      runner-image: ubuntu-24.04
+      runner-image: ubuntu-26.04
 
   publish-pr-comment:
     needs: quality
