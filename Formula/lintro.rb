@@ -24,16 +24,16 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.173.3/lintro-macos-arm64"
-      sha256 "0f217d015cfe1d7dc8da48ffc591191c48128d93eb338a8c93e1d9724632dae9"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.173.4/lintro-macos-arm64"
+      sha256 "f5ddab722fa0688a3d881a599b2a07a8d3d52c98085f219f01e0feee8ec9850b"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv. Every Python dependency is a url+sha256
       # pinned resource below; nothing is resolved from PyPI at install time.
-      url "https://files.pythonhosted.org/packages/3a/29/dbd7b38ff7ec64f4819e6165088b81df5b219b89ef3ffba43ef0f29477f6/lintro-0.173.3.tar.gz"
-      sha256 "71c8da01be4ec7a559db062abea69785016a836f54fbbd5e10de5acdf8a8daf5"
+      url "https://files.pythonhosted.org/packages/02/f6/70043154be6b9fa2ad460fd37b5dd00636bf85eea272ef687af6a0ad07b9/lintro-0.173.4.tar.gz"
+      sha256 "0ddfe3ae7865c7fc91b5a3320252eb49a5999fa5c3f0cbbe36e21a4f4119d088"
 
       depends_on "rust" => :build
       depends_on "libyaml"
@@ -246,8 +246,8 @@ class Lintro < Formula
       end
 
       resource "watchdog" do
-        url "https://files.pythonhosted.org/packages/db/7d/7f3d619e951c88ed75c6037b246ddcf2d322812ee8ea189be89511721d54/watchdog-6.0.0.tar.gz"
-        sha256 "9ddf7c82fda3ae8e24decda1338ede66e1c99883db93711d8fb941eaa2d8c282"
+        url "https://files.pythonhosted.org/packages/92/68/6477c65315fd5b58ea5c7fbfe871c3ca6e5ec951be6c48c2f5fe8ee5e34d/watchdog-7.0.0.tar.gz"
+        sha256 "128583e0ffa0e5c0531f9f37e2e24be1e7b0503561f6aa8b0aac5a1d646e2bf2"
       end
 
       # pydantic-core requires Rust to build - use platform-specific wheels
