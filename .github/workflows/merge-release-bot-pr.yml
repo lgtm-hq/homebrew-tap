@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   merge-release-bot-pr:
-    runs-on: ubuntu-26.04
+    runs-on: ${{ vars.LGTM_CI_RUNNER || 'ubuntu-26.04' }}
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'pull_request' &&

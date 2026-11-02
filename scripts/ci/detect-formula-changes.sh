@@ -13,10 +13,11 @@
 #   GITHUB_OUTPUT   Required. File to append the output to.
 #   BASE_SHA        Base commit for the diff (empty on push/dispatch -> true).
 #   HEAD_SHA        Head commit for the diff (default: HEAD).
+#   LGTM_CI_RUNNER  Generic no-op runner (default: ubuntu-26.04).
 #   CHANGED_FILES   Optional test seam: newline-separated file list to use
 #                   instead of computing a git diff.
 #
-# Also writes `runner=macos-26|ubuntu-24.04` so the caller can select a runner
+# Also writes `runner=macos-26|<generic runner>` so the caller can select a runner
 # without an over-long expression in the workflow.
 
 set -euo pipefail
@@ -31,7 +32,7 @@ FORMULA_PATH_REGEX='^(Formula/|formulas/|scripts/|\.github/workflows/(validate-h
 
 emit() {
 	local formula="$1"
-	local runner="ubuntu-24.04"
+	local runner="${LGTM_CI_RUNNER:-ubuntu-26.04}"
 	[[ "$formula" == "true" ]] && runner="macos-26"
 	{
 		echo "formula=${formula}"
