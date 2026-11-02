@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   changes:
-    runs-on: ubuntu-26.04
+    runs-on: ${{ vars.LGTM_CI_RUNNER || 'ubuntu-26.04' }}
     timeout-minutes: 5
     outputs:
       formula: ${{ steps.detect.outputs.formula }}
@@ -35,6 +35,7 @@ jobs:
       - name: Detect formula-related changes
         id: detect
         env:
+          LGTM_CI_RUNNER: ${{ vars.LGTM_CI_RUNNER || 'ubuntu-26.04' }}
           # merge_group has no pull_request context; fall back to its SHAs
           # so queue entries keep the cheap early-exit path for non-formula
           # changes.
