@@ -24,8 +24,8 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.177.26/lintro-macos-arm64"
-      sha256 "1d136108fdd05a7c8e2554eba1fe1d17746c144f77242a112fcee8e1716dadee"
+      url "https://github.com/lgtm-hq/py-lintro/archive/refs/tags/v0.178.0.tar.gz"
+      sha256 "a640f5a4e416c2aa69fa3d54f50b8e559bad8892b176d44bb2b51f00282894f2"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
