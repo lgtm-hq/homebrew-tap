@@ -24,16 +24,16 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.177.25/lintro-macos-arm64"
-      sha256 "84f1b7e4967e0fcea9b0b1149ada1e2a108bb2a93cd951b23d52339c75615551"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.177.26/lintro-macos-arm64"
+      sha256 "1d136108fdd05a7c8e2554eba1fe1d17746c144f77242a112fcee8e1716dadee"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv. Every Python dependency is a url+sha256
       # pinned resource below; nothing is resolved from PyPI at install time.
-      url "https://files.pythonhosted.org/packages/22/a7/4e3c18ccc1c9b40f57cbf98e6bddcd75c0e3c20ca53d89383f606bf1f06f/lintro-0.177.25.tar.gz"
-      sha256 "6db018f5664f62f9ee6462382c27867fc183fca5e1a757a957b8527ba15fafd8"
+      url "https://files.pythonhosted.org/packages/29/f9/e3c2e82fc3b2ff78a504794dc0ef06cc80b6c7133148ec79851c96a7050a/lintro-0.177.26.tar.gz"
+      sha256 "5f0b10b4554dc5080dd3a74f74fa4e7db681cf1c4747d28922e8e1daee9eb55c"
 
       depends_on "rust" => :build
       depends_on "libyaml"
@@ -171,8 +171,8 @@ class Lintro < Formula
       end
 
       resource "pydantic" do
-        url "https://files.pythonhosted.org/packages/9f/d5/b4867fa7c7f04c34997d7d8aad744f64d210bb99d67cf18bf3fb1eea1aed/pydantic-2.14.2.tar.gz"
-        sha256 "fb7b2db6cefe8414dd612edeede49c4c433acb0432b0f92b95024e45f66c505d"
+        url "https://files.pythonhosted.org/packages/b4/fc/1203d011145c98ddce3cd2f505bb54375ef8d43223053df6bfcf3c746f46/pydantic-2.14.3.tar.gz"
+        sha256 "1054f237f4d4733e5a30e1e2333bd33a2004ab9ab1510bd053a9a31bb48e232d"
       end
 
       resource "pygments" do
@@ -246,14 +246,14 @@ class Lintro < Formula
       end
 
       resource "watchdog" do
-        url "https://files.pythonhosted.org/packages/92/68/6477c65315fd5b58ea5c7fbfe871c3ca6e5ec951be6c48c2f5fe8ee5e34d/watchdog-7.0.0.tar.gz"
-        sha256 "128583e0ffa0e5c0531f9f37e2e24be1e7b0503561f6aa8b0aac5a1d646e2bf2"
+        url "https://files.pythonhosted.org/packages/e2/55/087e45c2a3ed8223bc9f30d6b65f051de35513cfc30c989c2b1a14bf862e/watchdog-7.1.0.tar.gz"
+        sha256 "d3861e255416f49a1384474cb2efa097de165fb330d4c5432ce6708b509ed922"
       end
 
       # pydantic-core requires Rust to build - use platform-specific wheels
       resource "pydantic-core" do
-        url "https://files.pythonhosted.org/packages/c2/fc/ac3ae9d934932ce3c380e7fe53e01372b49ef5dcb49db56f1a1f005b4d8c/pydantic_core-2.50.2-cp313-cp313-macosx_10_12_x86_64.whl"
-        sha256 "93eb41d626d9a2749a678823c70bba8c25033cef474ae8001fd7621adbbd8437"
+        url "https://files.pythonhosted.org/packages/1b/21/39f8d97e7ea8e3083606ee9bb1d7f3ec70ded780bb6a872aad76c7eb08b2/pydantic_core-2.50.4-cp313-cp313-macosx_10_12_x86_64.whl"
+        sha256 "0f87ae9db5ba8d8de40dcb93982cf8dd544e6552a80d3345af51941cc2146b80"
       end
     end
   end
