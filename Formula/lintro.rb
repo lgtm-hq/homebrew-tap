@@ -24,16 +24,16 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.178.1/lintro-macos-arm64"
-      sha256 "c4431a1469da5da5d8b97d4c859af2753be9587a124969cb307c3f0e47f64051"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.178.2/lintro-macos-arm64"
+      sha256 "55c20f4200ebed5ff2d32e0a41894655aae7ba4ff223e27adf66b9ca4b3afad9"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv. Every Python dependency is a url+sha256
       # pinned resource below; nothing is resolved from PyPI at install time.
-      url "https://files.pythonhosted.org/packages/db/e1/2e988ba02e262c2ce85cc49fe157929a84d949194a5db7106456cd6b34eb/lintro-0.178.1.tar.gz"
-      sha256 "e55283c5dccfbba92d355ef8f8cec044d2948a35c4662473888b4293a56e9574"
+      url "https://files.pythonhosted.org/packages/a5/55/4a9c3e55396707419a6bf560888e9c4b335d4bd591c51e84923931721fcd/lintro-0.178.2.tar.gz"
+      sha256 "f9cc96991128147a60fa6982f570681edc6363d55c28be5719666c09dc34be4b"
 
       depends_on "rust" => :build
       depends_on "libyaml"
@@ -66,8 +66,8 @@ class Lintro < Formula
       end
 
       resource "click" do
-        url "https://files.pythonhosted.org/packages/c7/0e/7fa0ef50764b67090eca4114772a2abf8b6148198475e54c660b97caeee6/click-8.5.0.tar.gz"
-        sha256 "ba0d2089de75ea0310e2dde03160e6ca10009947fb95a182f9b54021bb272e34"
+        url "https://files.pythonhosted.org/packages/45/37/edbf1b0707709013c0cf2e8317e03d97ed29bf4cac709fe328904ae92a38/click-8.5.1.tar.gz"
+        sha256 "9bbfada76703fd1d784b83eea012e3e8c6a001a876543ef104fa56aaaeb072b4"
       end
 
       resource "cryptography" do
@@ -211,8 +211,8 @@ class Lintro < Formula
       end
 
       resource "sse-starlette" do
-        url "https://files.pythonhosted.org/packages/71/7f/3b8ec4f27833f7b8c270a3ef960b6d435e1065439847bc0fcd1e58ae898b/sse_starlette-3.6.0.tar.gz"
-        sha256 "623151d6c20dc0eebf1b3379c27faae91fff883bac7ab6665f16f46440a88b3a"
+        url "https://files.pythonhosted.org/packages/41/43/a232e3cd804293bd4f6d01e8895bc0f6f83ea148d712baf9d783c7d93d23/sse_starlette-3.7.0.tar.gz"
+        sha256 "326416da2ab52e9a41b3f409d3ff897eda45aa68c9f3b7b17d0913aab8d219c3"
       end
 
       resource "starlette" do
