@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/19/37/a80f86f7d53e2f6e61d7e6dbd614144ce3c7bc48baf6c98cb269fbbf2272/lintro-0.179.0.tar.gz"
-  sha256 "6587741234f3fa7fd70572034d5fae8aafdc8b125f32213da142b2028d0384e9"
+  url "https://files.pythonhosted.org/packages/32/5a/9b4f12091f7b5be0406bdc261f592f67617f07b18eb096354d69f48738bc/lintro-0.179.1.tar.gz"
+  sha256 "3a84469d2a384351303779550a261200e7c137a9babbab1b3950f9face1f3dd9"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -103,8 +103,8 @@ class LintroFull < Formula
   end
 
   resource "markdown-it-py" do
-    url "https://files.pythonhosted.org/packages/06/ff/7841249c247aa650a76b9ee4bbaeae59370dc8bfd2f6c01f3630c35eb134/markdown_it_py-4.2.0.tar.gz"
-    sha256 "04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49"
+    url "https://files.pythonhosted.org/packages/16/fc/cee2c45553c9a9bf77d8b0c391560c556d7ed756b1f0bb35eb5d48db09ea/markdown_it_py-4.3.0.tar.gz"
+    sha256 "91a58fa5b72c71a40cf7177250fd767480d7a2bb3ac426ccfb76fb90305fdaaa"
   end
 
   resource "mdurl" do
