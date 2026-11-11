@@ -24,16 +24,16 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.179.1/lintro-macos-arm64"
-      sha256 "34161bbc70d2e5e7a19bd642503542336e4e54f9a37b1eeed6a9606caab54eaa"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.180.0/lintro-macos-arm64"
+      sha256 "66a92fc819ee3464340e589694462b6f34148a562214c9f37e7d84ac8419358b"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv. Every Python dependency is a url+sha256
       # pinned resource below; nothing is resolved from PyPI at install time.
-      url "https://files.pythonhosted.org/packages/32/5a/9b4f12091f7b5be0406bdc261f592f67617f07b18eb096354d69f48738bc/lintro-0.179.1.tar.gz"
-      sha256 "3a84469d2a384351303779550a261200e7c137a9babbab1b3950f9face1f3dd9"
+      url "https://files.pythonhosted.org/packages/bd/6c/a653787fba4bf9bda612f11350cf197330b81f0da9ec623ef5ea9b2c02cd/lintro-0.180.0.tar.gz"
+      sha256 "dd3402ac4a1e707448cff77d36fef0d576eb0cd66114eb87e778e80ec10b2f69"
 
       depends_on "rust" => :build
       depends_on "libyaml"
@@ -126,8 +126,8 @@ class Lintro < Formula
       end
 
       resource "loguru" do
-        url "https://files.pythonhosted.org/packages/3a/05/a1dae3dffd1116099471c643b8924f5aa6524411dc6c63fdae648c4f1aca/loguru-0.7.3.tar.gz"
-        sha256 "19480589e77d47b8d85b2c827ad95d49bf31b0dcde16593892eb51dd18706eb6"
+        url "https://files.pythonhosted.org/packages/61/ce/b5bb93d4d9fc7a067f69140b3bb3782f6ad6360bc76e99b6e3d386cb1320/loguru-0.8.0.tar.gz"
+        sha256 "fb3e4623288e37700a0577f6e0ce776cc1860b5d95c657d67f07a2476b304867"
       end
 
       resource "markdown-it-py" do
