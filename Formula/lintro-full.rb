@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/32/5a/9b4f12091f7b5be0406bdc261f592f67617f07b18eb096354d69f48738bc/lintro-0.179.1.tar.gz"
-  sha256 "3a84469d2a384351303779550a261200e7c137a9babbab1b3950f9face1f3dd9"
+  url "https://files.pythonhosted.org/packages/bd/6c/a653787fba4bf9bda612f11350cf197330b81f0da9ec623ef5ea9b2c02cd/lintro-0.180.0.tar.gz"
+  sha256 "dd3402ac4a1e707448cff77d36fef0d576eb0cd66114eb87e778e80ec10b2f69"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -98,8 +98,8 @@ class LintroFull < Formula
   end
 
   resource "loguru" do
-    url "https://files.pythonhosted.org/packages/3a/05/a1dae3dffd1116099471c643b8924f5aa6524411dc6c63fdae648c4f1aca/loguru-0.7.3.tar.gz"
-    sha256 "19480589e77d47b8d85b2c827ad95d49bf31b0dcde16593892eb51dd18706eb6"
+    url "https://files.pythonhosted.org/packages/61/ce/b5bb93d4d9fc7a067f69140b3bb3782f6ad6360bc76e99b6e3d386cb1320/loguru-0.8.0.tar.gz"
+    sha256 "fb3e4623288e37700a0577f6e0ce776cc1860b5d95c657d67f07a2476b304867"
   end
 
   resource "markdown-it-py" do
