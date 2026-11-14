@@ -93,7 +93,7 @@ generate_pinned_resources() {
 	fi
 	log_info "Installing ${package} from tarball..."
 	if ! "$analysis_venv/bin/pip" install --quiet "$install_target"; then
-		log_error "Could not resolve ${package}'s dependencies under Python ${python_version} (pip error above)"
+		log_error "pip could not install ${package} and its dependencies under Python ${python_version} (pip error above)"
 		return 1
 	fi
 

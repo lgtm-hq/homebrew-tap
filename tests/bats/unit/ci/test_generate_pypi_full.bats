@@ -342,9 +342,11 @@ YAML
 }
 
 # Offline fixture for #633: capme 0.1.0 depends on capdep, whose only release
-# declares Requires-Python ==3.13.*. Everything is built here, so pip resolves
-# with PIP_NO_INDEX and the result does not depend on the host interpreter or
-# on PyPI. capme's sdist carries its own build backend (no build requirements).
+# declares Requires-Python ==3.13.*. Both packages are built here and pip
+# resolves them with PIP_NO_INDEX, so which versions it accepts does not
+# depend on the host interpreter or on PyPI's contents. Creating the analysis
+# environment is not offline: uv may still fetch the interpreter and pip.
+# capme's sdist carries its own build backend (no build requirements).
 make_capped_fixtures() {
 	CAPPED="$TEST_TEMP_DIR/capped"
 	mkdir -p "$CAPPED/pypi" "$CAPPED/sdist" "$CAPPED/links"
@@ -436,6 +438,8 @@ def release(name, version, sha):
 (root / "pypi" / "capdep-1.0.0.json").write_text(json.dumps(release("capdep", "1.0.0", "c3" * 32)))
 PY
 	export PYPI_FIXTURE_DIR="$CAPPED/pypi"
+	# Host pip settings must not change what the fixture proves.
+	unset PIP_IGNORE_REQUIRES_PYTHON PIP_INDEX_URL PIP_EXTRA_INDEX_URL PIP_PYTHON_VERSION
 	export PIP_NO_INDEX=1 PIP_FIND_LINKS="$CAPPED/links" PIP_DISABLE_PIP_VERSION_CHECK=1
 }
 
@@ -486,6 +490,9 @@ YAML
 	run_generate_capme "3.14"
 
 	[ "$status" -ne 0 ]
-	[[ "$output" == *"Could not resolve capme's dependencies under Python 3.14"* ]]
+	# pip's own reason, so a failure for any other cause does not pass this.
+	[[ "$output" == *"capdep"* ]]
+	[[ "$output" == *"requires a different Python"* ]]
+	[[ "$output" == *"pip could not install capme and its dependencies under Python 3.14"* ]]
 	[ ! -f "$CAPME_OUTPUT" ]
 }
