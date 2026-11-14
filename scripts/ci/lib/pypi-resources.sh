@@ -92,7 +92,10 @@ generate_pinned_resources() {
 		install_target="${tarball_file}[${extras}]"
 	fi
 	log_info "Installing ${package} from tarball..."
-	"$analysis_venv/bin/pip" install --quiet "$install_target"
+	if ! "$analysis_venv/bin/pip" install --quiet "$install_target"; then
+		log_error "Could not resolve ${package}'s dependencies under Python ${python_version} (pip error above)"
+		return 1
+	fi
 
 	local exclude_args=()
 	local pkg
