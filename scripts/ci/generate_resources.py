@@ -35,6 +35,7 @@ specifier is pinned and its own requirements are walked the same way.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import re
 import sys
@@ -70,6 +71,7 @@ MARKER_KEYS: frozenset[str] = frozenset(
 # Marker variables that describe the kernel of one particular machine.
 KERNEL_MARKER_KEYS: tuple[str, ...] = ("platform_release", "platform_version")
 _KERNEL_MARKER = re.compile(r"\b(?:platform_release|platform_version)\b")
+_MARKER_LITERAL = re.compile(r"""'([^']*)'|"([^"]*)\"""")
 
 # What a formula's target always is, whatever machine generates it: macOS.
 # platform_machine is set per run (--platform-machine): arm64 for Apple
@@ -158,9 +160,10 @@ def load_analysis_env(
     target = {key: marker_env[key] for key in MARKER_KEYS}
     # The target's kernel is unknown: a formula serves several macOS
     # releases and the generator may not be macOS at all. A requirement
-    # whose marker reads either value is refused (_refuse_kernel_marker),
-    # so these are never compared; they are set only so that `packaging`
-    # does not fill them in from the walk's own interpreter.
+    # whose marker is decided by either value is refused
+    # (_refuse_kernel_marker), so these never decide anything; they are set
+    # only so that `packaging` does not fill them in from the walk's own
+    # interpreter.
     for key in KERNEL_MARKER_KEYS:
         target[key] = ""
     target.update(TARGET_PLATFORM)
@@ -205,19 +208,45 @@ def get_installed_packages() -> dict[str, str]:
     return {name: version for name, (version, _) in dist_map.items()}
 
 
-def _refuse_kernel_marker(req: Requirement, req_str: str, dependent: str) -> None:
-    """Fail closed on a requirement whose marker depends on the kernel.
+def _refuse_kernel_marker(
+    req: Requirement,
+    req_str: str,
+    dependent: str,
+    extras: frozenset[str],
+) -> None:
+    """Fail closed on a requirement whose marker is decided by the kernel.
 
     The kernel release and version of the Macs a formula will be installed
-    on are not known when it is generated, so such a marker cannot be
-    decided. Guessing either way would silently add or drop a dependency.
+    on are not known when it is generated. A marker that mentions them is
+    evaluated for a range of kernel values: the empty string, a very low and
+    a very high one, and every literal the marker itself compares against
+    (so equality and containment tests are exercised too). If the answer is
+    the same for all of them, another clause decides it (a platform it is
+    not for, an extra that was not requested) and the walk carries on. If
+    the answer changes, guessing would silently add or drop a dependency.
 
     Args:
         req: Parsed requirement being checked.
         req_str: Its original Requires-Dist text.
         dependent: Package that declares it.
+        extras: Normalized extras requested by the dependent package.
     """
-    if req.marker is None or not _KERNEL_MARKER.search(str(req.marker)):
+    if req.marker is None:
+        return
+    marker_text = str(req.marker)
+    if not _KERNEL_MARKER.search(marker_text):
+        return
+    literals = {a or b for a, b in _MARKER_LITERAL.findall(marker_text)}
+    probes = sorted({"", "0", "999999", *literals})
+    answers = {
+        _marker_matches(
+            req=req,
+            extras=extras,
+            kernel={"platform_release": release, "platform_version": version},
+        )
+        for release, version in itertools.product(probes, repeat=2)
+    }
+    if len(answers) == 1:
         return
     sys.exit(
         f"Cannot decide '{req_str}' (required by {dependent}): its marker "
@@ -226,7 +255,11 @@ def _refuse_kernel_marker(req: Requirement, req_str: str, dependent: str) -> Non
     )
 
 
-def _marker_matches(req: Requirement, extras: frozenset[str]) -> bool:
+def _marker_matches(
+    req: Requirement,
+    extras: frozenset[str],
+    kernel: dict[str, str] | None = None,
+) -> bool:
     """Evaluate a requirement marker for the target environment.
 
     Extras-gated requirements (e.g. ``ruamel.yaml ; extra == "yaml"``)
@@ -237,15 +270,18 @@ def _marker_matches(req: Requirement, extras: frozenset[str]) -> bool:
     Args:
         req: Parsed requirement whose marker should be evaluated.
         extras: Normalized extras requested by the dependent package.
+        kernel: Kernel marker values to evaluate with instead of the
+            target's (used only to test whether they decide the marker).
 
     Returns:
         True if the requirement applies in the target environment.
     """
     if req.marker is None:
         return True
-    if req.marker.evaluate({**TARGET_ENV, "extra": ""}):
+    environment = {**TARGET_ENV, **(kernel or {})}
+    if req.marker.evaluate({**environment, "extra": ""}):
         return True
-    return any(req.marker.evaluate({**TARGET_ENV, "extra": extra}) for extra in extras)
+    return any(req.marker.evaluate({**environment, "extra": extra}) for extra in extras)
 
 
 def _is_sdist(entry: dict[str, Any]) -> bool:
@@ -264,12 +300,30 @@ def _is_sdist(entry: dict[str, Any]) -> bool:
     return filename.endswith((".tar.gz", ".zip"))
 
 
+def _target_python() -> Version:
+    """Give the target Python's release for ``requires_python`` checks.
+
+    pip compares a release's ``Requires-Python`` with the interpreter's
+    major, minor and micro numbers only, so a release candidate (3.14.0rc1)
+    counts as 3.14.0 and a local build suffix (3.13.5+) is ignored. The same
+    numbers are used here so the walk accepts what pip accepts.
+
+    Returns:
+        The release as a version.
+    """
+    full_version = TARGET_ENV["python_full_version"]
+    release = re.match(r"\d+(?:\.\d+){0,2}", full_version)
+    if release is None:
+        sys.exit(f"Cannot read a Python release from {full_version!r}")
+    return Version(release.group(0))
+
+
 def _sdist_supports_target(files: list[dict[str, Any]]) -> bool:
     """Tell whether a release has a usable sdist for the target Python.
 
     The generated resource pins the sdist, so the release must carry at
     least one non-yanked sdist whose ``requires_python`` is absent or
-    accepts ``TARGET_ENV["python_full_version"]``.
+    accepts the target Python's release (see :func:`_target_python`).
 
     Args:
         files: The release's file entries.
@@ -277,7 +331,7 @@ def _sdist_supports_target(files: list[dict[str, Any]]) -> bool:
     Returns:
         True when such an sdist exists.
     """
-    target = Version(TARGET_ENV["python_full_version"])
+    target = _target_python()
     for entry in files:
         if not _is_sdist(entry) or entry.get("yanked"):
             continue
@@ -403,7 +457,12 @@ def get_package_dependencies(
                 req = Requirement(req_str)
             except InvalidRequirement:
                 continue
-            _refuse_kernel_marker(req=req, req_str=req_str, dependent=current)
+            _refuse_kernel_marker(
+                req=req,
+                req_str=req_str,
+                dependent=current,
+                extras=current_extras,
+            )
             if not _marker_matches(req=req, extras=current_extras):
                 continue
             req_name = normalize_name(req.name)

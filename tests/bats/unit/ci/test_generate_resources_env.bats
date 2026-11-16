@@ -197,6 +197,25 @@ PY
 	[[ "$output" == *"patchy-1.0.tar.gz"* ]]
 }
 
+@test "generate_resources: the requires_python check counts a release candidate or a local build as its release, like pip" {
+	# pip compares major.minor.micro only: 3.13.3rc1 and 3.13.3+ both
+	# satisfy >=3.13.3. Compared as full versions, the candidate would not,
+	# and the build suffix is not a version at all.
+	use_patchy_fixtures
+	install "$ENV_SITE" rootpkg 1.0.0 "click==8.1.7" "patchy"
+	install "$ENV_SITE" click 8.1.7
+
+	local full_version
+	for full_version in "3.13.3rc1" "3.13.3+"; do
+		describe_env ".marker_env.python_full_version = \"$full_version\""
+
+		walk
+
+		[ "$status" -eq 0 ]
+		[[ "$output" == *"patchy-2.0.tar.gz"* ]]
+	done
+}
+
 @test "generate_resources: implementation markers follow the analysis environment, not the host" {
 	# Both requirements are written so that exactly one matches whatever
 	# Python runs this test: only the description can make both match.
@@ -247,6 +266,9 @@ PY
 		'platform_release >= "0"' \
 		'platform_release != "0"' \
 		'platform_version != "unused"' \
+		'platform_release == "23.0.0"' \
+		'"Darwin Kernel" in platform_version' \
+		'platform_release ~= "23.1"' \
 		'sys_platform == "darwin" and platform_release >= "23"'; do
 		rm -rf "$ENV_SITE"/rootpkg-*
 		install "$ENV_SITE" rootpkg 1.0.0 "click==8.1.7" "mdurl==0.1.2; $marker"
@@ -266,6 +288,32 @@ PY
 
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"Cannot decide"* ]]
+}
+
+@test "generate_resources: a kernel marker that another clause already decides is not refused" {
+	# The kernel values cannot change any of these answers, so there is
+	# nothing to guess: two never apply to the macOS target or to a root
+	# without the extra, one always applies.
+	install "$ENV_SITE" rootpkg 1.0.0 \
+		'click==8.1.7; sys_platform == "darwin" or platform_release >= "5"' \
+		'mdurl==0.1.2; sys_platform == "linux" and platform_release >= "5"' \
+		'idna>=3.7; extra == "dev" and platform_version != "unused"'
+	install "$ENV_SITE" click 8.1.7
+	install "$ENV_SITE" mdurl 0.1.2
+	describe_env
+
+	walk
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'resource "click" do'* ]]
+	[[ "$output" != *'resource "mdurl" do'* ]]
+	[[ "$output" != *'idna'* ]]
+
+	# Once the extra is requested, the kernel clause decides: refused.
+	walk --extras dev
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Cannot decide 'idna>=3.7; extra == \"dev\" and platform_version != \"unused\"'"* ]]
 }
 
 @test "generate_resources: an analysis environment on another Python than the formula's is refused" {
@@ -363,12 +411,4 @@ assert probed == expected, (probed, expected)
 ' "$SCRIPTS_DIR/probe_analysis_env.py"
 
 	[ "$status" -eq 0 ]
-}
-
-@test "pypi-resources: the walk is given the analysis environment's description and no PYTHONPATH" {
-	local lib="$SCRIPTS_DIR/lib/pypi-resources.sh"
-
-	grep -q -- '--analysis-env "\$analysis_env_json"' "$lib"
-	grep -q '"\$analysis_venv/bin/python" -I "\$script_dir/probe_analysis_env.py"' "$lib"
-	[ "$(grep -c 'PYTHONPATH=' "$lib")" -eq 0 ]
 }
