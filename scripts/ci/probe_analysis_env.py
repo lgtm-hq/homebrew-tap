@@ -65,9 +65,11 @@ def site_paths() -> list[str]:
     """List the directories that hold this interpreter's distributions.
 
     Returns:
-        Site directories in import order, without duplicates. Pure and
-        platform library directories are both included, so a split layout
-        cannot hide a distribution.
+        Existing site directories in import order, without duplicates.
+        Pure and platform library directories are both included, so a split
+        layout cannot hide a distribution. An interpreter may name a
+        directory it never created (a platform library directory with
+        nothing in it); nothing can be installed there, so it is left out.
     """
     candidates = [
         *site.getsitepackages(),
@@ -76,7 +78,7 @@ def site_paths() -> list[str]:
     ]
     paths: list[str] = []
     for candidate in candidates:
-        if candidate and candidate not in paths:
+        if candidate and candidate not in paths and os.path.isdir(candidate):
             paths.append(candidate)
     return paths
 
