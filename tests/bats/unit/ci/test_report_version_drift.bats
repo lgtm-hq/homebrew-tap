@@ -55,7 +55,16 @@ teardown() {
 }
 
 report() { # $1 = drift report JSON
-	run bash -c 'source "$1"; report_version_drift "$2"' _ "$LIB" "$1"
+	# Run from a script file, not `bash -c`: under the coverage tracer in CI a
+	# command string has no BASH_SOURCE, and the tracer's prompt expands it
+	# with nounset on, which aborts before the function is even called.
+	cat >"$TEST_TEMP_DIR/run-report.sh" <<'RUNNER'
+#!/usr/bin/env bash
+# shellcheck source=/dev/null
+source "$1"
+report_version_drift "$2"
+RUNNER
+	run bash "$TEST_TEMP_DIR/run-report.sh" "$LIB" "$1"
 	# Shown by bats only when the test fails: what the report said and did.
 	echo "status=$status"
 	echo "$output"
