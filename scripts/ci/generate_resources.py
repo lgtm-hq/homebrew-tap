@@ -35,8 +35,6 @@ specifier is pinned and its own requirements are walked the same way.
 from __future__ import annotations
 
 import argparse
-import copy
-import itertools
 import json
 import re
 import sys
@@ -76,11 +74,8 @@ KERNEL_MARKER_KEYS: tuple[str, ...] = ("platform_release", "platform_version")
 # comparisons (3-tuples of operand, operator, operand), the strings "and" and
 # "or", and nested lists for parentheses. It has had this shape since
 # packaging 21. It is read by name so that a version without it is refused
-# instead of guessed at (see _kernel_comparisons).
+# instead of guessed at (see _assume_kernel).
 _MARKER_TREE_ATTRIBUTE = "_markers"
-# More kernel comparisons than this in one marker are refused rather than
-# enumerated (2**n combinations).
-_MAX_KERNEL_COMPARISONS = 8
 # A parsed comparison is (operand, operator, operand).
 _COMPARISON_PARTS = 3
 
@@ -184,7 +179,7 @@ def load_analysis_env(
     target = {key: marker_env[key] for key in MARKER_KEYS}
     # The target's kernel is unknown: a formula serves several macOS
     # releases and the generator may not be macOS at all. A marker that
-    # mentions either value is never evaluated with it (_kernel_marker_matches
+    # mentions either value is never evaluated with it (_marker_matches
     # decides it without, or refuses it); they are set only so that
     # `packaging` does not fill them in from the walk's own interpreter.
     for key in KERNEL_MARKER_KEYS:
@@ -265,37 +260,51 @@ def _reads_kernel(comparison: tuple[Any, ...]) -> bool:
     """
     return any(
         type(operand).__name__ == "Variable"
-        # Older markers may spell a variable with a dot (platform.version).
-        and str(getattr(operand, "value", "")).replace(".", "_") in KERNEL_MARKER_KEYS
+        and getattr(operand, "value", None) in KERNEL_MARKER_KEYS
         for operand in (comparison[0], comparison[-1])
     )
 
 
-def _kernel_comparisons(tree: Any) -> list[tuple[list[Any], int]] | None:
-    """Locate every comparison in a marker tree that reads the kernel.
+def _assume_kernel(
+    tree: Any, stand_in: tuple[Any, ...]
+) -> tuple[list[Any], int] | None:
+    """Rebuild a marker tree with every kernel comparison replaced.
+
+    The lists are built anew and the other comparisons are shared, so the
+    original tree is never touched. The marker is deliberately not copied
+    as an object: from packaging 26.2 a copied marker is written out as
+    text and parsed again.
 
     Args:
         tree: A parsed marker tree (see _MARKER_TREE_ATTRIBUTE).
+        stand_in: The parsed comparison to put in place of each kernel one.
 
     Returns:
-        (containing list, index) for each such comparison, or None when the
-        tree does not have the expected shape and nothing can be said.
+        (the rebuilt tree, how many comparisons were replaced), or None when
+        the tree does not have the expected shape and nothing can be said.
     """
     if not isinstance(tree, list):
         return None
-    found: list[tuple[list[Any], int]] = []
-    for index, node in enumerate(tree):
+    rebuilt: list[Any] = []
+    replaced = 0
+    for node in tree:
         if isinstance(node, list):
-            nested = _kernel_comparisons(node)
+            nested = _assume_kernel(node, stand_in)
             if nested is None:
                 return None
-            found.extend(nested)
+            rebuilt.append(nested[0])
+            replaced += nested[1]
         elif isinstance(node, tuple) and len(node) == _COMPARISON_PARTS:
             if _reads_kernel(node):
-                found.append((tree, index))
-        elif node not in ("and", "or"):
+                rebuilt.append(stand_in)
+                replaced += 1
+            else:
+                rebuilt.append(node)
+        elif node in ("and", "or"):
+            rebuilt.append(node)
+        else:
             return None
-    return found
+    return rebuilt, replaced
 
 
 def _marker_matches(
@@ -308,16 +317,18 @@ def _marker_matches(
 
     The kernel release and version of the Macs a formula will be installed
     on are not known when it is generated, so a comparison that reads
-    ``platform_release`` or ``platform_version`` has no answer. In a copy of
-    the parsed marker, each such comparison is replaced by one that is true
-    and by one that is false, in every combination, and the marker is
-    evaluated as usual. If every combination gives the same answer, the
+    ``platform_release`` or ``platform_version`` has no answer. The parsed
+    marker is rebuilt twice: once with every such comparison replaced by one
+    that is true, once by one that is false. A marker combines comparisons
+    with ``and`` and ``or`` only (there is no negation), so every other
+    combination lies between those two. If both give the same answer, the
     kernel does not decide the marker (it is not for macOS, its extra was
     not requested, another clause already holds) and that answer is used.
-    If the answers differ, guessing would silently add or drop a
-    dependency, and generation stops.
+    If they differ, guessing would silently add or drop a dependency, and
+    generation stops.
 
-    The kernel comparisons themselves are never evaluated.
+    The kernel comparisons themselves are never evaluated, and the marker
+    is never handled as text.
 
     Args:
         req: Parsed requirement whose marker should be evaluated.
@@ -330,40 +341,31 @@ def _marker_matches(
     """
     if req.marker is None:
         return True
-    refusal = (
-        f"Cannot decide '{req_str}' (required by {dependent}): its marker "
-        "depends on platform_release or platform_version, and the kernel of "
-        "the Macs the formula installs on is not known at generation time"
-    )
-    comparisons = _kernel_comparisons(getattr(req.marker, _MARKER_TREE_ATTRIBUTE, None))
-    if comparisons is None:
-        sys.exit(
-            f"Cannot decide '{req_str}' (required by {dependent}): this version "
-            "of packaging does not expose the parsed marker, so whether it "
-            "reads the kernel cannot be told",
-        )
-    if not comparisons:
-        return _evaluate(marker=req.marker, extras=extras)
-    if len(comparisons) > _MAX_KERNEL_COMPARISONS:
-        sys.exit(refusal)
-
+    tree = getattr(req.marker, _MARKER_TREE_ATTRIBUTE, None)
+    answers: list[bool] = []
     # os_name is always "posix" for the target (TARGET_PLATFORM).
-    stand_in = {
-        True: getattr(Marker('os_name == "posix"'), _MARKER_TREE_ATTRIBUTE)[0],
-        False: getattr(Marker('os_name != "posix"'), _MARKER_TREE_ATTRIBUTE)[0],
-    }
-    answers: set[bool] = set()
-    for assumed in itertools.product((True, False), repeat=len(comparisons)):
-        candidate = copy.deepcopy(req.marker)
-        located = _kernel_comparisons(getattr(candidate, _MARKER_TREE_ATTRIBUTE))
-        if located is None or len(located) != len(comparisons):
-            sys.exit(refusal)
-        for (container, index), value in zip(located, assumed, strict=True):
-            container[index] = stand_in[value]
-        answers.add(_evaluate(marker=candidate, extras=extras))
-    if len(answers) != 1:
-        sys.exit(refusal)
-    return answers.pop()
+    for assumption in ('os_name == "posix"', 'os_name != "posix"'):
+        candidate = Marker(assumption)
+        stand_in = getattr(candidate, _MARKER_TREE_ATTRIBUTE, [None])[0]
+        rebuilt = _assume_kernel(tree, stand_in)
+        if rebuilt is None or not isinstance(stand_in, tuple):
+            sys.exit(
+                f"Cannot decide '{req_str}' (required by {dependent}): this "
+                "version of packaging does not expose the parsed marker, so "
+                "whether it reads the kernel cannot be told",
+            )
+        if rebuilt[1] == 0:
+            return _evaluate(marker=req.marker, extras=extras)
+        setattr(candidate, _MARKER_TREE_ATTRIBUTE, rebuilt[0])
+        answers.append(_evaluate(marker=candidate, extras=extras))
+    if answers[0] != answers[1]:
+        sys.exit(
+            f"Cannot decide '{req_str}' (required by {dependent}): its marker "
+            "depends on platform_release or platform_version, and the kernel "
+            "of the Macs the formula installs on is not known at generation "
+            "time",
+        )
+    return answers[0]
 
 
 def _is_sdist(entry: dict[str, Any]) -> bool:

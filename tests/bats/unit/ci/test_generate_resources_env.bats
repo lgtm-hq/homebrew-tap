@@ -351,6 +351,7 @@ PY
 (os_name == 'a "' or platform_version in " in x") and (sys_platform == "darwin" or platform_release == "1")
 platform_release >= "5" and os_name != 'a" and os_name != "posix'
 platform_release >= "5" or os_name == 'a" or os_name == "posix'
+platform_version != 'a "'
 os_name not in 'platform_release == "x"' and platform_release == "23"
 MARKERS
 }
