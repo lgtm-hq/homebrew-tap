@@ -486,3 +486,83 @@ assert probed == expected, (probed, expected)
 
 	[ "$status" -eq 0 ]
 }
+
+@test "generate_resources: what only a Homebrew-provided package needs is not pinned" {
+	# toolpkg comes from its own Homebrew formula. mdurl is needed by nothing
+	# else, so it is not pinned; click is also required by the root, so it is.
+	install "$ENV_SITE" rootpkg 1.0.0 "toolpkg" "click==8.1.7"
+	install "$ENV_SITE" toolpkg 1.0.0 "mdurl==0.1.2" "click==8.1.7"
+	install "$ENV_SITE" click 8.1.7
+	install "$ENV_SITE" mdurl 0.1.2
+	describe_env
+
+	walk --exclude toolpkg --no-follow toolpkg
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'resource "click" do'* ]]
+	[[ "$output" != *'resource "mdurl" do'* ]]
+	[[ "$output" != *'resource "toolpkg" do'* ]]
+
+	# Excluded only (a wheel-only package installed into this formula): its
+	# requirements are still walked and pinned.
+	walk --exclude toolpkg
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'resource "click" do'* ]]
+	[[ "$output" == *'resource "mdurl" do'* ]]
+	[[ "$output" != *'resource "toolpkg" do'* ]]
+}
+
+@test "generate_resources: a package reached through a Homebrew-provided one and through another path is pinned" {
+	# mdurl is required by toolpkg (not followed) and by click's sibling
+	# libpkg (followed): the second path keeps it.
+	install "$ENV_SITE" rootpkg 1.0.0 "toolpkg" "libpkg"
+	install "$ENV_SITE" toolpkg 1.0.0 "mdurl==0.1.2"
+	install "$ENV_SITE" libpkg 1.0.0 "mdurl==0.1.2" "click==8.1.7"
+	install "$ENV_SITE" click 8.1.7
+	install "$ENV_SITE" mdurl 0.1.2
+	describe_env
+
+	walk --exclude toolpkg libpkg --no-follow toolpkg
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'resource "mdurl" do'* ]]
+	[[ "$output" == *'resource "click" do'* ]]
+}
+
+@test "generate_resources: --no-follow never stops the walk at the root package" {
+	install "$ENV_SITE" rootpkg 1.0.0 "click==8.1.7"
+	install "$ENV_SITE" click 8.1.7
+	describe_env
+
+	walk --no-follow rootpkg
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'resource "click" do'* ]]
+}
+
+@test "generate_resources: --no-follow without --exclude is refused" {
+	# Pinned without its own requirements, the package could not be installed.
+	install "$ENV_SITE" rootpkg 1.0.0 "toolpkg"
+	install "$ENV_SITE" toolpkg 1.0.0 "mdurl==0.1.2"
+	install "$ENV_SITE" mdurl 0.1.2
+	describe_env
+
+	walk --no-follow toolpkg
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"--no-follow names must also be given to --exclude: toolpkg"* ]]
+}
+
+@test "generate_resources: a not-followed package the environment lacks is not looked up on PyPI" {
+	# toolpkg has no PyPI fixture: a lookup would fail the run.
+	install "$ENV_SITE" rootpkg 1.0.0 "toolpkg>=1" "click==8.1.7"
+	install "$ENV_SITE" click 8.1.7
+	describe_env
+
+	walk --exclude toolpkg --no-follow toolpkg
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'resource "click" do'* ]]
+	[[ "$output" != *"toolpkg"* ]]
+}

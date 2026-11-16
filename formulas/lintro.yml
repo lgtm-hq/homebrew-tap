@@ -93,6 +93,18 @@ formulas:
     python-version: '3.13'
     test-command: 'lintro --version'
     generate-resources: true
+    # lintro declares its Python tools under the optional extra `full`
+    # (ruff, black, bandit, import-linter, mypy, pydoclint, pylint,
+    # yamllint). Without it none of them is in the dependency tree. The
+    # ones listed under homebrew-deps come from their own formulas; the
+    # rest (pydoclint, pylint, import-linter) are pinned as resources.
+    extras:
+      - full
+    # lintro runs pydoclint, pylint and import-linter as plain commands
+    # found on PATH (only ruff, black, bandit, yamllint and mypy are looked
+    # up in its own environment). The launcher adds the formula's own
+    # environment to PATH so the pinned copies are found.
+    venv-bin-on-path: true
     min-resource-count: 5
     class-name: LintroFull
     description: 'Unified CLI for code quality (all tools included)'
@@ -111,6 +123,16 @@ formulas:
       # tools are missing, so assert on its output rather than the exit status.
       doctor_cmd = "#{utf8} #{bin}/lintro doctor 2>&1"
       assert_match "Lintro Doctor", pipe_output(doctor_cmd)
+      # The bundled tools are pinned in this formula's own environment,
+      # which is not on PATH; the launcher must make lintro find them.
+      (testpath/"sample.py").write "import os\n"
+      bundled = "--tools pylint,pydoclint,import_linter"
+      bundled_cmd = "#{utf8} #{bin}/lintro chk #{bundled} #{testpath}/sample.py 2>&1"
+      bundled_out = pipe_output(bundled_cmd)
+      assert_match "EXECUTION SUMMARY", bundled_out
+      %w[pylint pydoclint import-linter].each { |tool| assert_match tool, bundled_out }
+      refute_match "not found in PATH", bundled_out
+      refute_match "UNAVAIL", bundled_out
     homebrew-deps:
       - actionlint
       - bandit
@@ -138,6 +160,16 @@ formulas:
       pydoclint:
         type: universal
         comment: 'pydoclint - use wheel for consistency'
+      isort:
+        type: universal
+        comment: >-
+          isort (pylint) - its sdist's build requirements include mypy's
+          compiled toolchain; use the wheel
+      grimp:
+        type: platform
+        comment: >-
+          grimp (import-linter) builds a Rust extension - use
+          platform-specific wheels
       pydantic-core:
         type: platform
         resolve-version-from: pydantic-core
@@ -146,7 +178,8 @@ formulas:
     caveats: |
       Lintro is now installed (#{deps.count} Homebrew formulae included).
 
-      Python quality:   ruff, black, mypy, bandit, pydoclint (bundled)
+      Python quality:   ruff, black, mypy, bandit
+                        pydoclint, pylint, import-linter (bundled, run by lintro)
       YAML / TOML:      yamllint, taplo
       Shell:            shellcheck, shfmt
       Dotenv:           dotenv-linter

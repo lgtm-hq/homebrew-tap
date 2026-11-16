@@ -123,6 +123,37 @@ PYTHON_VERSION="${PYTHON_VERSION:-3.13}"
 MIN_RESOURCE_COUNT="$(read_config_value min-resource-count)"
 MIN_RESOURCE_COUNT="${MIN_RESOURCE_COUNT:-1}"
 GENERATE_RESOURCES=$(python3 -c "import json, sys; print('true' if json.loads(sys.argv[1]).get('generate-resources') else 'false')" "$CONFIG_JSON")
+# Extras of the package the formula installs with (same key and rules as
+# intel-pypi.extras of a binary formula). They are interpolated into Ruby
+# source ("#{buildpath}[full]") and pip arguments, so the value must be a
+# list and every entry must fit the PEP 685 extra-name charset.
+if ! PYPI_EXTRAS=$(python3 "$SCRIPT_DIR/read_extras.py" "$CONFIG_JSON"); then
+	log_error "extras for ${FORMULA_KEY} must be a list of extra names (expected ^[A-Za-z0-9][A-Za-z0-9._-]*\$ per entry)"
+	exit 1
+fi
+if [[ -n "$PYPI_EXTRAS" && "$GENERATE_RESOURCES" != "true" ]]; then
+	log_error "extras for ${FORMULA_KEY} need generate-resources: true (the extras' dependencies must be pinned)"
+	exit 1
+fi
+# venv-bin-on-path: the package runs tools that are pinned as resources as
+# plain commands found on PATH. Resources are installed into the formula's
+# own environment (libexec/bin), which is not linked and not on the user's
+# PATH, so the command is installed as a launcher that appends that
+# directory to PATH. Appended, not prepended: a copy of a tool the user
+# installed themselves still wins.
+VENV_BIN_ON_PATH=$(python3 -c "
+import json, sys
+value = json.loads(sys.argv[1]).get('venv-bin-on-path')
+if value is not None and value is not True and value is not False:
+    sys.exit(1)
+print('true' if value else 'false')" "$CONFIG_JSON") || {
+	log_error "venv-bin-on-path for ${FORMULA_KEY} must be true or false"
+	exit 1
+}
+if [[ "$VENV_BIN_ON_PATH" == "true" && "$GENERATE_RESOURCES" != "true" ]]; then
+	log_error "venv-bin-on-path for ${FORMULA_KEY} needs generate-resources: true (there are no pinned tools to find otherwise)"
+	exit 1
+fi
 TEST_COMMAND="$(read_config_value test-command)"
 if [[ -z "$TEST_COMMAND" ]]; then
 	log_error "test-command is required in config for ${FORMULA_KEY}"
@@ -221,13 +252,54 @@ if [[ "$SKIP_VERIFY" != "true" ]]; then
 fi
 
 if [[ "$GENERATE_RESOURCES" == "true" ]]; then
-	generate_pinned_resources "$PACKAGE_NAME" "$TARBALL_FILE" "$PYTHON_VERSION" \
-		"$CONFIG_JSON" "$TMPDIR" "$MIN_RESOURCE_COUNT"
-
+	# A pypi formula's homebrew-deps are names only (the {name, build}
+	# form belongs to a binary formula's Intel block). Each name goes into
+	# Ruby source (depends_on "<name>"), so it must be a list of formula
+	# names. Read into a variable first: a failure inside a process
+	# substitution would be lost and the formula would render without its
+	# depends_on lines.
 	HOMEBREW_PKG_ARRAY=()
+	if ! HOMEBREW_DEP_NAMES=$(python3 -c "
+import json, re, sys
+entries = json.loads(sys.argv[1]).get('homebrew-deps')
+if entries is None:
+    entries = []
+if not isinstance(entries, list):
+    sys.exit(1)
+for entry in entries:
+    if not isinstance(entry, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9@+._/-]*', entry):
+        sys.exit(1)
+    print(entry)" "$CONFIG_JSON"); then
+		log_error "homebrew-deps for ${FORMULA_KEY} must be a list of formula names"
+		exit 1
+	fi
 	while IFS= read -r line; do
 		[[ -n "$line" ]] && HOMEBREW_PKG_ARRAY+=("$line")
-	done < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1]).get('homebrew-deps', [])))" "$CONFIG_JSON")
+	done <<<"$HOMEBREW_DEP_NAMES"
+
+	generate_pinned_resources "$PACKAGE_NAME" "$TARBALL_FILE" "$PYTHON_VERSION" \
+		"$CONFIG_JSON" "$TMPDIR" "$MIN_RESOURCE_COUNT" "$PYPI_EXTRAS"
+
+	# pip accepts "<path>[extra]" for a local project, so the formula
+	# installs the same extras spec the resource walk followed.
+	INSTALL_TARGET="buildpath"
+	if [[ -n "$PYPI_EXTRAS" ]]; then
+		INSTALL_TARGET="\"#{buildpath}[${PYPI_EXTRAS}]\""
+	fi
+
+	if [[ "$VENV_BIN_ON_PATH" == "true" ]]; then
+		cat >"$TMPDIR/install_package.txt" <<RUBY
+    venv.pip_install ${INSTALL_TARGET}
+
+    # ${TEST_BINARY} runs the tools pinned above as plain commands. They are
+    # in this formula's own environment, so the launcher adds it to PATH,
+    # after the user's own entries.
+    launcher_path = "\${PATH}:#{libexec}/bin"
+    (bin/"${TEST_BINARY}").write_env_script libexec/"bin/${TEST_BINARY}", PATH: launcher_path
+RUBY
+	else
+		printf '    venv.pip_install_and_link %s' "$INSTALL_TARGET" >"$TMPDIR/install_package.txt"
+	fi
 
 	CAVEATS_RAW=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('caveats', '') or '')" "$CONFIG_JSON")
 	if [[ -n "$CAVEATS_RAW" ]]; then
@@ -292,6 +364,7 @@ EOF
 		--replace "LICENSE=${LICENSE}" \
 		--replace "PYTHON_VENV=python${PYTHON_VERSION}" \
 		--replace "TEST_BINARY=${TEST_BINARY}" \
+		--replace-file "INSTALL_PACKAGE=${TMPDIR}/install_package.txt" \
 		--replace-file "HOMEBREW_DEPS=${TMPDIR}/deps.txt" \
 		--replace-file "POET_RESOURCES=${TMPDIR}/resources.txt" \
 		--replace-file "WHEEL_RESOURCES=${TMPDIR}/wheels.txt" \

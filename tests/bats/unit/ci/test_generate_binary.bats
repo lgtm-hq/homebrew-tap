@@ -852,3 +852,28 @@ assert p["pypi-publisher-workflow"] == "publish-pypi-on-tag.yml", p
 	! grep -qE '^  version "' "$formula"
 	grep -q 'releases/download/v[0-9][0-9.]*/lintro-macos-arm64' "$formula"
 }
+
+@test "generate-binary-formula: a homebrew-deps mapping entry is excluded from the pinned resources like a plain name" {
+	# mdurl comes in through pinme[mcp]. Declared as a build-time Homebrew
+	# dependency, in the {name, build} form, it must not also be pinned.
+	# Reading the list used to fail on a mapping, inside a process
+	# substitution, which silently left it empty.
+	write_pinme_config $'      extras:\n        - mcp\n      homebrew-deps:\n        - name: mdurl\n          build: true'
+
+	run_generate_pinme
+
+	[ "$status" -eq 0 ]
+	grep -q 'depends_on "mdurl" => :build' "$OUTPUT_FILE"
+	[ "$(grep -c 'resource "mdurl" do' "$OUTPUT_FILE")" -eq 0 ]
+	grep -q 'resource "click" do' "$OUTPUT_FILE"
+	[[ "$output" != *"TypeError"* ]]
+}
+
+@test "generate-binary-formula: a homebrew-deps entry that is neither a name nor a named mapping fails" {
+	write_pinme_config $'      homebrew-deps:\n        - build: true'
+
+	run_generate_pinme
+
+	[ "$status" -ne 0 ]
+	[ ! -f "$OUTPUT_FILE" ]
+}

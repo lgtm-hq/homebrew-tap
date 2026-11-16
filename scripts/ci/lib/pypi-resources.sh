@@ -51,9 +51,23 @@ generate_pinned_resources() {
 	local homebrew_pkgs=()
 	local wheel_pkgs=()
 	local line
+	# An entry is a name or a {name, build: true} mapping (a build-time
+	# dependency). The names are read into a variable first: a failure
+	# inside a process substitution would be lost and leave the list empty.
+	local homebrew_names
+	if ! homebrew_names=$(python3 -c "
+import json, sys
+for entry in json.loads(sys.argv[1]):
+    name = entry.get('name') if isinstance(entry, dict) else entry
+    if not isinstance(name, str) or not name:
+        sys.exit(f'homebrew-deps entry {entry!r} is neither a name nor a mapping with a name')
+    print(name)" "$homebrew_deps_json"); then
+		log_error "Could not read homebrew-deps for ${package}"
+		return 1
+	fi
 	while IFS= read -r line; do
 		[[ -n "$line" ]] && homebrew_pkgs+=("$line")
-	done < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1])))" "$homebrew_deps_json")
+	done <<<"$homebrew_names"
 	while IFS= read -r line; do
 		[[ -n "$line" ]] && wheel_pkgs+=("$line")
 	done < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1]).keys()))" "$wheel_packages_json")
@@ -129,6 +143,12 @@ generate_pinned_resources() {
 	fi
 	if ((${#exclude_args[@]})); then
 		generate_args+=(--exclude "${exclude_args[@]}")
+	fi
+	# A Homebrew dependency is installed as its own formula, with its own
+	# environment, so what only it requires is not pinned here. Wheel-only
+	# packages are installed into this formula and are still walked.
+	if ((${#homebrew_pkgs[@]})); then
+		generate_args+=(--no-follow "${homebrew_pkgs[@]}")
 	fi
 	local resources
 	resources=$(python3 "${generate_args[@]}")
