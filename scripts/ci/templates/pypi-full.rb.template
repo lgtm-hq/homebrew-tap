@@ -29,7 +29,7 @@ class {{CLASS_NAME}} < Formula
 {{INSTALL_RESOURCES}}
 
     # Install the package itself
-    venv.pip_install_and_link buildpath
+    venv.pip_install_and_link {{INSTALL_TARGET}}
   end
 {{CAVEATS_BLOCK}}
   test do

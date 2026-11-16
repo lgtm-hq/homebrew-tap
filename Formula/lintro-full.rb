@@ -57,6 +57,11 @@ class LintroFull < Formula
     sha256 "59bb03251907983d1603d27c3087ddb1e93299ea2163adcdba37899a4fb12ffb"
   end
 
+  resource "astroid" do
+    url "https://files.pythonhosted.org/packages/2d/87/5732fa68bf100a095cfcbd108f919220d995db99e1a7502b8119a869fd62/astroid-4.3.4.tar.gz"
+    sha256 "d515a105722b72098bbe82d430d65e635f742b6cbac3bdfaf8b7c188b87c5e39"
+  end
+
   resource "certifi" do
     url "https://files.pythonhosted.org/packages/fd/11/b524cbd9bbdaca58608e4cf4053fd463417549e1959fa8d3aa18319f9555/certifi-2026.10.23.tar.gz"
     sha256 "a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd"
@@ -70,6 +75,16 @@ class LintroFull < Formula
   resource "defusedxml" do
     url "https://files.pythonhosted.org/packages/0f/d5/c66da9b79e5bdb124974bfe172b4daf3c984ebd9c2a06e2b8a4dc7331c72/defusedxml-0.7.1.tar.gz"
     sha256 "1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69"
+  end
+
+  resource "dill" do
+    url "https://files.pythonhosted.org/packages/81/e1/56027a71e31b02ddc53c7d65b01e68edf64dea2932122fe7746a516f75d5/dill-0.4.1.tar.gz"
+    sha256 "423092df4182177d4d8ba8290c8a5b640c66ab35ec7da59ccfa00f6fa3eea5fa"
+  end
+
+  resource "docstring-parser-fork" do
+    url "https://files.pythonhosted.org/packages/04/ce/48b17c6c24d0af112f73721a90fac245450e548b82b53169260720f60d07/docstring_parser_fork-0.0.16.tar.gz"
+    sha256 "9ecf861ceab8b87d1297a71001c15a1956ad02e87434ee6473643a5988094f7c"
   end
 
   resource "h11" do
@@ -97,6 +112,16 @@ class LintroFull < Formula
     sha256 "a7db850025b95ded1eae8a46181a1a6c56c92c96f0e2b005d9ff8dc0210cab44"
   end
 
+  resource "import-linter" do
+    url "https://files.pythonhosted.org/packages/f0/70/ac97afe41a04239a60c9d92fbe593294bf6501309d728af4a400e569d786/import_linter-2.16.tar.gz"
+    sha256 "c5bd0d38bdef46c7251120266b3bf72662bc8cd989a8fe461499936e12e8c6fa"
+  end
+
+  resource "isort" do
+    url "https://files.pythonhosted.org/packages/da/cf/068066b8fdab91cd40bcd63e483137908710a3d25a4d3a01b538be45d9d6/isort-9.0.2.tar.gz"
+    sha256 "d2298980ce44350f11d9d24c8150eaef1883431ec203dddbb4e9b5c3ceb54c70"
+  end
+
   resource "loguru" do
     url "https://files.pythonhosted.org/packages/61/ce/b5bb93d4d9fc7a067f69140b3bb3782f6ad6360bc76e99b6e3d386cb1320/loguru-0.8.0.tar.gz"
     sha256 "fb3e4623288e37700a0577f6e0ce776cc1860b5d95c657d67f07a2476b304867"
@@ -107,9 +132,19 @@ class LintroFull < Formula
     sha256 "91a58fa5b72c71a40cf7177250fd767480d7a2bb3ac426ccfb76fb90305fdaaa"
   end
 
+  resource "mccabe" do
+    url "https://files.pythonhosted.org/packages/e7/ff/0ffefdcac38932a54d2b5eed4e0ba8a408f215002cd178ad1df0f2806ff8/mccabe-0.7.0.tar.gz"
+    sha256 "348e0240c33b60bbdf4e523192ef919f28cb2c3d7d5c7794f74009290f236325"
+  end
+
   resource "mdurl" do
     url "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz"
     sha256 "bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"
+  end
+
+  resource "mypy-extensions" do
+    url "https://files.pythonhosted.org/packages/d0/6f/43edf3be2748d0e40974a5ee046a8bb4c9961a4bdd3e7d5c6dcbf32d1af6/mypy_extensions-1.2.0.tar.gz"
+    sha256 "c6e275a07f1c2fc096b62940452d0eaa3f3af7de45d704787866240a7c6d5a51"
   end
 
   resource "packaging" do
@@ -122,6 +157,11 @@ class LintroFull < Formula
     sha256 "17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a"
   end
 
+  resource "platformdirs" do
+    url "https://files.pythonhosted.org/packages/d7/9a/8475be631fb33ca1466915e70fd594c42a4e84b512db650eaa14f90fe75d/platformdirs-4.14.5.tar.gz"
+    sha256 "32e9921db7385aa8169bee4fe9501923e5715ba9fb7ea3b9c69b0d8e0639f7a1"
+  end
+
   resource "pydantic" do
     url "https://files.pythonhosted.org/packages/b4/fc/1203d011145c98ddce3cd2f505bb54375ef8d43223053df6bfcf3c746f46/pydantic-2.14.3.tar.gz"
     sha256 "1054f237f4d4733e5a30e1e2333bd33a2004ab9ab1510bd053a9a31bb48e232d"
@@ -130,6 +170,11 @@ class LintroFull < Formula
   resource "pygments" do
     url "https://files.pythonhosted.org/packages/49/2e/ced460408999b33da6b31b0021b0f37d329e202d4169aeb164493778f25b/pygments-2.21.0.tar.gz"
     sha256 "610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c"
+  end
+
+  resource "pylint" do
+    url "https://files.pythonhosted.org/packages/8f/d7/bfea980ba1ea5666c7f774627f3a7159b98a21426a081dd2f05db8eb93b3/pylint-4.1.4.tar.gz"
+    sha256 "4c9176dc6c9f1b98b742195f01899b290369d5a27b4b41d1014c17f2f96b26f1"
   end
 
   resource "pyyaml" do
@@ -147,6 +192,11 @@ class LintroFull < Formula
     sha256 "e2cfde8f79420f6deeffdeda9aaec3b6bc5abce947655d17ac662b126e48a60d"
   end
 
+  resource "tomlkit" do
+    url "https://files.pythonhosted.org/packages/08/72/fc01563df95c189a9f65850096bdc205bc2fe37da6c740cd64afaf18d07e/tomlkit-0.15.2.tar.gz"
+    sha256 "83e32755ba1d20d9340bd069ee97e9f6232ba2346b63ffcba425de01f7e327a6"
+  end
+
   resource "typing-extensions" do
     url "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz"
     sha256 "dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"
@@ -162,6 +212,22 @@ class LintroFull < Formula
     sha256 "d3861e255416f49a1384474cb2efa097de165fb330d4c5432ce6708b509ed922"
   end
 
+  # pydoclint - use wheel for consistency
+  resource "pydoclint" do
+    url "https://files.pythonhosted.org/packages/6e/45/9aea4898fcfbb3ed973eb23f6b83c677bb8bcecb59e9681fae6da82bb3be/pydoclint-0.12.0-py3-none-any.whl"
+    sha256 "28f5763a865cb19b54883dfe68b05b01d2c2fc2e8d59dcf424cc345bc976a689"
+  end
+  # grimp (import-linter) builds a Rust extension - use platform-specific wheels
+  resource "grimp" do
+    on_arm do
+      url "https://files.pythonhosted.org/packages/4b/f4/7d59b62774acdd71b147f21fd434bb22f105d2fce44db79f35d23fda0920/grimp-3.20-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "7da53af57d8f8789655e513f57332ab7604cd89b6c80c6e9ad4d8caa5f7ac630"
+    end
+    on_intel do
+      url "https://files.pythonhosted.org/packages/2f/cc/916d444d13987babaea358f179efb093e41b0c0f732c82d08108245062ba/grimp-3.20-cp313-cp313-macosx_10_12_x86_64.whl"
+      sha256 "a5ad98fe1421c1007508a6bce595630385920340fbc2b43588c80ad73cefcb92"
+    end
+  end
   # pydantic-core requires Rust to build - use platform-specific wheels
   resource "pydantic-core" do
     on_arm do
@@ -177,7 +243,7 @@ class LintroFull < Formula
     venv = virtualenv_create(libexec, "python3.13")
 
     # Install other resources first (this sets up pip in the venv)
-    wheel_only = %w[pydantic-core]
+    wheel_only = %w[grimp pydantic-core]
     other_resources = resources.reject { |r| wheel_only.include?(r.name) }
     venv.pip_install other_resources
 
@@ -193,14 +259,15 @@ class LintroFull < Formula
     end
 
     # Install the package itself
-    venv.pip_install_and_link buildpath
+    venv.pip_install_and_link "#{buildpath}[full]"
   end
 
   def caveats
     <<~EOS
       Lintro is now installed (#{deps.count} Homebrew formulae included).
 
-      Python quality:   ruff, black, mypy, bandit, pydoclint (bundled)
+      Python quality:   ruff, black, mypy, bandit
+                        pydoclint, pylint, import-linter (bundled, run by lintro)
       YAML / TOML:      yamllint, taplo
       Shell:            shellcheck, shfmt
       Dotenv:           dotenv-linter

@@ -123,6 +123,18 @@ PYTHON_VERSION="${PYTHON_VERSION:-3.13}"
 MIN_RESOURCE_COUNT="$(read_config_value min-resource-count)"
 MIN_RESOURCE_COUNT="${MIN_RESOURCE_COUNT:-1}"
 GENERATE_RESOURCES=$(python3 -c "import json, sys; print('true' if json.loads(sys.argv[1]).get('generate-resources') else 'false')" "$CONFIG_JSON")
+# Extras of the package the formula installs with (same key and rules as
+# intel-pypi.extras of a binary formula). They are interpolated into Ruby
+# source ("#{buildpath}[full]") and pip arguments, so the value must be a
+# list and every entry must fit the PEP 685 extra-name charset.
+if ! PYPI_EXTRAS=$(python3 "$SCRIPT_DIR/read_extras.py" "$CONFIG_JSON"); then
+	log_error "extras for ${FORMULA_KEY} must be a list of extra names (expected ^[A-Za-z0-9][A-Za-z0-9._-]*\$ per entry)"
+	exit 1
+fi
+if [[ -n "$PYPI_EXTRAS" && "$GENERATE_RESOURCES" != "true" ]]; then
+	log_error "extras for ${FORMULA_KEY} need generate-resources: true (the extras' dependencies must be pinned)"
+	exit 1
+fi
 TEST_COMMAND="$(read_config_value test-command)"
 if [[ -z "$TEST_COMMAND" ]]; then
 	log_error "test-command is required in config for ${FORMULA_KEY}"
@@ -222,7 +234,14 @@ fi
 
 if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 	generate_pinned_resources "$PACKAGE_NAME" "$TARBALL_FILE" "$PYTHON_VERSION" \
-		"$CONFIG_JSON" "$TMPDIR" "$MIN_RESOURCE_COUNT"
+		"$CONFIG_JSON" "$TMPDIR" "$MIN_RESOURCE_COUNT" "$PYPI_EXTRAS"
+
+	# pip accepts "<path>[extra]" for a local project, so the formula
+	# installs the same extras spec the resource walk followed.
+	INSTALL_TARGET="buildpath"
+	if [[ -n "$PYPI_EXTRAS" ]]; then
+		INSTALL_TARGET="\"#{buildpath}[${PYPI_EXTRAS}]\""
+	fi
 
 	HOMEBREW_PKG_ARRAY=()
 	while IFS= read -r line; do
@@ -292,6 +311,7 @@ EOF
 		--replace "LICENSE=${LICENSE}" \
 		--replace "PYTHON_VENV=python${PYTHON_VERSION}" \
 		--replace "TEST_BINARY=${TEST_BINARY}" \
+		--replace "INSTALL_TARGET=${INSTALL_TARGET}" \
 		--replace-file "HOMEBREW_DEPS=${TMPDIR}/deps.txt" \
 		--replace-file "POET_RESOURCES=${TMPDIR}/resources.txt" \
 		--replace-file "WHEEL_RESOURCES=${TMPDIR}/wheels.txt" \

@@ -5,6 +5,9 @@
 # "certifi" is the PyPI package name (SSL certificates) pinned in Formula
 # resource stanzas — not a misspelling of "certify".
 certifi = "certifi"
+# "astroid" is the PyPI package name (pylint's syntax tree library) pinned in
+# Formula/lintro-full.rb — not a misspelling of "asteroid".
+astroid = "astroid"
 # "intoto" is the in-toto attestation bundle suffix (<asset>.intoto.jsonl) on
 # py-lintro release assets, not a misspelling of "into".
 intoto = "intoto"

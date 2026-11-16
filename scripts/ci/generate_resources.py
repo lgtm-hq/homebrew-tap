@@ -13,9 +13,11 @@ Usage:
     python3 generate_resources.py lintro --analysis-env env.json \
         --python-version 3.13
 
-    # Exclude specific packages (e.g., already available as Homebrew formulae)
+    # Exclude specific packages (e.g., already available as Homebrew
+    # formulae), and do not pin what only those packages need
     python3 generate_resources.py lintro --analysis-env env.json \
-        --python-version 3.13 --exclude bandit black mypy ruff yamllint
+        --python-version 3.13 --exclude bandit black mypy ruff yamllint \
+        --no-follow bandit black mypy ruff yamllint
 
     # Follow the root package's extras and resolve for an Intel Mac
     python3 generate_resources.py lintro --analysis-env env.json \
@@ -502,6 +504,7 @@ def _check_resolved_pin(req: Requirement, req_str: str, dependent: str) -> None:
 def get_package_dependencies(
     package_name: str,
     root_extras: frozenset[str] = frozenset(),
+    no_follow: frozenset[str] = frozenset(),
 ) -> set[str]:
     """Get all dependencies of a package recursively.
 
@@ -514,6 +517,11 @@ def get_package_dependencies(
     Args:
         package_name: Name of the package to analyze.
         root_extras: Extras requested for the root package itself.
+        no_follow: Normalized names of packages whose own requirements are
+            not walked. A tool that Homebrew provides as a formula runs in
+            that formula's environment, so its dependencies are needed here
+            only if something else requires them, and that path still
+            reaches them.
 
     Returns:
         Set of normalized dependency package names.
@@ -529,6 +537,8 @@ def get_package_dependencies(
         if (current, current_extras) in processed:
             continue
         processed.add((current, current_extras))
+        if current in no_follow and current != normalized_name:
+            continue
 
         if current in dist_map:
             _, requires = dist_map[current]
@@ -629,6 +639,15 @@ def main() -> None:
         help="Package names to exclude (e.g., available as Homebrew formulae)",
     )
     parser.add_argument(
+        "--no-follow",
+        nargs="*",
+        default=[],
+        help=(
+            "Package names whose own requirements are not walked (tools a "
+            "Homebrew formula provides); they should be excluded as well"
+        ),
+    )
+    parser.add_argument(
         "--extras",
         default="",
         help="Comma-separated extras of the root package to follow (e.g. mcp)",
@@ -678,7 +697,11 @@ def main() -> None:
     )
 
     installed = get_installed_packages()
-    dependencies = get_package_dependencies(args.package, root_extras=root_extras)
+    dependencies = get_package_dependencies(
+        args.package,
+        root_extras=root_extras,
+        no_follow=frozenset(normalize_name(name) for name in args.no_follow),
+    )
     installed.update(
         {name: version for name, (version, _) in _RESOLVED_FROM_PYPI.items()},
     )

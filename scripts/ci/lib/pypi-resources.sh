@@ -130,6 +130,12 @@ generate_pinned_resources() {
 	if ((${#exclude_args[@]})); then
 		generate_args+=(--exclude "${exclude_args[@]}")
 	fi
+	# A Homebrew dependency is installed as its own formula, with its own
+	# environment, so what only it requires is not pinned here. Wheel-only
+	# packages are installed into this formula and are still walked.
+	if ((${#homebrew_pkgs[@]})); then
+		generate_args+=(--no-follow "${homebrew_pkgs[@]}")
+	fi
 	local resources
 	resources=$(python3 "${generate_args[@]}")
 
