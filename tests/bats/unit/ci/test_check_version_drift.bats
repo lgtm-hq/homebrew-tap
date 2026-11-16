@@ -173,25 +173,98 @@ RUBY
 	[[ "$output" == *"No product configs found"* ]]
 }
 
+@test "check-version-drift: a formula with an arm binary and a nested Intel sdist reads the sdist version" {
+	# The shape of the real lintro formula: no version field, a GitHub
+	# release binary on arm and the PyPI sdist inside on_intel.
+	cat >"$FORMULA_DIR/beta.rb" <<'RUBY'
+class Fixture < Formula
+  on_macos do
+    on_arm do
+      url "https://github.com/example/beta/releases/download/v0.9.0/beta-macos-arm64"
+    end
+    on_intel do
+      url "https://files.pythonhosted.org/packages/ab/cd/beta_pkg-0.9.0.tar.gz"
+    end
+  end
+end
+RUBY
+
+	run bash "$SCRIPTS_DIR/check-version-drift.sh" --all
+
+	[ "$status" -eq 0 ]
+	[ "$(report_field '.[] | select(.formula == "beta") | .formula_version')" = "0.9.0" ]
+	[[ "$output" == *"has_drift=false"* ]]
+}
+
+@test "check-version-drift: product configs with a .yaml extension are read too" {
+	mv "$FORMULA_CONFIG_DIR/beta.yml" "$FORMULA_CONFIG_DIR/beta.yaml"
+
+	run bash "$SCRIPTS_DIR/check-version-drift.sh" --all
+
+	[ "$status" -eq 0 ]
+	[ "$(report_field '[.[].product] | unique | join(",")')" = "alpha,beta" ]
+}
+
 @test "repository: every configured formula has a formula file and a package" {
-	# Guards the real configs the scheduled run reads.
+	# Guards the real configs the scheduled run reads. Counts what it checked,
+	# so a reader that fails or finds nothing cannot pass.
 	unset FORMULA_CONFIG_DIR FORMULA_DIR
-	local config key package
-	for config in "$REPO_ROOT"/formulas/*.yml; do
+	local config key keys package checked=0
+	shopt -s nullglob
+	for config in "$REPO_ROOT"/formulas/*.yml "$REPO_ROOT"/formulas/*.yaml; do
+		keys="$(python3 "$SCRIPTS_DIR/read_formula_config.py" "$config" --list-formulas)"
+		[ -n "$keys" ]
 		while IFS= read -r key; do
 			[ -f "$REPO_ROOT/Formula/$key.rb" ]
 			package="$(python3 "$SCRIPTS_DIR/read_formula_config.py" "$config" --formula-key "$key" --json |
 				jq -r '.package // empty')"
 			[ -n "$package" ]
-		done < <(python3 "$SCRIPTS_DIR/read_formula_config.py" "$config" --list-formulas)
+			checked=$((checked + 1))
+		done <<<"$keys"
 	done
+	shopt -u nullglob
+	[ "$checked" -ge 3 ]
 }
 
 @test "scheduled validation: the workflow names no product and passes the report through the environment" {
 	local workflow="$REPO_ROOT/.github/workflows/scheduled-validation.yml"
 
-	! grep -q 'PYPI_PACKAGE' "$workflow"
+	run grep -c 'PYPI_PACKAGE' "$workflow"
+	[ "$output" -eq 0 ]
+	run grep -ci 'lintro\|winnow' "$workflow"
+	[ "$output" -eq 0 ]
 	grep -q 'check-version-drift.sh --all$' "$workflow"
 	grep -q 'DRIFT_REPORT: \${{ needs.check-version-drift.outputs.drift_report }}' "$workflow"
 	grep -q 'report_version_drift "\$DRIFT_REPORT"' "$workflow"
+}
+
+@test "scheduled validation: reporting does not wait for the install check, and every job's failure is notified" {
+	local workflow="$REPO_ROOT/.github/workflows/scheduled-validation.yml"
+	local wiring
+	wiring="$(python3 - "$workflow" <<'PY'
+import sys
+
+import yaml
+
+jobs = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))["jobs"]
+
+
+def needs(job):
+    value = jobs[job].get("needs", [])
+    return sorted([value] if isinstance(value, str) else value)
+
+
+print("report-needs=" + ",".join(needs("report-version-drift")))
+print("report-if=" + str(jobs["report-version-drift"].get("if")))
+print("validate-needs=" + ",".join(needs("validate-formula")))
+print("notify-needs=" + ",".join(needs("notify-failure")))
+print("notify-if=" + str(jobs["notify-failure"].get("if")))
+PY
+	)"
+
+	[[ "$wiring" == *"report-needs=check-version-drift"$'\n'* ]]
+	[[ "$wiring" == *"report-if=needs.check-version-drift.result == 'success'"* ]]
+	[[ "$wiring" == *"validate-needs="$'\n'* ]]
+	[[ "$wiring" == *"notify-needs=check-version-drift,report-version-drift,validate-formula"$'\n'* ]]
+	[[ "$wiring" == *"notify-if=failure()"* ]]
 }

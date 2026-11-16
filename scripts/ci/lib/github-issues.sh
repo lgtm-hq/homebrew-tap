@@ -65,83 +65,115 @@ add_issue_comment() {
 # Specific Issue Types
 # =============================================================================
 
-# Report version drift between formulas and PyPI, for every product at once.
+# Report version drift between formulas and PyPI, one issue per product.
 #
 # Takes the JSON list written by check-version-drift.sh (one row per formula:
-# product, package, formula, formula_version, pypi_version, drift). One open
-# issue labelled version-drift carries the current state of every formula:
-#   - drift and no open issue: create it;
-#   - drift and an open issue: rewrite its title and body, so it never shows
-#     versions from an earlier run;
-#   - no drift and an open issue: say so and close it.
+# product, package, formula, formula_version, pypi_version, drift). Each
+# product has at most one open drift issue, identified by a hidden marker in
+# its body (the same one-open-issue-per-key convention as the lgtm-ci failure
+# notifiers), never by label alone:
+#   - a product is behind and has no open issue: create it;
+#   - a product is behind and has an open issue: rewrite its title and body,
+#     so it never shows versions from an earlier run;
+#   - a product is current and has an open issue: say so and close it.
+# Issues without the marker are never edited. An auto-created drift issue from
+# before the marker existed is closed with a pointer to the new reporting.
+# A malformed report, or a failed issue lookup, changes nothing.
 # Usage: report_version_drift '<json>'
 report_version_drift() {
 	local report_json="$1"
 
-	local has_drift drifted table
-	# No `jq -e`: it exits non-zero for a `false` result, which is the normal
-	# "nothing is behind" answer. Only a malformed report may fail here.
-	if ! has_drift=$(jq -r 'if type == "array" and length > 0 and all(.[]; type == "object" and (.drift | type) == "boolean") then any(.[]; .drift) else error("empty or malformed drift report") end' <<<"$report_json" 2>/dev/null); then
+	# Every row must be complete before any issue is looked up or changed: a
+	# partial report must never be read as "nothing is behind". No `jq -e`:
+	# it exits non-zero for a `false` result.
+	local valid
+	valid=$(jq -r '
+		if type == "array" and length > 0 and all(.[];
+			type == "object"
+			and ([.product, .package, .formula, .formula_version, .pypi_version]
+				| all(type == "string" and length > 0))
+			and (.product | test("^[A-Za-z0-9._-]+$"))
+			and (.drift | type) == "boolean")
+		then "ok" else error("malformed drift report") end' <<<"$report_json" 2>/dev/null) || valid=""
+	if [[ "$valid" != "ok" ]]; then
 		log_error "Drift report is empty or malformed; not touching any issue"
 		return 1
 	fi
-	# jq prints nothing and succeeds on empty input. Anything other than an
-	# explicit answer must not be read as "nothing is behind".
-	if [[ "$has_drift" != "true" && "$has_drift" != "false" ]]; then
-		log_error "Drift report is empty or malformed; not touching any issue"
-		return 1
-	fi
-	drifted=$(jq -r '[.[] | select(.drift) | .formula] | join(", ")' <<<"$report_json")
-	table=$(jq -r '.[] | "| \(.product) | `\(.formula)` | `\(.formula_version)` | `\(.package)` `\(.pypi_version)` | \(if .drift then "behind" else "current" end) |"' <<<"$report_json")
 
-	local checked existing_issue
+	local open_issues
+	if ! open_issues=$(gh issue list --state open --label "version-drift" --limit 200 --json number,body); then
+		log_error "Could not list open version-drift issues; not touching any issue"
+		return 1
+	fi
+
+	local checked footer
 	checked=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-	existing_issue=$(find_open_issue "version-drift")
+	footer="*Auto-created by scheduled validation.*"
 
-	if [[ "$has_drift" != "true" ]]; then
-		if [[ -n "$existing_issue" ]]; then
-			log_info "Version drift resolved; closing issue #$existing_issue"
-			gh issue close "$existing_issue" --comment "$(
-				cat <<EOF
-Every formula matches its package's current release as of $checked. Closing.
+	local product marker rows has_drift drifted table existing_issue title body
+	while IFS= read -r product; do
+		marker="<!-- version-drift:${product} -->"
+		rows=$(jq -c --arg p "$product" '[.[] | select(.product == $p)]' <<<"$report_json")
+		has_drift=$(jq -r 'any(.[]; .drift)' <<<"$rows")
+		drifted=$(jq -r '[.[] | select(.drift) | .formula] | join(", ")' <<<"$rows")
+		table=$(jq -r '.[] | "| `\(.formula)` | `\(.formula_version)` | `\(.package)` `\(.pypi_version)` | \(if .drift then "behind" else "current" end) |"' <<<"$rows")
+		existing_issue=$(jq -r --arg m "$marker" '[.[] | select((.body // "") | contains($m))][0].number // empty' <<<"$open_issues")
 
-| Product | Formula | Formula version | PyPI | State |
-|---------|---------|-----------------|------|-------|
+		if [[ "$has_drift" != "true" ]]; then
+			if [[ -n "$existing_issue" ]]; then
+				log_info "Version drift resolved for ${product}; closing issue #$existing_issue"
+				gh issue close "$existing_issue" --comment "$(
+					cat <<EOF
+Every ${product} formula matches its package's current release as of $checked. Closing.
+
+| Formula | Formula version | PyPI | State |
+|---------|-----------------|------|-------|
 $table
 EOF
-			)"
-		else
-			log_info "No version drift and no open drift issue"
+				)"
+			else
+				log_info "No version drift for ${product}"
+			fi
+			continue
 		fi
-		return 0
-	fi
 
-	local title body
-	title="Version drift detected: $drifted"
-	body=$(
-		cat <<EOF
+		title="Version drift detected: ${product} (${drifted})"
+		body=$(
+			cat <<EOF
 ## Version Drift Detected
 
-| Product | Formula | Formula version | PyPI | State |
-|---------|---------|-----------------|------|-------|
+| Formula | Formula version | PyPI | State |
+|---------|-----------------|------|-------|
 $table
 
-Each formula is updated automatically when its product publishes a release. If a formula stays behind, check the \`Update - Homebrew Formula\` runs in this repository for that product.
+Each formula is updated automatically when its product publishes a release. If a formula stays behind, check the \`Update - Homebrew Formula\` runs in this repository for ${product}.
 
-Last checked: $checked. This issue is rewritten by each scheduled validation run and closed when nothing is behind.
+Last checked: $checked. This issue is rewritten by each scheduled validation run and closed when ${product} is no longer behind.
 
 ---
-*Auto-created by scheduled validation.*
+$footer
+$marker
 EOF
-	)
+		)
 
-	if [[ -n "$existing_issue" ]]; then
-		log_info "Refreshing version drift issue #$existing_issue"
-		gh issue edit "$existing_issue" --title "$title" --body "$body"
-	else
-		log_info "Creating new version drift issue"
-		create_issue "$title" "$body" "version-drift,automated"
-	fi
+		if [[ -n "$existing_issue" ]]; then
+			log_info "Refreshing version drift issue #$existing_issue for ${product}"
+			gh issue edit "$existing_issue" --title "$title" --body "$body"
+		else
+			log_info "Creating version drift issue for ${product}"
+			create_issue "$title" "$body" "version-drift,automated"
+		fi
+	done < <(jq -r '[.[].product] | unique | .[]' <<<"$report_json")
+
+	# Drift issues this automation created before issues carried a product
+	# marker cannot be matched to a product. Close them; never touch an issue
+	# that does not carry the automation's own footer.
+	local legacy_issue
+	while IFS= read -r legacy_issue; do
+		[[ -z "$legacy_issue" ]] && continue
+		log_info "Closing version drift issue #$legacy_issue from before per-product reporting"
+		gh issue close "$legacy_issue" --comment "Version drift is now reported in one issue per product, rewritten on every scheduled run and closed when the product is current. This issue predates that and cannot be matched to a product, so it is closed. Any product that is behind today has its own open issue."
+	done < <(jq -r --arg f "$footer" '.[] | select(((.body // "") | contains($f)) and (((.body // "") | contains("<!-- version-drift:")) | not)) | .number' <<<"$open_issues")
 }
 
 # Report validation failure

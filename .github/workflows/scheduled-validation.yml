@@ -92,7 +92,7 @@ jobs:
 
   notify-failure:
     name: Notify on Failure
-    needs: [check-version-drift, validate-formula]
+    needs: [check-version-drift, validate-formula, report-version-drift]
     if: failure()
     runs-on: ${{ vars.LGTM_CI_RUNNER || 'ubuntu-26.04' }}
     steps:

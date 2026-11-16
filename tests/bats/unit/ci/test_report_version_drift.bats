@@ -1,8 +1,10 @@
 #!/usr/bin/env bats
 # SPDX-License-Identifier: MIT
-# Purpose: Tests for the version drift issue report (create, refresh, close).
+# Purpose: Tests for the per-product version drift issue report.
 
 load "../../../helpers/common"
+
+FOOTER='*Auto-created by scheduled validation.*'
 
 setup() {
 	setup_temp_dir
@@ -11,8 +13,9 @@ setup() {
 	export MOCK_GH_LOG="$TEST_TEMP_DIR/gh.log"
 	: >"$MOCK_GH_LOG"
 	mkdir -p "$TEST_TEMP_DIR/mock-bin"
-	# Records every call, one argument per line after a "--" separator, and
-	# answers the open-issue lookup from MOCK_OPEN_ISSUE (empty = none).
+	# Records every call (a "--" line, then one argument per line) and answers
+	# the open-issue listing from MOCK_ISSUES (a JSON array of number/body).
+	# MOCK_LIST_FAILS=1 makes that listing fail, as a GitHub outage would.
 	cat >"$TEST_TEMP_DIR/mock-bin/gh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -21,16 +24,25 @@ set -euo pipefail
 	printf '%s\n' "$@"
 } >>"$MOCK_GH_LOG"
 if [[ "$1 $2" == "issue list" ]]; then
-	echo "${MOCK_OPEN_ISSUE:-}"
+	if [[ -n "${MOCK_LIST_FAILS:-}" ]]; then
+		echo "gh: HTTP 502" >&2
+		exit 1
+	fi
+	echo "${MOCK_ISSUES:-[]}"
 elif [[ "$1 $2" == "label list" ]]; then
 	printf 'version-drift\nautomated\n'
 fi
 EOF
 	chmod +x "$TEST_TEMP_DIR/mock-bin/gh"
 	export PATH="$TEST_TEMP_DIR/mock-bin:$PATH"
+	export MOCK_ISSUES="[]"
+	unset MOCK_LIST_FAILS
 
-	CURRENT='[{"product":"alpha","package":"alpha-pkg","formula":"alpha","formula_version":"1.2.0","pypi_version":"1.2.0","drift":false},{"product":"beta","package":"beta-pkg","formula":"beta","formula_version":"0.9.0","pypi_version":"0.9.0","drift":false}]'
-	DRIFTED='[{"product":"alpha","package":"alpha-pkg","formula":"alpha","formula_version":"1.2.0","pypi_version":"1.2.0","drift":false},{"product":"beta","package":"beta-pkg","formula":"beta","formula_version":"0.8.0","pypi_version":"0.9.0","drift":true}]'
+	ALPHA_OK='{"product":"alpha","package":"alpha-pkg","formula":"alpha","formula_version":"1.2.0","pypi_version":"1.2.0","drift":false}'
+	BETA_OK='{"product":"beta","package":"beta-pkg","formula":"beta","formula_version":"0.9.0","pypi_version":"0.9.0","drift":false}'
+	BETA_BEHIND='{"product":"beta","package":"beta-pkg","formula":"beta","formula_version":"0.8.0","pypi_version":"0.9.0","drift":true}'
+	CURRENT="[$ALPHA_OK,$BETA_OK]"
+	DRIFTED="[$ALPHA_OK,$BETA_BEHIND]"
 }
 
 teardown() {
@@ -41,6 +53,10 @@ report() { # $1 = drift report JSON
 	run bash -c 'source "$1"; report_version_drift "$2"' _ "$LIB" "$1"
 }
 
+issue() { # $1 = number, $2 = body text; prints one JSON issue
+	jq -cn --argjson n "$1" --arg b "$2" '{number: $n, body: $b}'
+}
+
 calls() { # $1 = "issue create" style prefix; prints the number of matching calls
 	awk -v want="$1" '
 		$0 == "--" { getline a; getline b; if (a " " b == want) n++ }
@@ -48,8 +64,65 @@ calls() { # $1 = "issue create" style prefix; prints the number of matching call
 	' "$MOCK_GH_LOG"
 }
 
-@test "report_version_drift: drift with no open issue creates one naming the drifted formula" {
-	export MOCK_OPEN_ISSUE=""
+mutations() { # total create + edit + close calls
+	echo $(($(calls 'issue create') + $(calls 'issue edit') + $(calls 'issue close')))
+}
+
+@test "report_version_drift: a product that is behind gets its own issue with its marker" {
+	report "$DRIFTED"
+
+	[ "$status" -eq 0 ]
+	[ "$(calls 'issue create')" -eq 1 ]
+	[ "$(mutations)" -eq 1 ]
+	grep -qx 'Version drift detected: beta (beta)' "$MOCK_GH_LOG"
+	grep -qF '| `beta` | `0.8.0` | `beta-pkg` `0.9.0` | behind |' "$MOCK_GH_LOG"
+	grep -qxF '<!-- version-drift:beta -->' "$MOCK_GH_LOG"
+}
+
+@test "report_version_drift: a product's issue names no other product" {
+	report "$DRIFTED"
+
+	[ "$status" -eq 0 ]
+	run grep -c 'alpha' "$MOCK_GH_LOG"
+	[ "$output" -eq 0 ]
+	run grep -ci 'lintro' "$MOCK_GH_LOG"
+	[ "$output" -eq 0 ]
+}
+
+@test "report_version_drift: two products behind get two issues" {
+	local alpha_behind='{"product":"alpha","package":"alpha-pkg","formula":"alpha","formula_version":"1.1.0","pypi_version":"1.2.0","drift":true}'
+
+	report "[$alpha_behind,$BETA_BEHIND]"
+
+	[ "$status" -eq 0 ]
+	[ "$(calls 'issue create')" -eq 2 ]
+	grep -qxF '<!-- version-drift:alpha -->' "$MOCK_GH_LOG"
+	grep -qxF '<!-- version-drift:beta -->' "$MOCK_GH_LOG"
+}
+
+@test "report_version_drift: an open issue for the product is rewritten, not duplicated" {
+	# The issue must show the current versions, not those from the run that
+	# opened it.
+	export MOCK_ISSUES="[$(issue 50 "old text
+$FOOTER
+<!-- version-drift:beta -->")]"
+
+	report "$DRIFTED"
+
+	[ "$status" -eq 0 ]
+	[ "$(calls 'issue edit')" -eq 1 ]
+	[ "$(mutations)" -eq 1 ]
+	grep -qx '50' "$MOCK_GH_LOG"
+	grep -qx -- '--title' "$MOCK_GH_LOG"
+	grep -qx -- '--body' "$MOCK_GH_LOG"
+	grep -qF '`0.8.0`' "$MOCK_GH_LOG"
+}
+
+@test "report_version_drift: another product's open issue is left alone" {
+	# alpha has an open issue and is still behind elsewhere; beta's drift must
+	# open beta's own issue and must not rewrite alpha's.
+	export MOCK_ISSUES="[$(issue 60 "$FOOTER
+<!-- version-drift:other -->")]"
 
 	report "$DRIFTED"
 
@@ -57,73 +130,84 @@ calls() { # $1 = "issue create" style prefix; prints the number of matching call
 	[ "$(calls 'issue create')" -eq 1 ]
 	[ "$(calls 'issue edit')" -eq 0 ]
 	[ "$(calls 'issue close')" -eq 0 ]
-	grep -q '^Version drift detected: beta$' "$MOCK_GH_LOG"
-	grep -q '| beta | `beta` | `0.8.0` | `beta-pkg` `0.9.0` | behind |' "$MOCK_GH_LOG"
-	grep -q '| alpha | `alpha` | `1.2.0` | `alpha-pkg` `1.2.0` | current |' "$MOCK_GH_LOG"
 }
 
-@test "report_version_drift: the report names no product that is not in the report" {
-	export MOCK_OPEN_ISSUE=""
-
-	report "$DRIFTED"
-
-	[ "$status" -eq 0 ]
-	! grep -qi 'lintro' "$MOCK_GH_LOG"
-}
-
-@test "report_version_drift: drift with an open issue rewrites its title and body" {
-	# An existing issue must show the current versions, not the ones from the
-	# run that opened it.
-	export MOCK_OPEN_ISSUE="137"
-
-	report "$DRIFTED"
-
-	[ "$status" -eq 0 ]
-	[ "$(calls 'issue edit')" -eq 1 ]
-	[ "$(calls 'issue create')" -eq 0 ]
-	[ "$(calls 'issue close')" -eq 0 ]
-	grep -qx '137' "$MOCK_GH_LOG"
-	grep -qx -- '--title' "$MOCK_GH_LOG"
-	grep -qx -- '--body' "$MOCK_GH_LOG"
-	grep -q '^Version drift detected: beta$' "$MOCK_GH_LOG"
-	grep -q '`0.8.0`' "$MOCK_GH_LOG"
-}
-
-@test "report_version_drift: no drift with an open issue closes it with the current state" {
-	export MOCK_OPEN_ISSUE="137"
+@test "report_version_drift: a product that is current again has its issue closed" {
+	export MOCK_ISSUES="[$(issue 50 "$FOOTER
+<!-- version-drift:beta -->")]"
 
 	report "$CURRENT"
 
 	[ "$status" -eq 0 ]
 	[ "$(calls 'issue close')" -eq 1 ]
-	[ "$(calls 'issue edit')" -eq 0 ]
-	[ "$(calls 'issue create')" -eq 0 ]
-	grep -qx '137' "$MOCK_GH_LOG"
-	grep -q 'Every formula matches' "$MOCK_GH_LOG"
+	[ "$(mutations)" -eq 1 ]
+	grep -qx '50' "$MOCK_GH_LOG"
+	grep -q 'Every beta formula matches' "$MOCK_GH_LOG"
 }
 
-@test "report_version_drift: no drift and no open issue touches nothing" {
-	export MOCK_OPEN_ISSUE=""
+@test "report_version_drift: nothing behind and no open issue touches nothing" {
+	report "$CURRENT"
+
+	[ "$status" -eq 0 ]
+	[ "$(mutations)" -eq 0 ]
+}
+
+@test "report_version_drift: an auto-created issue from before product markers is closed" {
+	# The stale issue this automation opened long ago has the footer and no
+	# marker, so it cannot be matched to a product.
+	export MOCK_ISSUES="[$(issue 137 "## Version Drift Detected
+$FOOTER")]"
 
 	report "$CURRENT"
 
 	[ "$status" -eq 0 ]
-	[ "$(calls 'issue create')" -eq 0 ]
-	[ "$(calls 'issue edit')" -eq 0 ]
-	[ "$(calls 'issue close')" -eq 0 ]
+	[ "$(calls 'issue close')" -eq 1 ]
+	[ "$(mutations)" -eq 1 ]
+	grep -qx '137' "$MOCK_GH_LOG"
+	grep -q 'one issue per product' "$MOCK_GH_LOG"
 }
 
-@test "report_version_drift: an empty or malformed report fails without touching any issue" {
-	# A failed collection must never be read as "nothing is behind" and close
-	# a real drift issue.
-	export MOCK_OPEN_ISSUE="137"
+@test "report_version_drift: a hand-written issue with the label is never edited or closed" {
+	# Someone labels their own issue version-drift: it has neither the marker
+	# nor the automation's footer.
+	export MOCK_ISSUES="[$(issue 70 "Notes on why winnow lags behind")]"
+
+	report "$DRIFTED"
+
+	[ "$status" -eq 0 ]
+	[ "$(calls 'issue create')" -eq 1 ]
+	[ "$(calls 'issue edit')" -eq 0 ]
+	[ "$(calls 'issue close')" -eq 0 ]
+	run grep -cx '70' "$MOCK_GH_LOG"
+	[ "$output" -eq 0 ]
+}
+
+@test "report_version_drift: an empty or malformed report changes nothing" {
+	# A failed collection must never be read as "nothing is behind", and a
+	# partial row must never rewrite an issue with blanks.
+	export MOCK_ISSUES="[$(issue 50 "$FOOTER
+<!-- version-drift:beta -->")]"
 	local bad
-	for bad in '' '[]' 'not json' '{"drift":false}'; do
+	for bad in '' '[]' 'not json' '{"drift":false}' '[{"drift":false}]' '[{"drift":true}]' \
+		'[{"product":"beta","package":"beta-pkg","formula":"beta","formula_version":"","pypi_version":"0.9.0","drift":true}]' \
+		'[{"product":"beta","package":"beta-pkg","formula":"beta","formula_version":"0.8.0","pypi_version":"0.9.0","drift":"true"}]' \
+		'[{"product":"be ta","package":"beta-pkg","formula":"beta","formula_version":"0.8.0","pypi_version":"0.9.0","drift":true}]' \
+		"[$BETA_OK,{\"product\":\"alpha\",\"drift\":false}]"; do
 		: >"$MOCK_GH_LOG"
 		report "$bad"
 		[ "$status" -ne 0 ]
-		[ "$(calls 'issue close')" -eq 0 ]
-		[ "$(calls 'issue edit')" -eq 0 ]
-		[ "$(calls 'issue create')" -eq 0 ]
+		[ "$(mutations)" -eq 0 ]
+		[ "$(calls 'issue list')" -eq 0 ]
 	done
+}
+
+@test "report_version_drift: a failed issue lookup changes nothing and fails" {
+	# Otherwise a GitHub error would look like "no open issue" and a second
+	# issue would be created for the same product.
+	export MOCK_LIST_FAILS=1
+
+	report "$DRIFTED"
+
+	[ "$status" -ne 0 ]
+	[ "$(mutations)" -eq 0 ]
 }
