@@ -148,11 +148,15 @@ def main() -> None:
     # scripts/ci/lib/pypi-resources.sh applies the same rule to wheel_only.
     resource_name = normalize_name(args.package)
 
+    # Name the release in errors: the version asked for, or the one PyPI
+    # answered with when none was.
+    release = args.version or data.get("info", {}).get("version") or "latest"
+
     if args.type == "universal":
         wheel = find_universal_wheel(data)
         if not wheel:
             print(
-                f"Error: No universal wheel found for {args.package}",
+                f"Error: No universal wheel found for {args.package} {release}",
                 file=sys.stderr,
             )
             sys.exit(1)

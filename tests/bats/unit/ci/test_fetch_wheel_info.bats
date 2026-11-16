@@ -54,6 +54,14 @@ teardown() {
 	[[ "$output" == *"# Some_Pkg.Name - using wheel"* ]]
 }
 
+@test "fetch_wheel_info: a release without a universal wheel fails naming the package and version" {
+	run python3 "$SCRIPTS_DIR/fetch_wheel_info.py" pydantic_core \
+		--type universal --version 2.46.5
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"No universal wheel found for pydantic_core 2.46.5"* ]]
+}
+
 @test "pypi_canonical_name: matches the stanza naming so wheel_only rejects the right resources" {
 	[ "$(pypi_canonical_name pydantic_core)" = "pydantic-core" ]
 	[ "$(pypi_canonical_name pillow_heif)" = "pillow-heif" ]

@@ -158,12 +158,14 @@ generate_pinned_resources() {
 			return 1
 		fi
 
-		local wheel_args=(--type "$wheel_type" --comment "$wheel_comment" --python-version "${python_version_nodot}")
-		if [[ "$wheel_type" == "platform" ]]; then
-			wheel_args+=(--version "$wheel_version")
-			if [[ -n "$arch" ]]; then
-				wheel_args+=(--arch "$arch")
-			fi
+		# Every wheel is pinned to the version pip resolved in the analysis
+		# environment. Without --version the lookup returns the project's
+		# newest release, which can differ from what the formula's other
+		# resources were resolved against.
+		local wheel_args=(--type "$wheel_type" --version "$wheel_version"
+			--comment "$wheel_comment" --python-version "${python_version_nodot}")
+		if [[ "$wheel_type" == "platform" && -n "$arch" ]]; then
+			wheel_args+=(--arch "$arch")
 		fi
 
 		python3 "$script_dir/fetch_wheel_info.py" "$wheel_pkg" "${wheel_args[@]}" >>"$out_dir/wheels.txt"

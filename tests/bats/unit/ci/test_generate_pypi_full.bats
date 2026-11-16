@@ -341,9 +341,9 @@ YAML
 	grep -q 'wheel_only = %w\[pydantic-core\]' "$REPO_ROOT/Formula/lintro.rb"
 }
 
-# Offline fixture for #633: capme 0.1.0 depends on capdep, whose only release
-# declares Requires-Python ==3.13.*. Both packages are built here and pip
-# resolves them with PIP_NO_INDEX, so which versions it accepts does not
+# Offline fixture for #633: capme 0.1.0 depends on capbase and on capdep, whose
+# only release declares Requires-Python ==3.13.*. All three are built here and
+# pip resolves them with PIP_NO_INDEX, so which versions it accepts does not
 # depend on the host interpreter or on PyPI's contents. Creating the analysis
 # environment is not offline: uv may still fetch the interpreter and pip.
 # capme's sdist carries its own build backend (no build requirements).
@@ -383,6 +383,9 @@ write_wheel(
     "1.0.0",
     "Requires-Python: ==3.13.*\n",
 )
+# A second, unrestricted dependency, so a formula that takes capdep from a
+# wheel still has a resource to generate.
+write_wheel(root / "links" / "capbase-1.0.0-py3-none-any.whl", "capbase", "1.0.0", "")
 
 backend = f"""import zipfile
 
@@ -390,7 +393,7 @@ WHEEL = {WHEEL!r}
 DIST = "capme-0.1.0.dist-info"
 FILES = {{
     "capme/__init__.py": "",
-    DIST + "/METADATA": "Metadata-Version: 2.1\\nName: capme\\nVersion: 0.1.0\\nRequires-Dist: capdep\\n",
+    DIST + "/METADATA": "Metadata-Version: 2.1\\nName: capme\\nVersion: 0.1.0\\nRequires-Dist: capdep\\nRequires-Dist: capbase\\n",
     DIST + "/WHEEL": WHEEL,
 }}
 
@@ -436,6 +439,7 @@ def release(name, version, sha):
     json.dumps(release("capme", "0.1.0", hashlib.sha256(sdist.read_bytes()).hexdigest()))
 )
 (root / "pypi" / "capdep-1.0.0.json").write_text(json.dumps(release("capdep", "1.0.0", "c3" * 32)))
+(root / "pypi" / "capbase-1.0.0.json").write_text(json.dumps(release("capbase", "1.0.0", "d4" * 32)))
 PY
 	export PYPI_FIXTURE_DIR="$CAPPED/pypi"
 	# Host pip settings must not change what the fixture proves.
@@ -494,5 +498,78 @@ YAML
 	[[ "$output" == *"capdep"* ]]
 	[[ "$output" == *"requires a different Python"* ]]
 	[[ "$output" == *"pip could not install capme and its dependencies under Python 3.14"* ]]
+	[ ! -f "$CAPME_OUTPUT" ]
+}
+
+# #639: a universal wheel-only package must be pinned to the version pip
+# resolved, like a platform one. capdep resolves to 1.0.0 (the only wheel pip
+# can find), while the project document says the newest release is 2.0.0.
+universal_release() { # $1 = version; prints a release document with a universal wheel
+	jq -cn --arg v "$1" '{
+		info: {name: "capdep", version: $v},
+		urls: [{
+			packagetype: "bdist_wheel",
+			filename: "capdep-\($v)-py3-none-any.whl",
+			url: "https://files.pythonhosted.org/packages/fx/00/capdep-\($v)-py3-none-any.whl",
+			digests: {sha256: (if $v == "1.0.0" then "a1" else "b2" end * 32)}
+		}]
+	}'
+}
+
+run_generate_capme_universal() {
+	CAPME_CONFIG="$TEST_TEMP_DIR/capme.yml"
+	CAPME_OUTPUT="$TEST_TEMP_DIR/capme.rb"
+	cat >"$CAPME_CONFIG" <<YAML
+---
+package: capme
+source-repo: lgtm-hq/capme
+homepage: https://github.com/lgtm-hq/capme
+license: MIT
+description: "Fixture package with a universal wheel-only dependency"
+
+formulas:
+  capme:
+    type: pypi
+    generate-resources: true
+    python-version: "3.13"
+    test-command: "capme --version"
+    wheel-only-packages:
+      capdep:
+        type: universal
+        comment: 'capdep - use wheel'
+YAML
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$CAPME_CONFIG" \
+		--formula-key capme \
+		--version 0.1.0 \
+		--output "$CAPME_OUTPUT"
+}
+
+@test "generate-pypi-formula: a universal wheel is pinned to the resolved version, not the newest release" {
+	make_capped_fixtures
+	universal_release 1.0.0 >"$PYPI_FIXTURE_DIR/capdep-1.0.0.json"
+	universal_release 2.0.0 >"$PYPI_FIXTURE_DIR/capdep.json"
+
+	run_generate_capme_universal
+
+	[ "$status" -eq 0 ]
+	grep -q 'capdep-1.0.0-py3-none-any.whl' "$CAPME_OUTPUT"
+	grep -q "sha256 \"$(printf 'a1%.0s' {1..32})\"" "$CAPME_OUTPUT"
+	! grep -q 'capdep-2.0.0' "$CAPME_OUTPUT"
+	# One stanza only: the wheel, not an sdist resource beside it.
+	[ "$(grep -c 'resource "capdep" do' "$CAPME_OUTPUT")" -eq 1 ]
+	grep -q 'resource "capbase" do' "$CAPME_OUTPUT"
+}
+
+@test "generate-pypi-formula: no universal wheel at the resolved version fails naming it" {
+	# 1.0.0 publishes an sdist only (the shared fixture); the newest release
+	# has a wheel. Pinning that one instead would hide the problem.
+	make_capped_fixtures
+	universal_release 2.0.0 >"$PYPI_FIXTURE_DIR/capdep.json"
+
+	run_generate_capme_universal
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"No universal wheel found for capdep 1.0.0"* ]]
 	[ ! -f "$CAPME_OUTPUT" ]
 }
