@@ -10,15 +10,16 @@ Usage:
     # Describe the environment the package was installed into, then generate
     # resources for it (the walk itself runs on any Python with `packaging`)
     <venv>/bin/python -I probe_analysis_env.py > env.json
-    python3 generate_resources.py lintro --analysis-env env.json
+    python3 generate_resources.py lintro --analysis-env env.json \
+        --python-version 3.13
 
     # Exclude specific packages (e.g., already available as Homebrew formulae)
     python3 generate_resources.py lintro --analysis-env env.json \
-        --exclude bandit black mypy ruff yamllint
+        --python-version 3.13 --exclude bandit black mypy ruff yamllint
 
     # Follow the root package's extras and resolve for an Intel Mac
     python3 generate_resources.py lintro --analysis-env env.json \
-        --extras mcp --platform-machine x86_64
+        --python-version 3.13 --extras mcp --platform-machine x86_64
 
 The walk reads installed distributions and Python details only from the
 analysis environment described by --analysis-env, never from the interpreter
@@ -65,6 +66,10 @@ MARKER_KEYS: frozenset[str] = frozenset(
         "sys_platform",
     },
 )
+
+# Marker variables that describe the kernel of one particular machine.
+KERNEL_MARKER_KEYS: tuple[str, ...] = ("platform_release", "platform_version")
+_KERNEL_MARKER = re.compile(r"\b(?:platform_release|platform_version)\b")
 
 # What a formula's target always is, whatever machine generates it: macOS.
 # platform_machine is set per run (--platform-machine): arm64 for Apple
@@ -151,12 +156,13 @@ def load_analysis_env(
         )
 
     target = {key: marker_env[key] for key in MARKER_KEYS}
-    if marker_env["sys_platform"] != "darwin":
-        # The kernel release of a non-macOS generator is never the target's.
-        # The target's own is unknown (a formula serves several macOS
-        # releases), so a marker on either value does not match.
-        target["platform_release"] = ""
-        target["platform_version"] = ""
+    # The target's kernel is unknown: a formula serves several macOS
+    # releases and the generator may not be macOS at all. A requirement
+    # whose marker reads either value is refused (_refuse_kernel_marker),
+    # so these are never compared; they are set only so that `packaging`
+    # does not fill them in from the walk's own interpreter.
+    for key in KERNEL_MARKER_KEYS:
+        target[key] = ""
     target.update(TARGET_PLATFORM)
     target["platform_machine"] = platform_machine
 
@@ -197,6 +203,27 @@ def get_installed_packages() -> dict[str, str]:
     """
     dist_map = build_distribution_map()
     return {name: version for name, (version, _) in dist_map.items()}
+
+
+def _refuse_kernel_marker(req: Requirement, req_str: str, dependent: str) -> None:
+    """Fail closed on a requirement whose marker depends on the kernel.
+
+    The kernel release and version of the Macs a formula will be installed
+    on are not known when it is generated, so such a marker cannot be
+    decided. Guessing either way would silently add or drop a dependency.
+
+    Args:
+        req: Parsed requirement being checked.
+        req_str: Its original Requires-Dist text.
+        dependent: Package that declares it.
+    """
+    if req.marker is None or not _KERNEL_MARKER.search(str(req.marker)):
+        return
+    sys.exit(
+        f"Cannot decide '{req_str}' (required by {dependent}): its marker "
+        "depends on platform_release or platform_version, and the kernel of "
+        "the Macs the formula installs on is not known at generation time",
+    )
 
 
 def _marker_matches(req: Requirement, extras: frozenset[str]) -> bool:
@@ -376,6 +403,7 @@ def get_package_dependencies(
                 req = Requirement(req_str)
             except InvalidRequirement:
                 continue
+            _refuse_kernel_marker(req=req, req_str=req_str, dependent=current)
             if not _marker_matches(req=req, extras=current_extras):
                 continue
             req_name = normalize_name(req.name)

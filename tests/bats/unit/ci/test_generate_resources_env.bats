@@ -128,18 +128,73 @@ walk() {
 	[[ "$output" != *'resource "mdurl" do'* ]]
 }
 
-@test "generate_resources: the sdist requires_python check uses the analysis environment's patch release" {
-	# The newest idna release needs 3.14, so 3.13.5 gets 3.19. An
-	# environment on 3.14.2 gets the newest one.
-	install "$ENV_SITE" rootpkg 1.0.0 "click==8.1.7" "idna>=3.7"
-	install "$ENV_SITE" click 8.1.7
-	describe_env '.marker_env.python_full_version = "3.14.2" | .marker_env.python_version = "3.14"'
+# patchy 2.0 needs Python 3.13.3 or newer; 1.0 runs on any 3.x. Which one is
+# pinned therefore depends on the patch release alone.
+use_patchy_fixtures() {
+	local fixtures="$TEST_TEMP_DIR/pypi"
+	mkdir -p "$fixtures"
+	cp "$PYPI_FIXTURE_DIR/click-8.1.7.json" "$fixtures/"
+	python3 - "$fixtures" <<'PY'
+import json
+import sys
+from pathlib import Path
 
-	PYTHONPATH="$HOST_SITE" run python3 "$SCRIPTS_DIR/generate_resources.py" rootpkg \
-		--analysis-env "$ENV_JSON" --python-version 3.14
+root = Path(sys.argv[1])
+
+
+def sdist(version, requires_python):
+    return {
+        "packagetype": "sdist",
+        "filename": f"patchy-{version}.tar.gz",
+        "url": f"https://files.pythonhosted.org/packages/fx/00/patchy-{version}.tar.gz",
+        "digests": {"sha256": "e5" * 32},
+        "requires_python": requires_python,
+        "yanked": False,
+    }
+
+
+files = {"1.0": sdist("1.0", ">=3.6"), "2.0": sdist("2.0", ">=3.13.3")}
+(root / "patchy.json").write_text(
+    json.dumps(
+        {
+            "info": {"name": "patchy", "version": "2.0"},
+            "releases": {version: [entry] for version, entry in files.items()},
+        },
+    ),
+)
+for version, entry in files.items():
+    (root / f"patchy-{version}.json").write_text(
+        json.dumps(
+            {
+                "info": {"name": "patchy", "version": version, "requires_dist": None},
+                "urls": [entry],
+            },
+        ),
+    )
+PY
+	export PYPI_FIXTURE_DIR="$fixtures"
+}
+
+@test "generate_resources: the sdist requires_python check uses the analysis environment's patch release" {
+	use_patchy_fixtures
+	install "$ENV_SITE" rootpkg 1.0.0 "click==8.1.7" "patchy"
+	install "$ENV_SITE" click 8.1.7
+	describe_env
+
+	walk
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"idna-3.21.tar.gz"* ]]
+	[[ "$output" == *"Resolved patchy==2.0 from PyPI"* ]]
+	[[ "$output" == *"patchy-2.0.tar.gz"* ]]
+
+	# The same tree in an environment on the .0 release gets the older one.
+	describe_env '.marker_env.python_full_version = "3.13.0"'
+
+	walk
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Skipping patchy 2.0: no sdist accepts Python 3.13.0 (requires_python)"* ]]
+	[[ "$output" == *"patchy-1.0.tar.gz"* ]]
 }
 
 @test "generate_resources: implementation markers follow the analysis environment, not the host" {
@@ -163,7 +218,7 @@ walk() {
 	# The description is of a Linux x86_64 runner; the formula is for macOS.
 	install "$ENV_SITE" rootpkg 1.0.0 \
 		'click==8.1.7; sys_platform == "darwin" and platform_system == "Darwin" and platform_machine == "arm64"' \
-		'mdurl==0.1.2; sys_platform == "linux" or platform_release == "6.8.0-generic"'
+		'mdurl==0.1.2; sys_platform == "linux" or platform_system == "Linux" or os_name == "nt"'
 	install "$ENV_SITE" click 8.1.7
 	install "$ENV_SITE" mdurl 0.1.2
 	describe_env
@@ -178,6 +233,39 @@ walk() {
 
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"No dependencies to generate resources for"* ]]
+}
+
+@test "generate_resources: a requirement whose marker depends on the kernel is refused, not guessed" {
+	# The kernel of the Macs a formula installs on is unknown. Each of these
+	# would silently add or drop mdurl depending on what value is assumed.
+	install "$ENV_SITE" click 8.1.7
+	install "$ENV_SITE" mdurl 0.1.2
+	describe_env
+
+	local marker
+	for marker in \
+		'platform_release >= "0"' \
+		'platform_release != "0"' \
+		'platform_version != "unused"' \
+		'sys_platform == "darwin" and platform_release >= "23"'; do
+		rm -rf "$ENV_SITE"/rootpkg-*
+		install "$ENV_SITE" rootpkg 1.0.0 "click==8.1.7" "mdurl==0.1.2; $marker"
+
+		walk
+
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"Cannot decide 'mdurl==0.1.2; $marker' (required by rootpkg)"* ]]
+		[[ "$output" != *'resource "'* ]]
+	done
+
+	# A description from a Mac is refused the same way: the generator's own
+	# kernel is not the target's either.
+	describe_env '.marker_env.sys_platform = "darwin" | .marker_env.platform_system = "Darwin" | .marker_env.platform_release = "23.0.0"'
+
+	walk
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Cannot decide"* ]]
 }
 
 @test "generate_resources: an analysis environment on another Python than the formula's is refused" {
