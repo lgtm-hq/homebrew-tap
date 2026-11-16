@@ -43,6 +43,7 @@ from importlib.metadata import distributions
 from pathlib import Path
 from typing import Any
 
+from packaging.markers import InvalidMarker, Marker
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
@@ -71,7 +72,19 @@ MARKER_KEYS: frozenset[str] = frozenset(
 # Marker variables that describe the kernel of one particular machine.
 KERNEL_MARKER_KEYS: tuple[str, ...] = ("platform_release", "platform_version")
 _KERNEL_MARKER = re.compile(r"\b(?:platform_release|platform_version)\b")
-_MARKER_LITERAL = re.compile(r"""'([^']*)'|"([^"]*)\"""")
+# One comparison of a marker, as `packaging` writes it back: two operands,
+# each a variable or a double-quoted string, around an operator.
+_MARKER_COMPARISON = re.compile(
+    r"""(?P<left>"[^"]*"|\w+)\s+"""
+    r"""(?P<op>===|==|!=|<=|>=|~=|<|>|not\s+in|in)\s+"""
+    r"""(?P<right>"[^"]*"|\w+)""",
+)
+# Stand-ins for a kernel comparison assumed true or false: os_name is always
+# "posix" for the target (TARGET_PLATFORM).
+_ASSUME: dict[bool, str] = {True: 'os_name == "posix"', False: 'os_name != "posix"'}
+# More kernel comparisons than this in one marker are refused rather than
+# enumerated (2**n combinations).
+_MAX_KERNEL_COMPARISONS = 8
 
 # What a formula's target always is, whatever machine generates it: macOS.
 # platform_machine is set per run (--platform-machine): arm64 for Apple
@@ -156,14 +169,24 @@ def load_analysis_env(
             f"The analysis environment runs Python {marker_env['python_version']}, "
             f"but --python-version is {python_version}",
         )
+    full_version = marker_env["python_full_version"]
+    if not re.fullmatch(
+        rf"{re.escape(python_version)}\.\d+(?:(?:a|b|rc)\d+)?\+?",
+        full_version,
+    ):
+        # Caught here, not at first use: an unreadable value would make
+        # every python_full_version marker quietly evaluate false.
+        sys.exit(
+            f"{path} gives python_full_version {full_version!r}, which is not "
+            f"a Python {python_version} release",
+        )
 
     target = {key: marker_env[key] for key in MARKER_KEYS}
     # The target's kernel is unknown: a formula serves several macOS
-    # releases and the generator may not be macOS at all. A requirement
-    # whose marker is decided by either value is refused
-    # (_refuse_kernel_marker), so these never decide anything; they are set
-    # only so that `packaging` does not fill them in from the walk's own
-    # interpreter.
+    # releases and the generator may not be macOS at all. A marker that
+    # mentions either value is never evaluated with it (_kernel_marker_matches
+    # decides it without, or refuses it); they are set only so that
+    # `packaging` does not fill them in from the walk's own interpreter.
     for key in KERNEL_MARKER_KEYS:
         target[key] = ""
     target.update(TARGET_PLATFORM)
@@ -208,59 +231,8 @@ def get_installed_packages() -> dict[str, str]:
     return {name: version for name, (version, _) in dist_map.items()}
 
 
-def _refuse_kernel_marker(
-    req: Requirement,
-    req_str: str,
-    dependent: str,
-    extras: frozenset[str],
-) -> None:
-    """Fail closed on a requirement whose marker is decided by the kernel.
-
-    The kernel release and version of the Macs a formula will be installed
-    on are not known when it is generated. A marker that mentions them is
-    evaluated for a range of kernel values: the empty string, a very low and
-    a very high one, and every literal the marker itself compares against
-    (so equality and containment tests are exercised too). If the answer is
-    the same for all of them, another clause decides it (a platform it is
-    not for, an extra that was not requested) and the walk carries on. If
-    the answer changes, guessing would silently add or drop a dependency.
-
-    Args:
-        req: Parsed requirement being checked.
-        req_str: Its original Requires-Dist text.
-        dependent: Package that declares it.
-        extras: Normalized extras requested by the dependent package.
-    """
-    if req.marker is None:
-        return
-    marker_text = str(req.marker)
-    if not _KERNEL_MARKER.search(marker_text):
-        return
-    literals = {a or b for a, b in _MARKER_LITERAL.findall(marker_text)}
-    probes = sorted({"", "0", "999999", *literals})
-    answers = {
-        _marker_matches(
-            req=req,
-            extras=extras,
-            kernel={"platform_release": release, "platform_version": version},
-        )
-        for release, version in itertools.product(probes, repeat=2)
-    }
-    if len(answers) == 1:
-        return
-    sys.exit(
-        f"Cannot decide '{req_str}' (required by {dependent}): its marker "
-        "depends on platform_release or platform_version, and the kernel of "
-        "the Macs the formula installs on is not known at generation time",
-    )
-
-
-def _marker_matches(
-    req: Requirement,
-    extras: frozenset[str],
-    kernel: dict[str, str] | None = None,
-) -> bool:
-    """Evaluate a requirement marker for the target environment.
+def _evaluate(marker: Marker, extras: frozenset[str]) -> bool:
+    """Evaluate a marker for the target environment and the requested extras.
 
     Extras-gated requirements (e.g. ``ruamel.yaml ; extra == "yaml"``)
     only match when the dependent was requested with that extra, so the
@@ -268,20 +240,110 @@ def _marker_matches(
     extra.
 
     Args:
+        marker: Marker to evaluate.
+        extras: Normalized extras requested by the dependent package.
+
+    Returns:
+        True if the marker holds in the target environment.
+    """
+    if marker.evaluate({**TARGET_ENV, "extra": ""}):
+        return True
+    return any(marker.evaluate({**TARGET_ENV, "extra": extra}) for extra in extras)
+
+
+def _kernel_marker_matches(
+    marker: Marker,
+    extras: frozenset[str],
+    req_str: str,
+    dependent: str,
+) -> bool:
+    """Decide a marker that mentions the kernel, or fail closed.
+
+    The kernel release and version of the Macs a formula will be installed
+    on are not known when it is generated, so a comparison that reads
+    ``platform_release`` or ``platform_version`` has no answer. Each such
+    comparison is therefore replaced by "true" and by "false" in turn, in
+    every combination, and the rest of the marker is evaluated as usual. If
+    every combination gives the same answer, the kernel does not decide the
+    marker (it is not for macOS, its extra was not requested, another clause
+    already holds) and that answer is used. If the answers differ, guessing
+    would silently add or drop a dependency, and generation stops.
+
+    The kernel comparisons themselves are never evaluated.
+
+    Args:
+        marker: Marker that mentions a kernel variable.
+        extras: Normalized extras requested by the dependent package.
+        req_str: The requirement's original Requires-Dist text.
+        dependent: Package that declares it.
+
+    Returns:
+        True if the marker holds whatever the kernel is.
+    """
+    refusal = (
+        f"Cannot decide '{req_str}' (required by {dependent}): its marker "
+        "depends on platform_release or platform_version, and the kernel of "
+        "the Macs the formula installs on is not known at generation time"
+    )
+    marker_text = str(marker)
+    comparisons = [
+        found
+        for found in _MARKER_COMPARISON.finditer(marker_text)
+        if any(found.group(side) in KERNEL_MARKER_KEYS for side in ("left", "right"))
+    ]
+    if not comparisons or len(comparisons) > _MAX_KERNEL_COMPARISONS:
+        # Mentioned, but not in a comparison this can isolate.
+        sys.exit(refusal)
+
+    answers: set[bool] = set()
+    for assumed in itertools.product((True, False), repeat=len(comparisons)):
+        pieces: list[str] = []
+        position = 0
+        for found, value in zip(comparisons, assumed, strict=True):
+            pieces.append(marker_text[position : found.start()])
+            pieces.append(_ASSUME[value])
+            position = found.end()
+        pieces.append(marker_text[position:])
+        rewritten = "".join(pieces)
+        if _KERNEL_MARKER.search(re.sub(r'"[^"]*"', '""', rewritten)):
+            # A kernel variable survived outside a string: not isolated.
+            sys.exit(refusal)
+        try:
+            answers.add(_evaluate(marker=Marker(rewritten), extras=extras))
+        except InvalidMarker:
+            sys.exit(refusal)
+    if len(answers) != 1:
+        sys.exit(refusal)
+    return answers.pop()
+
+
+def _marker_matches(
+    req: Requirement,
+    extras: frozenset[str],
+    req_str: str,
+    dependent: str,
+) -> bool:
+    """Tell whether a requirement applies in the target environment.
+
+    Args:
         req: Parsed requirement whose marker should be evaluated.
         extras: Normalized extras requested by the dependent package.
-        kernel: Kernel marker values to evaluate with instead of the
-            target's (used only to test whether they decide the marker).
+        req_str: The requirement's original Requires-Dist text.
+        dependent: Package that declares it.
 
     Returns:
         True if the requirement applies in the target environment.
     """
     if req.marker is None:
         return True
-    environment = {**TARGET_ENV, **(kernel or {})}
-    if req.marker.evaluate({**environment, "extra": ""}):
-        return True
-    return any(req.marker.evaluate({**environment, "extra": extra}) for extra in extras)
+    if _KERNEL_MARKER.search(str(req.marker)):
+        return _kernel_marker_matches(
+            marker=req.marker,
+            extras=extras,
+            req_str=req_str,
+            dependent=dependent,
+        )
+    return _evaluate(marker=req.marker, extras=extras)
 
 
 def _is_sdist(entry: dict[str, Any]) -> bool:
@@ -457,13 +519,12 @@ def get_package_dependencies(
                 req = Requirement(req_str)
             except InvalidRequirement:
                 continue
-            _refuse_kernel_marker(
+            if not _marker_matches(
                 req=req,
+                extras=current_extras,
                 req_str=req_str,
                 dependent=current,
-                extras=current_extras,
-            )
-            if not _marker_matches(req=req, extras=current_extras):
+            ):
                 continue
             req_name = normalize_name(req.name)
             if req_name in _RESOLVED_FROM_PYPI:

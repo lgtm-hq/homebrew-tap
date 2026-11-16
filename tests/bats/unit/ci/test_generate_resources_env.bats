@@ -259,44 +259,53 @@ PY
 	# would silently add or drop mdurl depending on what value is assumed.
 	install "$ENV_SITE" click 8.1.7
 	install "$ENV_SITE" mdurl 0.1.2
-	describe_env
 
-	local marker
+	# A description from a Mac is refused the same way as one from the Linux
+	# runner: the generator's own kernel is not the target's either.
+	local mac='.marker_env.sys_platform = "darwin" | .marker_env.platform_system = "Darwin" | .marker_env.platform_release = "23.5.0"'
+	local marker description
 	for marker in \
+		'platform_release == "23.*"' \
+		'platform_release == "23.5.*" or platform_release == "24.*"' \
+		'platform_release > "999999"' \
+		'"23.*" == platform_release' \
+		'platform_version === "x"' \
 		'platform_release >= "0"' \
 		'platform_release != "0"' \
 		'platform_version != "unused"' \
 		'platform_release == "23.0.0"' \
 		'"Darwin Kernel" in platform_version' \
 		'platform_release ~= "23.1"' \
+		'platform_release > "23" and platform_release < "24"' \
+		'"23" < platform_release and "24" > platform_release' \
+		'platform_release in "abc" and platform_release != "" and platform_release != "abc"' \
+		'platform_release == platform_version' \
 		'sys_platform == "darwin" and platform_release >= "23"'; do
 		rm -rf "$ENV_SITE"/rootpkg-*
 		install "$ENV_SITE" rootpkg 1.0.0 "click==8.1.7" "mdurl==0.1.2; $marker"
 
-		walk
+		for description in '.' "$mac"; do
+			describe_env "$description"
 
-		[ "$status" -ne 0 ]
-		[[ "$output" == *"Cannot decide 'mdurl==0.1.2; $marker' (required by rootpkg)"* ]]
-		[[ "$output" != *'resource "'* ]]
+			walk
+
+			[ "$status" -ne 0 ]
+			[[ "$output" == *"Cannot decide 'mdurl==0.1.2; $marker' (required by rootpkg)"* ]]
+			[[ "$output" != *'resource "'* ]]
+			[[ "$output" != *"Traceback"* ]]
+		done
 	done
-
-	# A description from a Mac is refused the same way: the generator's own
-	# kernel is not the target's either.
-	describe_env '.marker_env.sys_platform = "darwin" | .marker_env.platform_system = "Darwin" | .marker_env.platform_release = "23.0.0"'
-
-	walk
-
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"Cannot decide"* ]]
 }
 
 @test "generate_resources: a kernel marker that another clause already decides is not refused" {
 	# The kernel values cannot change any of these answers, so there is
 	# nothing to guess: two never apply to the macOS target or to a root
-	# without the extra, one always applies.
+	# without the extra, one always applies. The kernel comparison itself is
+	# never evaluated: `~=` against an empty value raises in some supported
+	# versions of packaging.
 	install "$ENV_SITE" rootpkg 1.0.0 \
-		'click==8.1.7; sys_platform == "darwin" or platform_release >= "5"' \
-		'mdurl==0.1.2; sys_platform == "linux" and platform_release >= "5"' \
+		'click==8.1.7; sys_platform == "darwin" or platform_release ~= "23.1"' \
+		'mdurl==0.1.2; sys_platform == "linux" and platform_version ~= "1.0"' \
 		'idna>=3.7; extra == "dev" and platform_version != "unused"'
 	install "$ENV_SITE" click 8.1.7
 	install "$ENV_SITE" mdurl 0.1.2
@@ -340,6 +349,16 @@ PY
 	walk
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"is missing marker values: python_full_version"* ]]
+
+	# An unreadable or foreign release would make python_full_version
+	# markers quietly evaluate false.
+	local full_version
+	for full_version in "garbage" "3.13.5.final.0" "3.13" "3.12.9" "3.130.1"; do
+		describe_env ".marker_env.python_full_version = \"$full_version\""
+		walk
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"gives python_full_version '$full_version', which is not a Python 3.13 release"* ]]
+	done
 
 	describe_env '.site_paths = []'
 	walk
