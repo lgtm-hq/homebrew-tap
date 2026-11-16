@@ -13,7 +13,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "packaging", specifier = ">=21.0" },
+    { name = "packaging", specifier = ">=24.2" },
     { name = "pyyaml", specifier = "==6.0.3" },
 ]
 

@@ -270,6 +270,7 @@ PY
 		'platform_release > "999999"' \
 		'"23.*" == platform_release' \
 		'platform_version === "x"' \
+		'(sys_platform == "darwin" and (platform_release >= "23" or os_name == "nt"))' \
 		'platform_release >= "0"' \
 		'platform_release != "0"' \
 		'platform_version != "unused"' \
@@ -291,6 +292,7 @@ PY
 
 			[ "$status" -ne 0 ]
 			[[ "$output" == *"Cannot decide 'mdurl==0.1.2; $marker' (required by rootpkg)"* ]]
+			[[ "$output" == *"depends on platform_release or platform_version"* ]]
 			[[ "$output" != *'resource "'* ]]
 			[[ "$output" != *"Traceback"* ]]
 		done
@@ -323,6 +325,52 @@ PY
 
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"Cannot decide 'idna>=3.7; extra == \"dev\" and platform_version != \"unused\"'"* ]]
+}
+
+@test "generate_resources: quotes and marker syntax inside a string do not hide a kernel comparison" {
+	# Each of these is decided by the kernel and was once decided silently,
+	# because the marker was rewritten as text and a quote inside a string
+	# shifted where the next string began.
+	install "$ENV_SITE" click 8.1.7
+	install "$ENV_SITE" mdurl 0.1.2
+	describe_env
+
+	local marker
+	while IFS= read -r marker; do
+		rm -rf "$ENV_SITE"/rootpkg-*
+		install "$ENV_SITE" rootpkg 1.0.0 "click==8.1.7" "mdurl==0.1.2; $marker"
+
+		walk
+
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"Cannot decide 'mdurl==0.1.2; $marker' (required by rootpkg)"* ]]
+		[[ "$output" != *'resource "'* ]]
+		[[ "$output" != *"Traceback"* ]]
+	done <<'MARKERS'
+(os_name == 'a "' or platform_version not in " in x") and (sys_platform == "darwin" or platform_release == "1")
+(os_name == 'a "' or platform_version in " in x") and (sys_platform == "darwin" or platform_release == "1")
+platform_release >= "5" and os_name != 'a" and os_name != "posix'
+platform_release >= "5" or os_name == 'a" or os_name == "posix'
+os_name not in 'platform_release == "x"' and platform_release == "23"
+MARKERS
+}
+
+@test "generate_resources: a kernel variable's name inside a string is a value, not a kernel marker" {
+	# Neither marker reads the kernel: the names only appear as text.
+	install "$ENV_SITE" rootpkg 1.0.0 \
+		'click==8.1.7; platform_machine != "platform_release"' \
+		"mdurl==0.1.2; os_name in 'platform_version == \"posix\"'" \
+		'idna>=3.7; extra == "platform_release"'
+	install "$ENV_SITE" click 8.1.7
+	install "$ENV_SITE" mdurl 0.1.2
+	describe_env
+
+	walk
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'resource "click" do'* ]]
+	[[ "$output" == *'resource "mdurl" do'* ]]
+	[[ "$output" != *'idna'* ]]
 }
 
 @test "generate_resources: an analysis environment on another Python than the formula's is refused" {

@@ -35,6 +35,7 @@ specifier is pinned and its own requirements are walked the same way.
 from __future__ import annotations
 
 import argparse
+import copy
 import itertools
 import json
 import re
@@ -43,7 +44,7 @@ from importlib.metadata import distributions
 from pathlib import Path
 from typing import Any
 
-from packaging.markers import InvalidMarker, Marker
+from packaging.markers import Marker
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
@@ -71,20 +72,17 @@ MARKER_KEYS: frozenset[str] = frozenset(
 
 # Marker variables that describe the kernel of one particular machine.
 KERNEL_MARKER_KEYS: tuple[str, ...] = ("platform_release", "platform_version")
-_KERNEL_MARKER = re.compile(r"\b(?:platform_release|platform_version)\b")
-# One comparison of a marker, as `packaging` writes it back: two operands,
-# each a variable or a double-quoted string, around an operator.
-_MARKER_COMPARISON = re.compile(
-    r"""(?P<left>"[^"]*"|\w+)\s+"""
-    r"""(?P<op>===|==|!=|<=|>=|~=|<|>|not\s+in|in)\s+"""
-    r"""(?P<right>"[^"]*"|\w+)""",
-)
-# Stand-ins for a kernel comparison assumed true or false: os_name is always
-# "posix" for the target (TARGET_PLATFORM).
-_ASSUME: dict[bool, str] = {True: 'os_name == "posix"', False: 'os_name != "posix"'}
+# `packaging` keeps a parsed marker as a tree in this attribute: a list of
+# comparisons (3-tuples of operand, operator, operand), the strings "and" and
+# "or", and nested lists for parentheses. It has had this shape since
+# packaging 21. It is read by name so that a version without it is refused
+# instead of guessed at (see _kernel_comparisons).
+_MARKER_TREE_ATTRIBUTE = "_markers"
 # More kernel comparisons than this in one marker are refused rather than
 # enumerated (2**n combinations).
 _MAX_KERNEL_COMPARISONS = 8
+# A parsed comparison is (operand, operator, operand).
+_COMPARISON_PARTS = 3
 
 # What a formula's target always is, whatever machine generates it: macOS.
 # platform_machine is set per run (--platform-machine): arm64 for Apple
@@ -175,7 +173,9 @@ def load_analysis_env(
         full_version,
     ):
         # Caught here, not at first use: an unreadable value would make
-        # every python_full_version marker quietly evaluate false.
+        # every python_full_version marker quietly evaluate false. (A
+        # pre-release or local build is compared correctly from packaging
+        # 24.2 on, which is the project's floor.)
         sys.exit(
             f"{path} gives python_full_version {full_version!r}, which is not "
             f"a Python {python_version} release",
@@ -251,70 +251,51 @@ def _evaluate(marker: Marker, extras: frozenset[str]) -> bool:
     return any(marker.evaluate({**TARGET_ENV, "extra": extra}) for extra in extras)
 
 
-def _kernel_marker_matches(
-    marker: Marker,
-    extras: frozenset[str],
-    req_str: str,
-    dependent: str,
-) -> bool:
-    """Decide a marker that mentions the kernel, or fail closed.
+def _reads_kernel(comparison: tuple[Any, ...]) -> bool:
+    """Tell whether a parsed comparison has a kernel variable as an operand.
 
-    The kernel release and version of the Macs a formula will be installed
-    on are not known when it is generated, so a comparison that reads
-    ``platform_release`` or ``platform_version`` has no answer. Each such
-    comparison is therefore replaced by "true" and by "false" in turn, in
-    every combination, and the rest of the marker is evaluated as usual. If
-    every combination gives the same answer, the kernel does not decide the
-    marker (it is not for macOS, its extra was not requested, another clause
-    already holds) and that answer is used. If the answers differ, guessing
-    would silently add or drop a dependency, and generation stops.
-
-    The kernel comparisons themselves are never evaluated.
+    Only variables count: a string that happens to spell a variable's name
+    is a value like any other.
 
     Args:
-        marker: Marker that mentions a kernel variable.
-        extras: Normalized extras requested by the dependent package.
-        req_str: The requirement's original Requires-Dist text.
-        dependent: Package that declares it.
+        comparison: One (operand, operator, operand) tuple of a marker tree.
 
     Returns:
-        True if the marker holds whatever the kernel is.
+        True if either operand is platform_release or platform_version.
     """
-    refusal = (
-        f"Cannot decide '{req_str}' (required by {dependent}): its marker "
-        "depends on platform_release or platform_version, and the kernel of "
-        "the Macs the formula installs on is not known at generation time"
+    return any(
+        type(operand).__name__ == "Variable"
+        # Older markers may spell a variable with a dot (platform.version).
+        and str(getattr(operand, "value", "")).replace(".", "_") in KERNEL_MARKER_KEYS
+        for operand in (comparison[0], comparison[-1])
     )
-    marker_text = str(marker)
-    comparisons = [
-        found
-        for found in _MARKER_COMPARISON.finditer(marker_text)
-        if any(found.group(side) in KERNEL_MARKER_KEYS for side in ("left", "right"))
-    ]
-    if not comparisons or len(comparisons) > _MAX_KERNEL_COMPARISONS:
-        # Mentioned, but not in a comparison this can isolate.
-        sys.exit(refusal)
 
-    answers: set[bool] = set()
-    for assumed in itertools.product((True, False), repeat=len(comparisons)):
-        pieces: list[str] = []
-        position = 0
-        for found, value in zip(comparisons, assumed, strict=True):
-            pieces.append(marker_text[position : found.start()])
-            pieces.append(_ASSUME[value])
-            position = found.end()
-        pieces.append(marker_text[position:])
-        rewritten = "".join(pieces)
-        if _KERNEL_MARKER.search(re.sub(r'"[^"]*"', '""', rewritten)):
-            # A kernel variable survived outside a string: not isolated.
-            sys.exit(refusal)
-        try:
-            answers.add(_evaluate(marker=Marker(rewritten), extras=extras))
-        except InvalidMarker:
-            sys.exit(refusal)
-    if len(answers) != 1:
-        sys.exit(refusal)
-    return answers.pop()
+
+def _kernel_comparisons(tree: Any) -> list[tuple[list[Any], int]] | None:
+    """Locate every comparison in a marker tree that reads the kernel.
+
+    Args:
+        tree: A parsed marker tree (see _MARKER_TREE_ATTRIBUTE).
+
+    Returns:
+        (containing list, index) for each such comparison, or None when the
+        tree does not have the expected shape and nothing can be said.
+    """
+    if not isinstance(tree, list):
+        return None
+    found: list[tuple[list[Any], int]] = []
+    for index, node in enumerate(tree):
+        if isinstance(node, list):
+            nested = _kernel_comparisons(node)
+            if nested is None:
+                return None
+            found.extend(nested)
+        elif isinstance(node, tuple) and len(node) == _COMPARISON_PARTS:
+            if _reads_kernel(node):
+                found.append((tree, index))
+        elif node not in ("and", "or"):
+            return None
+    return found
 
 
 def _marker_matches(
@@ -324,6 +305,19 @@ def _marker_matches(
     dependent: str,
 ) -> bool:
     """Tell whether a requirement applies in the target environment.
+
+    The kernel release and version of the Macs a formula will be installed
+    on are not known when it is generated, so a comparison that reads
+    ``platform_release`` or ``platform_version`` has no answer. In a copy of
+    the parsed marker, each such comparison is replaced by one that is true
+    and by one that is false, in every combination, and the marker is
+    evaluated as usual. If every combination gives the same answer, the
+    kernel does not decide the marker (it is not for macOS, its extra was
+    not requested, another clause already holds) and that answer is used.
+    If the answers differ, guessing would silently add or drop a
+    dependency, and generation stops.
+
+    The kernel comparisons themselves are never evaluated.
 
     Args:
         req: Parsed requirement whose marker should be evaluated.
@@ -336,14 +330,40 @@ def _marker_matches(
     """
     if req.marker is None:
         return True
-    if _KERNEL_MARKER.search(str(req.marker)):
-        return _kernel_marker_matches(
-            marker=req.marker,
-            extras=extras,
-            req_str=req_str,
-            dependent=dependent,
+    refusal = (
+        f"Cannot decide '{req_str}' (required by {dependent}): its marker "
+        "depends on platform_release or platform_version, and the kernel of "
+        "the Macs the formula installs on is not known at generation time"
+    )
+    comparisons = _kernel_comparisons(getattr(req.marker, _MARKER_TREE_ATTRIBUTE, None))
+    if comparisons is None:
+        sys.exit(
+            f"Cannot decide '{req_str}' (required by {dependent}): this version "
+            "of packaging does not expose the parsed marker, so whether it "
+            "reads the kernel cannot be told",
         )
-    return _evaluate(marker=req.marker, extras=extras)
+    if not comparisons:
+        return _evaluate(marker=req.marker, extras=extras)
+    if len(comparisons) > _MAX_KERNEL_COMPARISONS:
+        sys.exit(refusal)
+
+    # os_name is always "posix" for the target (TARGET_PLATFORM).
+    stand_in = {
+        True: getattr(Marker('os_name == "posix"'), _MARKER_TREE_ATTRIBUTE)[0],
+        False: getattr(Marker('os_name != "posix"'), _MARKER_TREE_ATTRIBUTE)[0],
+    }
+    answers: set[bool] = set()
+    for assumed in itertools.product((True, False), repeat=len(comparisons)):
+        candidate = copy.deepcopy(req.marker)
+        located = _kernel_comparisons(getattr(candidate, _MARKER_TREE_ATTRIBUTE))
+        if located is None or len(located) != len(comparisons):
+            sys.exit(refusal)
+        for (container, index), value in zip(located, assumed, strict=True):
+            container[index] = stand_in[value]
+        answers.add(_evaluate(marker=candidate, extras=extras))
+    if len(answers) != 1:
+        sys.exit(refusal)
+    return answers.pop()
 
 
 def _is_sdist(entry: dict[str, Any]) -> bool:
