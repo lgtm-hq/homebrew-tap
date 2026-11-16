@@ -555,7 +555,7 @@ YAML
 	[ "$status" -eq 0 ]
 	grep -q 'capdep-1.0.0-py3-none-any.whl' "$CAPME_OUTPUT"
 	grep -q "sha256 \"$(printf 'a1%.0s' {1..32})\"" "$CAPME_OUTPUT"
-	! grep -q 'capdep-2.0.0' "$CAPME_OUTPUT"
+	[ "$(grep -c 'capdep-2.0.0' "$CAPME_OUTPUT")" -eq 0 ]
 	# One stanza only: the wheel, not an sdist resource beside it.
 	[ "$(grep -c 'resource "capdep" do' "$CAPME_OUTPUT")" -eq 1 ]
 	grep -q 'resource "capbase" do' "$CAPME_OUTPUT"

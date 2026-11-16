@@ -170,7 +170,8 @@ def main() -> None:
         )
         if not wheel:
             print(
-                f"Error: Missing {ARCH_WHEEL_TAGS[args.arch]} wheel for {args.package}",
+                f"Error: Missing {ARCH_WHEEL_TAGS[args.arch]} wheel "
+                f"for {args.package} {release}",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -189,7 +190,7 @@ def main() -> None:
         )
         if not arm_wheel or not intel_wheel:
             print(
-                f"Error: Missing platform wheels for {args.package}",
+                f"Error: Missing platform wheels for {args.package} {release}",
                 file=sys.stderr,
             )
             print(f"  arm64: {'found' if arm_wheel else 'missing'}", file=sys.stderr)
