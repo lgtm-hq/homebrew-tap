@@ -132,6 +132,7 @@ formulas:
       assert_match "EXECUTION SUMMARY", bundled_out
       %w[pylint pydoclint import-linter].each { |tool| assert_match tool, bundled_out }
       refute_match "not found in PATH", bundled_out
+      refute_match "UNAVAIL", bundled_out
     homebrew-deps:
       - actionlint
       - bandit

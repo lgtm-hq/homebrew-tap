@@ -264,8 +264,8 @@ class LintroFull < Formula
     # lintro runs the tools pinned above as plain commands. They are
     # in this formula's own environment, so the launcher adds it to PATH,
     # after the user's own entries.
-    (bin/"lintro").write_env_script libexec/"bin/lintro",
-                                    PATH: "${PATH}:#{libexec}/bin"
+    launcher_path = "${PATH}:#{libexec}/bin"
+    (bin/"lintro").write_env_script libexec/"bin/lintro", PATH: launcher_path
   end
 
   def caveats
@@ -319,5 +319,6 @@ class LintroFull < Formula
     assert_match "EXECUTION SUMMARY", bundled_out
     %w[pylint pydoclint import-linter].each { |tool| assert_match tool, bundled_out }
     refute_match "not found in PATH", bundled_out
+    refute_match "UNAVAIL", bundled_out
   end
 end

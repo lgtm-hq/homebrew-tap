@@ -741,8 +741,8 @@ YAML
 	# lintro looks these three up on PATH, and resources are not linked: the
 	# command must be a launcher that adds the formula's own environment.
 	grep -q 'venv.pip_install "#{buildpath}\[full\]"' "$formula"
-	grep -q '(bin/"lintro").write_env_script libexec/"bin/lintro",' "$formula"
-	grep -q 'PATH: "${PATH}:#{libexec}/bin"' "$formula"
+	grep -q '^    launcher_path = "${PATH}:#{libexec}/bin"$' "$formula"
+	grep -q '^    (bin/"lintro").write_env_script libexec/"bin/lintro", PATH: launcher_path$' "$formula"
 	[ "$(grep -c 'pip_install_and_link' "$formula")" -eq 0 ]
 	# brew test proves it on an installed formula.
 	grep -q 'refute_match "not found in PATH", bundled_out' "$formula"
@@ -757,14 +757,33 @@ YAML
 
 	[ "$status" -eq 0 ]
 	grep -q '^    venv.pip_install buildpath$' "$CAPME_OUTPUT"
-	grep -q '^    (bin/"capme").write_env_script libexec/"bin/capme",$' "$CAPME_OUTPUT"
-	grep -q 'PATH: "${PATH}:#{libexec}/bin"' "$CAPME_OUTPUT"
+	grep -q '^    launcher_path = "${PATH}:#{libexec}/bin"$' "$CAPME_OUTPUT"
+	grep -q '^    (bin/"capme").write_env_script libexec/"bin/capme", PATH: launcher_path$' "$CAPME_OUTPUT"
 	[ "$(grep -c 'pip_install_and_link' "$CAPME_OUTPUT")" -eq 0 ]
+	# No hand-aligned continuation line, whatever the command's length.
+	[ "$(awk 'length > 118' "$CAPME_OUTPUT" | wc -l)" -eq 0 ]
 
-	run_generate_capme_extras "    venv-bin-on-path: sometimes"
+	local declared
+	for declared in 'sometimes' '1' '"true"'; do
+		run_generate_capme_extras "    venv-bin-on-path: $declared"
+
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"venv-bin-on-path for capme must be true or false"* ]]
+	done
+}
+
+@test "generate-pypi-formula: homebrew-deps entries that are not names are refused, not dropped" {
+	# Reading the list failed on a mapping inside a process substitution,
+	# and the formula rendered without any depends_on line.
+	make_capped_fixtures
+
+	run_generate_capme_extras "    homebrew-deps:
+      - name: captool
+        build: true"
 
 	[ "$status" -ne 0 ]
-	[[ "$output" == *"venv-bin-on-path for capme must be true or false"* ]]
+	[[ "$output" == *"homebrew-deps for capme"* ]]
+	[ ! -f "$CAPME_OUTPUT" ]
 }
 
 @test "generate-pypi-formula: an empty or null extras list means no extras" {

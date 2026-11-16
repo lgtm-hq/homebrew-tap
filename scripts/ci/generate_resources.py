@@ -501,6 +501,70 @@ def _check_resolved_pin(req: Requirement, req_str: str, dependent: str) -> None:
     )
 
 
+def _follow_requirement(
+    req_str: str,
+    dependent: str,
+    dependent_extras: frozenset[str],
+    dist_map: dict[str, tuple[str, list[str] | None]],
+    no_follow: frozenset[str],
+) -> tuple[str, frozenset[str]] | None:
+    """Decide one Requires-Dist entry of a package being walked.
+
+    A requirement that applies to the target but that the analysis
+    environment did not install is resolved from PyPI and remembered in
+    ``_RESOLVED_FROM_PYPI``.
+
+    Args:
+        req_str: The Requires-Dist text.
+        dependent: Normalized name of the package that declares it.
+        dependent_extras: Extras the dependent was requested with.
+        dist_map: Distributions installed in the analysis environment.
+        no_follow: Normalized names of packages a Homebrew formula provides.
+
+    Returns:
+        (normalized name, extras requested for it) when the requirement is
+        part of the tree, or None when it does not apply or cannot be met.
+    """
+    try:
+        req = Requirement(req_str)
+    except InvalidRequirement:
+        return None
+    if not _marker_matches(
+        req=req,
+        extras=dependent_extras,
+        req_str=req_str,
+        dependent=dependent,
+    ):
+        return None
+    req_name = normalize_name(req.name)
+    if req_name in _RESOLVED_FROM_PYPI:
+        _check_resolved_pin(req=req, req_str=req_str, dependent=dependent)
+    elif req_name not in no_follow and req_name not in dist_map:
+        # A package a Homebrew formula provides is not pinned here, so there
+        # is nothing to resolve for it, installed or not.
+        resolved = resolve_from_pypi(req)
+        if resolved is None:
+            print(
+                f"Warning: {req_str} (required by {dependent}) is not installed "
+                "and no PyPI release satisfies it; skipping",
+                file=sys.stderr,
+            )
+            return None
+        print(
+            f"Resolved {req_name}=={resolved[0]} from PyPI for the target "
+            f"environment ({req_str}, required by {dependent})",
+            file=sys.stderr,
+        )
+        _RESOLVED_FROM_PYPI[req_name] = resolved
+        _RESOLVED_BY[req_name] = (req_str, dependent)
+    # Keep both spellings: PEP 685 normalizes extras, but a dependency's
+    # marker may use the unnormalized form.
+    req_extras = frozenset(
+        variant for extra in req.extras for variant in (extra, normalize_name(extra))
+    )
+    return req_name, req_extras
+
+
 def get_package_dependencies(
     package_name: str,
     root_extras: frozenset[str] = frozenset(),
@@ -546,53 +610,18 @@ def get_package_dependencies(
             _, requires = _RESOLVED_FROM_PYPI[current]
         else:
             continue
-        if not requires:
-            continue
 
-        for req_str in requires:
-            try:
-                req = Requirement(req_str)
-            except InvalidRequirement:
-                continue
-            if not _marker_matches(
-                req=req,
-                extras=current_extras,
+        for req_str in requires or []:
+            followed = _follow_requirement(
                 req_str=req_str,
                 dependent=current,
-            ):
-                continue
-            req_name = normalize_name(req.name)
-            if req_name in _RESOLVED_FROM_PYPI:
-                _check_resolved_pin(req=req, req_str=req_str, dependent=current)
-            elif req_name in no_follow:
-                # Provided by a Homebrew formula and not pinned here: there
-                # is nothing to resolve for it, installed or not.
-                pass
-            elif req_name not in dist_map:
-                resolved = resolve_from_pypi(req)
-                if resolved is None:
-                    print(
-                        f"Warning: {req_str} (required by {current}) is not installed "
-                        "and no PyPI release satisfies it; skipping",
-                        file=sys.stderr,
-                    )
-                    continue
-                print(
-                    f"Resolved {req_name}=={resolved[0]} from PyPI for the target "
-                    f"environment ({req_str}, required by {current})",
-                    file=sys.stderr,
-                )
-                _RESOLVED_FROM_PYPI[req_name] = resolved
-                _RESOLVED_BY[req_name] = (req_str, current)
-            dependencies.add(req_name)
-            # Keep both spellings: PEP 685 normalizes extras, but a
-            # dependency's marker may use the unnormalized form.
-            req_extras = frozenset(
-                variant
-                for extra in req.extras
-                for variant in (extra, normalize_name(extra))
+                dependent_extras=current_extras,
+                dist_map=dist_map,
+                no_follow=no_follow,
             )
-            to_process.add((req_name, req_extras))
+            if followed is not None:
+                dependencies.add(followed[0])
+                to_process.add(followed)
 
     dependencies.discard(normalized_name)
     return dependencies
