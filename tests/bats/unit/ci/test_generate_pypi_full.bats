@@ -721,7 +721,7 @@ YAML
 	local config="$REPO_ROOT/formulas/lintro.yml"
 
 	local bundled
-	bundled="$(grep '(bundled' "$formula")"
+	bundled="$(grep '(bundled, run by lintro)' "$formula")"
 	[ -n "$bundled" ]
 	local tool count=0
 	for tool in $(printf '%s\n' "$bundled" | sed -e 's/(bundled.*//' -e 's/,/ /g'); do
@@ -738,7 +738,44 @@ YAML
 		[ "$(grep -c "resource \"$tool\" do" "$formula")" -eq 0 ]
 	done
 
-	grep -q 'venv.pip_install_and_link "#{buildpath}\[full\]"' "$formula"
+	# lintro looks these three up on PATH, and resources are not linked: the
+	# command must be a launcher that adds the formula's own environment.
+	grep -q 'venv.pip_install "#{buildpath}\[full\]"' "$formula"
+	grep -q '(bin/"lintro").write_env_script libexec/"bin/lintro",' "$formula"
+	grep -q 'PATH: "${PATH}:#{libexec}/bin"' "$formula"
+	[ "$(grep -c 'pip_install_and_link' "$formula")" -eq 0 ]
+	# brew test proves it on an installed formula.
+	grep -q 'refute_match "not found in PATH", bundled_out' "$formula"
 	# The caveats in the formula are the config's.
 	grep -q 'pydoclint, pylint, import-linter (bundled, run by lintro)' "$config"
+}
+
+@test "generate-pypi-formula: venv-bin-on-path installs the command as a launcher that appends the environment to PATH" {
+	make_capped_fixtures
+
+	run_generate_capme_extras "    venv-bin-on-path: true"
+
+	[ "$status" -eq 0 ]
+	grep -q '^    venv.pip_install buildpath$' "$CAPME_OUTPUT"
+	grep -q '^    (bin/"capme").write_env_script libexec/"bin/capme",$' "$CAPME_OUTPUT"
+	grep -q 'PATH: "${PATH}:#{libexec}/bin"' "$CAPME_OUTPUT"
+	[ "$(grep -c 'pip_install_and_link' "$CAPME_OUTPUT")" -eq 0 ]
+
+	run_generate_capme_extras "    venv-bin-on-path: sometimes"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"venv-bin-on-path for capme must be true or false"* ]]
+}
+
+@test "generate-pypi-formula: an empty or null extras list means no extras" {
+	make_capped_fixtures
+
+	local declared
+	for declared in '    extras: []' '    extras:'; do
+		run_generate_capme_extras "$declared"
+
+		[ "$status" -eq 0 ]
+		[ "$(grep -c 'capextra' "$CAPME_OUTPUT")" -eq 0 ]
+		grep -q '^    venv.pip_install_and_link buildpath$' "$CAPME_OUTPUT"
+	done
 }

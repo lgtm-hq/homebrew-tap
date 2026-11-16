@@ -117,11 +117,6 @@ class LintroFull < Formula
     sha256 "c5bd0d38bdef46c7251120266b3bf72662bc8cd989a8fe461499936e12e8c6fa"
   end
 
-  resource "isort" do
-    url "https://files.pythonhosted.org/packages/da/cf/068066b8fdab91cd40bcd63e483137908710a3d25a4d3a01b538be45d9d6/isort-9.0.2.tar.gz"
-    sha256 "d2298980ce44350f11d9d24c8150eaef1883431ec203dddbb4e9b5c3ceb54c70"
-  end
-
   resource "loguru" do
     url "https://files.pythonhosted.org/packages/61/ce/b5bb93d4d9fc7a067f69140b3bb3782f6ad6360bc76e99b6e3d386cb1320/loguru-0.8.0.tar.gz"
     sha256 "fb3e4623288e37700a0577f6e0ce776cc1860b5d95c657d67f07a2476b304867"
@@ -217,6 +212,11 @@ class LintroFull < Formula
     url "https://files.pythonhosted.org/packages/6e/45/9aea4898fcfbb3ed973eb23f6b83c677bb8bcecb59e9681fae6da82bb3be/pydoclint-0.12.0-py3-none-any.whl"
     sha256 "28f5763a865cb19b54883dfe68b05b01d2c2fc2e8d59dcf424cc345bc976a689"
   end
+  # isort (pylint) - its sdist's build requirements include mypy's compiled toolchain; use the wheel
+  resource "isort" do
+    url "https://files.pythonhosted.org/packages/8b/c9/0849e74b868ef10312eecfc24278710e97dd14bc49c1df629d7df142d318/isort-9.0.2-py3-none-any.whl"
+    sha256 "6c29deeb39698a8717823b7f75b2ac58c5e8ab8dcf6cf31205a72a6617fb454e"
+  end
   # grimp (import-linter) builds a Rust extension - use platform-specific wheels
   resource "grimp" do
     on_arm do
@@ -259,7 +259,13 @@ class LintroFull < Formula
     end
 
     # Install the package itself
-    venv.pip_install_and_link "#{buildpath}[full]"
+    venv.pip_install "#{buildpath}[full]"
+
+    # lintro runs the tools pinned above as plain commands. They are
+    # in this formula's own environment, so the launcher adds it to PATH,
+    # after the user's own entries.
+    (bin/"lintro").write_env_script libexec/"bin/lintro",
+                                    PATH: "${PATH}:#{libexec}/bin"
   end
 
   def caveats
@@ -304,5 +310,14 @@ class LintroFull < Formula
     # tools are missing, so assert on its output rather than the exit status.
     doctor_cmd = "#{utf8} #{bin}/lintro doctor 2>&1"
     assert_match "Lintro Doctor", pipe_output(doctor_cmd)
+    # The bundled tools are pinned in this formula's own environment,
+    # which is not on PATH; the launcher must make lintro find them.
+    (testpath/"sample.py").write "import os\n"
+    bundled = "--tools pylint,pydoclint,import_linter"
+    bundled_cmd = "#{utf8} #{bin}/lintro chk #{bundled} #{testpath}/sample.py 2>&1"
+    bundled_out = pipe_output(bundled_cmd)
+    assert_match "EXECUTION SUMMARY", bundled_out
+    %w[pylint pydoclint import-linter].each { |tool| assert_match tool, bundled_out }
+    refute_match "not found in PATH", bundled_out
   end
 end

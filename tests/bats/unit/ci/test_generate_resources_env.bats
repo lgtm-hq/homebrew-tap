@@ -535,8 +535,34 @@ assert probed == expected, (probed, expected)
 	install "$ENV_SITE" click 8.1.7
 	describe_env
 
-	walk --no-follow rootpkg Root_Pkg
+	walk --no-follow rootpkg
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == *'resource "click" do'* ]]
+}
+
+@test "generate_resources: --no-follow without --exclude is refused" {
+	# Pinned without its own requirements, the package could not be installed.
+	install "$ENV_SITE" rootpkg 1.0.0 "toolpkg"
+	install "$ENV_SITE" toolpkg 1.0.0 "mdurl==0.1.2"
+	install "$ENV_SITE" mdurl 0.1.2
+	describe_env
+
+	walk --no-follow toolpkg
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"--no-follow names must also be given to --exclude: toolpkg"* ]]
+}
+
+@test "generate_resources: a not-followed package the environment lacks is not looked up on PyPI" {
+	# toolpkg has no PyPI fixture: a lookup would fail the run.
+	install "$ENV_SITE" rootpkg 1.0.0 "toolpkg>=1" "click==8.1.7"
+	install "$ENV_SITE" click 8.1.7
+	describe_env
+
+	walk --exclude toolpkg --no-follow toolpkg
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'resource "click" do'* ]]
+	[[ "$output" != *"toolpkg"* ]]
 }

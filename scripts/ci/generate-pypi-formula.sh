@@ -243,6 +243,35 @@ if [[ "$GENERATE_RESOURCES" == "true" ]]; then
 		INSTALL_TARGET="\"#{buildpath}[${PYPI_EXTRAS}]\""
 	fi
 
+	# venv-bin-on-path: the package runs tools that are pinned as resources
+	# as plain commands found on PATH. Resources are installed into the
+	# formula's own environment (libexec/bin), which is not linked and not on
+	# the user's PATH, so the command is installed as a launcher that appends
+	# that directory to PATH. Appended, not prepended: a copy of a tool the
+	# user installed themselves still wins.
+	VENV_BIN_ON_PATH=$(python3 -c "
+import json, sys
+value = json.loads(sys.argv[1]).get('venv-bin-on-path')
+if value not in (None, True, False):
+    sys.exit(1)
+print('true' if value else 'false')" "$CONFIG_JSON") || {
+		log_error "venv-bin-on-path for ${FORMULA_KEY} must be true or false"
+		exit 1
+	}
+	if [[ "$VENV_BIN_ON_PATH" == "true" ]]; then
+		cat >"$TMPDIR/install_package.txt" <<RUBY
+    venv.pip_install ${INSTALL_TARGET}
+
+    # ${TEST_BINARY} runs the tools pinned above as plain commands. They are
+    # in this formula's own environment, so the launcher adds it to PATH,
+    # after the user's own entries.
+    (bin/"${TEST_BINARY}").write_env_script libexec/"bin/${TEST_BINARY}",
+                                    PATH: "\${PATH}:#{libexec}/bin"
+RUBY
+	else
+		printf '    venv.pip_install_and_link %s' "$INSTALL_TARGET" >"$TMPDIR/install_package.txt"
+	fi
+
 	HOMEBREW_PKG_ARRAY=()
 	while IFS= read -r line; do
 		[[ -n "$line" ]] && HOMEBREW_PKG_ARRAY+=("$line")
@@ -311,7 +340,7 @@ EOF
 		--replace "LICENSE=${LICENSE}" \
 		--replace "PYTHON_VENV=python${PYTHON_VERSION}" \
 		--replace "TEST_BINARY=${TEST_BINARY}" \
-		--replace "INSTALL_TARGET=${INSTALL_TARGET}" \
+		--replace-file "INSTALL_PACKAGE=${TMPDIR}/install_package.txt" \
 		--replace-file "HOMEBREW_DEPS=${TMPDIR}/deps.txt" \
 		--replace-file "POET_RESOURCES=${TMPDIR}/resources.txt" \
 		--replace-file "WHEEL_RESOURCES=${TMPDIR}/wheels.txt" \

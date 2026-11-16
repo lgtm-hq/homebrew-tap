@@ -564,6 +564,10 @@ def get_package_dependencies(
             req_name = normalize_name(req.name)
             if req_name in _RESOLVED_FROM_PYPI:
                 _check_resolved_pin(req=req, req_str=req_str, dependent=current)
+            elif req_name in no_follow:
+                # Provided by a Homebrew formula and not pinned here: there
+                # is nothing to resolve for it, installed or not.
+                pass
             elif req_name not in dist_map:
                 resolved = resolve_from_pypi(req)
                 if resolved is None:
@@ -644,7 +648,7 @@ def main() -> None:
         default=[],
         help=(
             "Package names whose own requirements are not walked (tools a "
-            "Homebrew formula provides); they should be excluded as well"
+            "Homebrew formula provides); each must be given to --exclude too"
         ),
     )
     parser.add_argument(
@@ -689,6 +693,16 @@ def main() -> None:
     exclude: set[str] = {normalize_name(name) for name in args.exclude}
     main_package = normalize_name(args.package)
     exclude.add(main_package)
+    not_excluded = sorted(
+        {normalize_name(name) for name in args.no_follow} - exclude,
+    )
+    if not_excluded:
+        # Pinned without its own requirements, the package could not be
+        # installed with --no-deps.
+        parser.error(
+            "--no-follow names must also be given to --exclude: "
+            + ", ".join(not_excluded),
+        )
     root_extras = frozenset(
         variant
         for extra in args.extras.split(",")
