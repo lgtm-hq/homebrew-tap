@@ -386,6 +386,21 @@ write_wheel(
 # A second, unrestricted dependency, so a formula that takes capdep from a
 # wheel still has a resource to generate.
 write_wheel(root / "links" / "capbase-1.0.0-py3-none-any.whl", "capbase", "1.0.0", "")
+# Required only through capme's optional extra `more`; it requires captool,
+# which in turn requires capsub.
+write_wheel(
+    root / "links" / "capextra-1.0.0-py3-none-any.whl",
+    "capextra",
+    "1.0.0",
+    "Requires-Dist: captool\n",
+)
+write_wheel(
+    root / "links" / "captool-1.0.0-py3-none-any.whl",
+    "captool",
+    "1.0.0",
+    "Requires-Dist: capsub\n",
+)
+write_wheel(root / "links" / "capsub-1.0.0-py3-none-any.whl", "capsub", "1.0.0", "")
 
 backend = f"""import zipfile
 
@@ -393,7 +408,7 @@ WHEEL = {WHEEL!r}
 DIST = "capme-0.1.0.dist-info"
 FILES = {{
     "capme/__init__.py": "",
-    DIST + "/METADATA": "Metadata-Version: 2.1\\nName: capme\\nVersion: 0.1.0\\nRequires-Dist: capdep\\nRequires-Dist: capbase\\n",
+    DIST + "/METADATA": "Metadata-Version: 2.1\\nName: capme\\nVersion: 0.1.0\\nRequires-Dist: capdep\\nRequires-Dist: capbase\\nProvides-Extra: more\\nRequires-Dist: capextra; extra == 'more'\\n",
     DIST + "/WHEEL": WHEEL,
 }}
 
@@ -440,6 +455,10 @@ def release(name, version, sha):
 )
 (root / "pypi" / "capdep-1.0.0.json").write_text(json.dumps(release("capdep", "1.0.0", "c3" * 32)))
 (root / "pypi" / "capbase-1.0.0.json").write_text(json.dumps(release("capbase", "1.0.0", "d4" * 32)))
+for extra_name, digest in (("capextra", "e5"), ("captool", "f6"), ("capsub", "a7")):
+    (root / "pypi" / f"{extra_name}-1.0.0.json").write_text(
+        json.dumps(release(extra_name, "1.0.0", digest * 32)),
+    )
 PY
 	export PYPI_FIXTURE_DIR="$CAPPED/pypi"
 	# Host pip settings must not change what the fixture proves.
@@ -572,4 +591,247 @@ YAML
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"No universal wheel found for capdep 1.0.0"* ]]
 	[ ! -f "$CAPME_OUTPUT" ]
+}
+
+# #641: a pypi formula can declare extras of its package. capme's extra `more`
+# pulls in capextra -> captool -> capsub.
+run_generate_capme_extras() { # $1 = the YAML lines for extras and homebrew-deps
+	CAPME_CONFIG="$TEST_TEMP_DIR/capme.yml"
+	CAPME_OUTPUT="$TEST_TEMP_DIR/capme.rb"
+	cat >"$CAPME_CONFIG" <<YAML
+---
+package: capme
+source-repo: lgtm-hq/capme
+homepage: https://github.com/lgtm-hq/capme
+license: MIT
+description: "Fixture package with an optional extra"
+
+formulas:
+  capme:
+    type: pypi
+    generate-resources: true
+    python-version: "3.13"
+    test-command: "capme --version"
+$1
+YAML
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$CAPME_CONFIG" \
+		--formula-key capme \
+		--version 0.1.0 \
+		--output "$CAPME_OUTPUT"
+}
+
+@test "generate-pypi-formula: a configured extra's dependencies are pinned and the formula installs with it" {
+	make_capped_fixtures
+
+	run_generate_capme_extras "    extras:
+      - more"
+
+	[ "$status" -eq 0 ]
+	grep -q 'resource "capextra" do' "$CAPME_OUTPUT"
+	grep -q 'resource "captool" do' "$CAPME_OUTPUT"
+	grep -q 'resource "capsub" do' "$CAPME_OUTPUT"
+	grep -q 'venv.pip_install_and_link "#{buildpath}\[more\]"' "$CAPME_OUTPUT"
+}
+
+@test "generate-pypi-formula: without extras the extra's dependencies are absent and the install line is unchanged" {
+	make_capped_fixtures
+
+	run_generate_capme_extras ""
+
+	[ "$status" -eq 0 ]
+	grep -q 'resource "capdep" do' "$CAPME_OUTPUT"
+	[ "$(grep -c 'capextra\|captool\|capsub' "$CAPME_OUTPUT")" -eq 0 ]
+	grep -q '^    venv.pip_install_and_link buildpath$' "$CAPME_OUTPUT"
+}
+
+@test "generate-pypi-formula: what only a Homebrew dependency of the extra needs is not pinned" {
+	# captool is provided by a Homebrew formula: neither it nor capsub, which
+	# only captool requires, becomes a resource. capextra still does.
+	make_capped_fixtures
+
+	run_generate_capme_extras "    extras:
+      - more
+    homebrew-deps:
+      - captool"
+
+	[ "$status" -eq 0 ]
+	grep -q 'depends_on "captool"' "$CAPME_OUTPUT"
+	grep -q 'resource "capextra" do' "$CAPME_OUTPUT"
+	[ "$(grep -c 'resource "captool" do' "$CAPME_OUTPUT")" -eq 0 ]
+	[ "$(grep -c 'resource "capsub" do' "$CAPME_OUTPUT")" -eq 0 ]
+}
+
+@test "generate-pypi-formula: extras that are not a list of extra names are refused before anything is fetched" {
+	make_capped_fixtures
+
+	local declared
+	for declared in \
+		'    extras: more' \
+		'    extras:
+      - "more]; evil"' \
+		'    extras:
+      - ""' \
+		'    extras:
+      - 1' \
+		'    extras:
+      more: true'; do
+		run_generate_capme_extras "$declared"
+
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"extras for capme must be a list of extra names"* ]]
+		[[ "$output" != *"Creating temporary venv"* ]]
+		[ ! -f "$CAPME_OUTPUT" ]
+	done
+}
+
+@test "generate-pypi-formula: extras without generate-resources are refused" {
+	make_capped_fixtures
+	CAPME_CONFIG="$TEST_TEMP_DIR/capme.yml"
+	cat >"$CAPME_CONFIG" <<'YAML'
+---
+package: capme
+source-repo: lgtm-hq/capme
+homepage: https://github.com/lgtm-hq/capme
+license: MIT
+description: "Fixture package with an optional extra"
+
+formulas:
+  capme:
+    type: pypi
+    python-version: "3.13"
+    test-command: "capme --version"
+    extras:
+      - more
+YAML
+
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$CAPME_CONFIG" --formula-key capme --version 0.1.0 \
+		--output "$TEST_TEMP_DIR/capme.rb"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"extras for capme need generate-resources: true"* ]]
+}
+
+@test "committed formulas: lintro-full installs the tools its caveats call bundled" {
+	# #641: the caveats promised pydoclint while the formula had no such
+	# resource. Every tool named as bundled must be a resource, and the tools
+	# Homebrew provides must not be pinned a second time.
+	local formula="$REPO_ROOT/Formula/lintro-full.rb"
+	local config="$REPO_ROOT/formulas/lintro.yml"
+
+	local bundled
+	bundled="$(grep '(bundled, run by lintro)' "$formula")"
+	[ -n "$bundled" ]
+	local tool count=0
+	for tool in $(printf '%s\n' "$bundled" | sed -e 's/(bundled.*//' -e 's/,/ /g'); do
+		grep -q "resource \"$tool\" do" "$formula"
+		count=$((count + 1))
+	done
+	[ "$count" -eq 3 ]
+	grep -q 'resource "pydoclint" do' "$formula"
+	grep -q 'resource "pylint" do' "$formula"
+	grep -q 'resource "import-linter" do' "$formula"
+
+	for tool in ruff black mypy bandit yamllint; do
+		grep -q "depends_on \"$tool\"" "$formula"
+		[ "$(grep -c "resource \"$tool\" do" "$formula")" -eq 0 ]
+	done
+
+	# lintro looks these three up on PATH, and resources are not linked: the
+	# command must be a launcher that adds the formula's own environment.
+	grep -q 'venv.pip_install "#{buildpath}\[full\]"' "$formula"
+	grep -q '^    launcher_path = "${PATH}:#{libexec}/bin"$' "$formula"
+	grep -q '^    (bin/"lintro").write_env_script libexec/"bin/lintro", PATH: launcher_path$' "$formula"
+	[ "$(grep -c 'pip_install_and_link' "$formula")" -eq 0 ]
+	# brew test proves it on an installed formula.
+	grep -q 'refute_match "not found in PATH", bundled_out' "$formula"
+	# The caveats in the formula are the config's.
+	grep -q 'pydoclint, pylint, import-linter (bundled, run by lintro)' "$config"
+}
+
+@test "generate-pypi-formula: venv-bin-on-path installs the command as a launcher that appends the environment to PATH" {
+	make_capped_fixtures
+
+	run_generate_capme_extras "    venv-bin-on-path: true"
+
+	[ "$status" -eq 0 ]
+	grep -q '^    venv.pip_install buildpath$' "$CAPME_OUTPUT"
+	grep -q '^    launcher_path = "${PATH}:#{libexec}/bin"$' "$CAPME_OUTPUT"
+	grep -q '^    (bin/"capme").write_env_script libexec/"bin/capme", PATH: launcher_path$' "$CAPME_OUTPUT"
+	[ "$(grep -c 'pip_install_and_link' "$CAPME_OUTPUT")" -eq 0 ]
+
+	local declared
+	for declared in 'sometimes' '1' '"true"'; do
+		run_generate_capme_extras "    venv-bin-on-path: $declared"
+
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"venv-bin-on-path for capme must be true or false"* ]]
+	done
+}
+
+@test "generate-pypi-formula: homebrew-deps entries that are not names are refused, not dropped" {
+	# Reading the list failed on a mapping inside a process substitution,
+	# and the formula rendered without any depends_on line.
+	make_capped_fixtures
+
+	local declared
+	for declared in \
+		'    homebrew-deps:
+      - name: captool
+        build: true' \
+		'    homebrew-deps: captool' \
+		'    homebrew-deps:
+      captool: true' \
+		'    homebrew-deps:
+      - "captool\" ; system \"id"' \
+		'    homebrew-deps:
+      - ""'; do
+		run_generate_capme_extras "$declared"
+
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"homebrew-deps for capme must be a list of formula names"* ]]
+		[ ! -f "$CAPME_OUTPUT" ]
+	done
+}
+
+@test "generate-pypi-formula: venv-bin-on-path without generate-resources is refused" {
+	make_capped_fixtures
+	CAPME_CONFIG="$TEST_TEMP_DIR/capme.yml"
+	cat >"$CAPME_CONFIG" <<'YAML'
+---
+package: capme
+source-repo: lgtm-hq/capme
+homepage: https://github.com/lgtm-hq/capme
+license: MIT
+description: "Fixture package with an optional extra"
+
+formulas:
+  capme:
+    type: pypi
+    python-version: "3.13"
+    test-command: "capme --version"
+    venv-bin-on-path: true
+YAML
+
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$CAPME_CONFIG" --formula-key capme --version 0.1.0 \
+		--output "$TEST_TEMP_DIR/capme.rb"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"venv-bin-on-path for capme needs generate-resources: true"* ]]
+	[ ! -f "$TEST_TEMP_DIR/capme.rb" ]
+}
+
+@test "generate-pypi-formula: an empty or null extras list means no extras" {
+	make_capped_fixtures
+
+	local declared
+	for declared in '    extras: []' '    extras:'; do
+		run_generate_capme_extras "$declared"
+
+		[ "$status" -eq 0 ]
+		[ "$(grep -c 'capextra' "$CAPME_OUTPUT")" -eq 0 ]
+		grep -q '^    venv.pip_install_and_link buildpath$' "$CAPME_OUTPUT"
+	done
 }
