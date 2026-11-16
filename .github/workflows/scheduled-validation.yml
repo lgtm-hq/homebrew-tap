@@ -11,6 +11,12 @@ permissions:
   contents: read
   issues: write
 
+# One run at a time: two overlapping reports could each see no open issue
+# for a product and both create one.
+concurrency:
+  group: scheduled-validation
+  cancel-in-progress: false
+
 jobs:
   # Version drift is checked for every product config under formulas/, on its
   # own runner, so a failed installation check below cannot hide a stale

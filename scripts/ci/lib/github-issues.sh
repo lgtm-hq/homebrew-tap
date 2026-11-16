@@ -69,15 +69,18 @@ add_issue_comment() {
 #
 # Takes the JSON list written by check-version-drift.sh (one row per formula:
 # product, package, formula, formula_version, pypi_version, drift). Each
-# product has at most one open drift issue, identified by a hidden marker in
-# its body (the same one-open-issue-per-key convention as the lgtm-ci failure
-# notifiers), never by label alone:
+# product has one open drift issue at most, identified by a hidden marker
+# that is a line of its own in the body (the same one-open-issue-per-key
+# convention as the lgtm-ci failure notifiers), never by label alone:
 #   - a product is behind and has no open issue: create it;
 #   - a product is behind and has an open issue: rewrite its title and body,
 #     so it never shows versions from an earlier run;
-#   - a product is current and has an open issue: say so and close it.
-# Issues without the marker are never edited. An auto-created drift issue from
-# before the marker existed is closed with a pointer to the new reporting.
+#   - a product is current and has an open issue: say so and close it;
+#   - a product has more than one open issue: keep the oldest, close the rest.
+# An issue that only quotes the marker inside other text is not owned by this
+# automation and is never edited or closed. A drift issue this automation
+# created before markers existed is recognised by its exact title form and
+# its footer line, and is closed with a pointer to the new reporting.
 # A malformed report, or a failed issue lookup, changes nothing.
 # Usage: report_version_drift '<json>'
 report_version_drift() {
@@ -101,7 +104,7 @@ report_version_drift() {
 	fi
 
 	local open_issues
-	if ! open_issues=$(gh issue list --state open --label "version-drift" --limit 200 --json number,body); then
+	if ! open_issues=$(gh issue list --state open --label "version-drift" --limit 1000 --json number,title,body); then
 		log_error "Could not list open version-drift issues; not touching any issue"
 		return 1
 	fi
@@ -110,17 +113,25 @@ report_version_drift() {
 	checked=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 	footer="*Auto-created by scheduled validation.*"
 
-	local product marker rows has_drift drifted table existing_issue title body
+	local product marker rows has_drift drifted table title body
+	local owned=() existing_issue duplicate_issue
 	while IFS= read -r product; do
 		marker="<!-- version-drift:${product} -->"
 		rows=$(jq -c --arg p "$product" '[.[] | select(.product == $p)]' <<<"$report_json")
 		has_drift=$(jq -r 'any(.[]; .drift)' <<<"$rows")
 		drifted=$(jq -r '[.[] | select(.drift) | .formula] | join(", ")' <<<"$rows")
 		table=$(jq -r '.[] | "| `\(.formula)` | `\(.formula_version)` | `\(.package)` `\(.pypi_version)` | \(if .drift then "behind" else "current" end) |"' <<<"$rows")
-		existing_issue=$(jq -r --arg m "$marker" '[.[] | select((.body // "") | contains($m))][0].number // empty' <<<"$open_issues")
+
+		# Owned issues carry the marker as a whole line; oldest first.
+		owned=()
+		while IFS= read -r existing_issue; do
+			[[ -n "$existing_issue" ]] && owned+=("$existing_issue")
+		done < <(jq -r --arg m "$marker" '
+			[.[] | select((.body // "") | split("\n") | map(rtrimstr("\r")) | any(. == $m)) | .number]
+			| sort | .[]' <<<"$open_issues")
 
 		if [[ "$has_drift" != "true" ]]; then
-			if [[ -n "$existing_issue" ]]; then
+			for existing_issue in ${owned[@]+"${owned[@]}"}; do
 				log_info "Version drift resolved for ${product}; closing issue #$existing_issue"
 				gh issue close "$existing_issue" --comment "$(
 					cat <<EOF
@@ -131,7 +142,8 @@ Every ${product} formula matches its package's current release as of $checked. C
 $table
 EOF
 				)"
-			else
+			done
+			if [[ ${#owned[@]} -eq 0 ]]; then
 				log_info "No version drift for ${product}"
 			fi
 			continue
@@ -156,24 +168,37 @@ $marker
 EOF
 		)
 
-		if [[ -n "$existing_issue" ]]; then
-			log_info "Refreshing version drift issue #$existing_issue for ${product}"
-			gh issue edit "$existing_issue" --title "$title" --body "$body"
-		else
+		if [[ ${#owned[@]} -eq 0 ]]; then
 			log_info "Creating version drift issue for ${product}"
 			create_issue "$title" "$body" "version-drift,automated"
+			continue
 		fi
+
+		existing_issue="${owned[0]}"
+		log_info "Refreshing version drift issue #$existing_issue for ${product}"
+		gh issue edit "$existing_issue" --title "$title" --body "$body"
+		for duplicate_issue in "${owned[@]:1}"; do
+			log_info "Closing duplicate version drift issue #$duplicate_issue for ${product}"
+			gh issue close "$duplicate_issue" --comment "Duplicate of #${existing_issue}, which carries the current state for ${product}."
+		done
 	done < <(jq -r '[.[].product] | unique | .[]' <<<"$report_json")
 
 	# Drift issues this automation created before issues carried a product
-	# marker cannot be matched to a product. Close them; never touch an issue
-	# that does not carry the automation's own footer.
+	# marker cannot be matched to a product. They have the old title form and
+	# the footer as a line of their own, and no marker line. Close those; an
+	# issue that merely quotes the footer does not match and is left alone.
 	local legacy_issue
 	while IFS= read -r legacy_issue; do
 		[[ -z "$legacy_issue" ]] && continue
 		log_info "Closing version drift issue #$legacy_issue from before per-product reporting"
 		gh issue close "$legacy_issue" --comment "Version drift is now reported in one issue per product, rewritten on every scheduled run and closed when the product is current. This issue predates that and cannot be matched to a product, so it is closed. Any product that is behind today has its own open issue."
-	done < <(jq -r --arg f "$footer" '.[] | select(((.body // "") | contains($f)) and (((.body // "") | contains("<!-- version-drift:")) | not)) | .number' <<<"$open_issues")
+	done < <(jq -r --arg f "$footer" '
+		.[]
+		| ((.body // "") | split("\n") | map(rtrimstr("\r"))) as $lines
+		| select(((.title // "") | test("^Version drift detected: formula .+ vs PyPI "))
+			and ($lines | any(. == $f))
+			and ($lines | any(test("^<!-- version-drift:[A-Za-z0-9._-]+ -->$")) | not))
+		| .number' <<<"$open_issues")
 }
 
 # Report validation failure

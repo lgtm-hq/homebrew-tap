@@ -9,6 +9,7 @@ FOOTER='*Auto-created by scheduled validation.*'
 setup() {
 	setup_temp_dir
 	REPO_ROOT="$(repo_root)"
+	bootstrap_test_env "$REPO_ROOT"
 	LIB="$REPO_ROOT/scripts/ci/lib/github-issues.sh"
 	export MOCK_GH_LOG="$TEST_TEMP_DIR/gh.log"
 	: >"$MOCK_GH_LOG"
@@ -53,8 +54,8 @@ report() { # $1 = drift report JSON
 	run bash -c 'source "$1"; report_version_drift "$2"' _ "$LIB" "$1"
 }
 
-issue() { # $1 = number, $2 = body text; prints one JSON issue
-	jq -cn --argjson n "$1" --arg b "$2" '{number: $n, body: $b}'
+issue() { # $1 = number, $2 = body text, $3 = title (optional); prints one JSON issue
+	jq -cn --argjson n "$1" --arg b "$2" --arg t "${3:-Some issue}" '{number: $n, title: $t, body: $b}'
 }
 
 calls() { # $1 = "issue create" style prefix; prints the number of matching calls
@@ -156,7 +157,7 @@ $FOOTER
 	# The stale issue this automation opened long ago has the footer and no
 	# marker, so it cannot be matched to a product.
 	export MOCK_ISSUES="[$(issue 137 "## Version Drift Detected
-$FOOTER")]"
+$FOOTER" "Version drift detected: formula lintro=0.77.0 vs PyPI 0.77.2")]"
 
 	report "$CURRENT"
 
@@ -210,4 +211,84 @@ $FOOTER")]"
 
 	[ "$status" -ne 0 ]
 	[ "$(mutations)" -eq 0 ]
+}
+
+@test "report_version_drift: an issue that only quotes the marker is not owned" {
+	# A hand-written issue discussing the automation quotes its marker inside
+	# a sentence. It must not be rewritten; the product gets its own issue.
+	export MOCK_ISSUES="[$(issue 70 "The bot adds \`<!-- version-drift:beta -->\` to its issues.
+> <!-- version-drift:beta -->")]"
+
+	report "$DRIFTED"
+
+	[ "$status" -eq 0 ]
+	[ "$(calls 'issue create')" -eq 1 ]
+	[ "$(calls 'issue edit')" -eq 0 ]
+	[ "$(calls 'issue close')" -eq 0 ]
+}
+
+@test "report_version_drift: an issue that only quotes the footer is not closed as legacy" {
+	# Neither a quoted footer nor a footer under an unrelated title makes an
+	# issue one of the automation's old drift issues.
+	export MOCK_ISSUES="[$(issue 71 "Old issues ended with: $FOOTER" "Version drift detected: formula x vs PyPI y"),$(issue 72 "Some notes
+$FOOTER" "Why is the formula behind?")]"
+
+	report "$CURRENT"
+
+	[ "$status" -eq 0 ]
+	[ "$(mutations)" -eq 0 ]
+}
+
+@test "report_version_drift: duplicate issues for one product are reconciled" {
+	# Two open issues carry the same marker. The oldest is rewritten and the
+	# other is closed as its duplicate.
+	export MOCK_ISSUES="[$(issue 90 "$FOOTER
+<!-- version-drift:beta -->"),$(issue 80 "$FOOTER
+<!-- version-drift:beta -->")]"
+
+	report "$DRIFTED"
+
+	[ "$status" -eq 0 ]
+	[ "$(calls 'issue edit')" -eq 1 ]
+	[ "$(calls 'issue close')" -eq 1 ]
+	[ "$(calls 'issue create')" -eq 0 ]
+	grep -q 'Duplicate of #80' "$MOCK_GH_LOG"
+}
+
+@test "report_version_drift: every duplicate is closed once the product is current" {
+	export MOCK_ISSUES="[$(issue 90 "$FOOTER
+<!-- version-drift:beta -->"),$(issue 80 "$FOOTER
+<!-- version-drift:beta -->")]"
+
+	report "$CURRENT"
+
+	[ "$status" -eq 0 ]
+	[ "$(calls 'issue close')" -eq 2 ]
+	[ "$(calls 'issue edit')" -eq 0 ]
+}
+
+@test "report_version_drift: a product name that starts another product's name keeps its own issue" {
+	local beta_full='{"product":"beta-full","package":"beta-pkg","formula":"beta-full","formula_version":"0.9.0","pypi_version":"0.9.0","drift":false}'
+	export MOCK_ISSUES="[$(issue 50 "$FOOTER
+<!-- version-drift:beta -->"),$(issue 51 "$FOOTER
+<!-- version-drift:beta-full -->")]"
+
+	report "[$BETA_BEHIND,$beta_full]"
+
+	[ "$status" -eq 0 ]
+	[ "$(calls 'issue edit')" -eq 1 ]
+	[ "$(calls 'issue close')" -eq 1 ]
+	grep -q 'Every beta-full formula matches' "$MOCK_GH_LOG"
+}
+
+@test "scheduled validation: runs are serialised so two reports cannot both create an issue" {
+	local workflow="$REPO_ROOT/.github/workflows/scheduled-validation.yml"
+	local concurrency
+	concurrency="$(python3 -c "
+import sys, yaml
+c = yaml.safe_load(open(sys.argv[1], encoding='utf-8')).get('concurrency') or {}
+print(c.get('group'), c.get('cancel-in-progress'))
+" "$workflow")"
+
+	[ "$concurrency" = "scheduled-validation False" ]
 }
