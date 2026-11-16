@@ -217,8 +217,9 @@ PY
 }
 
 @test "generate_resources: implementation markers follow the analysis environment, not the host" {
-	# Both requirements are written so that exactly one matches whatever
-	# Python runs this test: only the description can make both match.
+	# No Python that runs this test is called "fixturepy", so the second
+	# requirement matches only if the value comes from the description; the
+	# first matches only on its implementation_version.
 	install "$ENV_SITE" rootpkg 1.0.0 \
 		'click==8.1.7; implementation_version == "3.13.5"' \
 		'mdurl==0.1.2; implementation_name == "fixturepy"'
