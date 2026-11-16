@@ -77,10 +77,13 @@ add_issue_comment() {
 #     so it never shows versions from an earlier run;
 #   - a product is current and has an open issue: say so and close it;
 #   - a product has more than one open issue: keep the oldest, close the rest.
-# An issue that only quotes the marker inside other text is not owned by this
-# automation and is never edited or closed. A drift issue this automation
-# created before markers existed is recognised by its exact title form and
-# its footer line, and is closed with a pointer to the new reporting.
+# An issue is owned by this automation only if a bot account opened it and it
+# carries the marker as a whole line. An issue a person opened, or one that
+# only quotes the marker inside other text, is never edited or closed. A drift
+# issue this automation created before markers existed is recognised by its
+# bot author, its exact title form and its footer line, and is closed with a
+# pointer to the new reporting. An owned issue whose product is no longer in
+# the report (the product was removed) is closed too.
 # A malformed report, or a failed issue lookup, changes nothing.
 # Usage: report_version_drift '<json>'
 report_version_drift() {
@@ -104,10 +107,15 @@ report_version_drift() {
 	fi
 
 	local open_issues
-	if ! open_issues=$(gh issue list --state open --label "version-drift" --limit 1000 --json number,title,body); then
+	if ! open_issues=$(gh issue list --state open --label "version-drift" --limit 1000 --json number,title,body,author); then
 		log_error "Could not list open version-drift issues; not touching any issue"
 		return 1
 	fi
+
+	# Every write is checked, so one failed write neither stops the other
+	# products nor lets the report succeed. The caller may or may not run
+	# with errexit; this does not rely on it.
+	local write_failed=0
 
 	local checked footer
 	checked=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -127,7 +135,10 @@ report_version_drift() {
 		while IFS= read -r existing_issue; do
 			[[ -n "$existing_issue" ]] && owned+=("$existing_issue")
 		done < <(jq -r --arg m "$marker" '
-			[.[] | select((.body // "") | split("\n") | map(rtrimstr("\r")) | any(. == $m)) | .number]
+			[.[]
+				| select(.author.is_bot == true)
+				| select((.body // "") | split("\n") | map(rtrimstr("\r")) | any(. == $m))
+				| .number]
 			| sort | .[]' <<<"$open_issues")
 
 		if [[ "$has_drift" != "true" ]]; then
@@ -141,7 +152,10 @@ Every ${product} formula matches its package's current release as of $checked. C
 |---------|-----------------|------|-------|
 $table
 EOF
-				)"
+				)" || {
+					log_error "Could not close issue #$existing_issue for ${product}"
+					write_failed=1
+				}
 			done
 			if [[ ${#owned[@]} -eq 0 ]]; then
 				log_info "No version drift for ${product}"
@@ -170,16 +184,25 @@ EOF
 
 		if [[ ${#owned[@]} -eq 0 ]]; then
 			log_info "Creating version drift issue for ${product}"
-			create_issue "$title" "$body" "version-drift,automated"
+			create_issue "$title" "$body" "version-drift,automated" || {
+				log_error "Could not create a version drift issue for ${product}"
+				write_failed=1
+			}
 			continue
 		fi
 
 		existing_issue="${owned[0]}"
 		log_info "Refreshing version drift issue #$existing_issue for ${product}"
-		gh issue edit "$existing_issue" --title "$title" --body "$body"
+		gh issue edit "$existing_issue" --title "$title" --body "$body" || {
+			log_error "Could not refresh issue #$existing_issue for ${product}"
+			write_failed=1
+		}
 		for duplicate_issue in "${owned[@]:1}"; do
 			log_info "Closing duplicate version drift issue #$duplicate_issue for ${product}"
-			gh issue close "$duplicate_issue" --comment "Duplicate of #${existing_issue}, which carries the current state for ${product}."
+			gh issue close "$duplicate_issue" --comment "Duplicate of #${existing_issue}, which carries the current state for ${product}." || {
+				log_error "Could not close duplicate issue #$duplicate_issue for ${product}"
+				write_failed=1
+			}
 		done
 	done < <(jq -r '[.[].product] | unique | .[]' <<<"$report_json")
 
@@ -191,14 +214,44 @@ EOF
 	while IFS= read -r legacy_issue; do
 		[[ -z "$legacy_issue" ]] && continue
 		log_info "Closing version drift issue #$legacy_issue from before per-product reporting"
-		gh issue close "$legacy_issue" --comment "Version drift is now reported in one issue per product, rewritten on every scheduled run and closed when the product is current. This issue predates that and cannot be matched to a product, so it is closed. Any product that is behind today has its own open issue."
+		gh issue close "$legacy_issue" --comment "Version drift is now reported in one issue per product, rewritten on every scheduled run and closed when the product is current. This issue predates that and cannot be matched to a product, so it is closed. Any product that is behind today has its own open issue." || {
+			log_error "Could not close issue #$legacy_issue"
+			write_failed=1
+		}
 	done < <(jq -r --arg f "$footer" '
 		.[]
 		| ((.body // "") | split("\n") | map(rtrimstr("\r"))) as $lines
-		| select(((.title // "") | test("^Version drift detected: formula .+ vs PyPI "))
+		| select(.author.is_bot == true
+			and ((.title // "") | test("^Version drift detected: formula .+ vs PyPI "))
 			and ($lines | any(. == $f))
 			and ($lines | any(test("^<!-- version-drift:[A-Za-z0-9._-]+ -->$")) | not))
 		| .number' <<<"$open_issues")
+
+	# An owned issue for a product that is not in the report any more would
+	# otherwise stay open for good, still promising to be kept current.
+	local orphan orphan_issue orphan_product
+	while IFS= read -r orphan; do
+		[[ -z "$orphan" ]] && continue
+		orphan_issue="${orphan%% *}"
+		orphan_product="${orphan#* }"
+		log_info "Closing version drift issue #$orphan_issue: ${orphan_product} is no longer configured"
+		gh issue close "$orphan_issue" --comment "No product named ${orphan_product} is configured under formulas/ any more, so its version drift is no longer checked. Closing." || {
+			log_error "Could not close issue #$orphan_issue for ${orphan_product}"
+			write_failed=1
+		}
+	done < <(jq -r --argjson products "$(jq -c '[.[].product] | unique' <<<"$report_json")" '
+		.[]
+		| select(.author.is_bot == true)
+		| ((.body // "") | split("\n") | map(rtrimstr("\r"))
+			| map(capture("^<!-- version-drift:(?<p>[A-Za-z0-9._-]+) -->$")? | .p) | first) as $product
+		| select($product != null and ($products | index($product) | not))
+		| "\(.number) \($product)"' <<<"$open_issues")
+
+	if [[ "$write_failed" -ne 0 ]]; then
+		log_error "One or more version drift issues could not be updated"
+		return 1
+	fi
+	return 0
 }
 
 # Report validation failure

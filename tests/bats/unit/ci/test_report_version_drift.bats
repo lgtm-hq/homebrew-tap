@@ -32,12 +32,16 @@ if [[ "$1 $2" == "issue list" ]]; then
 	echo "${MOCK_ISSUES:-[]}"
 elif [[ "$1 $2" == "label list" ]]; then
 	printf 'version-drift\nautomated\n'
+elif [[ -n "${MOCK_WRITE_FAILS:-}" && "$1" == "issue" && "${3:-}" == "$MOCK_WRITE_FAILS" ]]; then
+	# A write to this one issue number fails, as a permission error would.
+	echo "gh: HTTP 403" >&2
+	exit 1
 fi
 EOF
 	chmod +x "$TEST_TEMP_DIR/mock-bin/gh"
 	export PATH="$TEST_TEMP_DIR/mock-bin:$PATH"
 	export MOCK_ISSUES="[]"
-	unset MOCK_LIST_FAILS
+	unset MOCK_LIST_FAILS MOCK_WRITE_FAILS
 
 	ALPHA_OK='{"product":"alpha","package":"alpha-pkg","formula":"alpha","formula_version":"1.2.0","pypi_version":"1.2.0","drift":false}'
 	BETA_OK='{"product":"beta","package":"beta-pkg","formula":"beta","formula_version":"0.9.0","pypi_version":"0.9.0","drift":false}'
@@ -52,10 +56,18 @@ teardown() {
 
 report() { # $1 = drift report JSON
 	run bash -c 'source "$1"; report_version_drift "$2"' _ "$LIB" "$1"
+	# Shown by bats only when the test fails: what the report said and did.
+	echo "status=$status"
+	echo "$output"
+	echo "gh calls:"
+	cat "$MOCK_GH_LOG"
 }
 
-issue() { # $1 = number, $2 = body text, $3 = title (optional); prints one JSON issue
-	jq -cn --argjson n "$1" --arg b "$2" --arg t "${3:-Some issue}" '{number: $n, title: $t, body: $b}'
+issue() { # $1 = number, $2 = body, $3 = title (optional), $4 = "human" for a person's issue
+	local is_bot=true
+	[[ "${4:-}" == "human" ]] && is_bot=false
+	jq -cn --argjson n "$1" --arg b "$2" --arg t "${3:-Some issue}" --argjson bot "$is_bot" \
+		'{number: $n, title: $t, body: $b, author: {is_bot: $bot, login: (if $bot then "app/github-actions" else "someone" end)}}'
 }
 
 calls() { # $1 = "issue create" style prefix; prints the number of matching calls
@@ -119,18 +131,21 @@ $FOOTER
 	grep -qF '`0.8.0`' "$MOCK_GH_LOG"
 }
 
-@test "report_version_drift: another product's open issue is left alone" {
-	# alpha has an open issue and is still behind elsewhere; beta's drift must
-	# open beta's own issue and must not rewrite alpha's.
+@test "report_version_drift: each product's issue is handled on its own" {
+	# alpha already has an issue and is still behind; beta is newly behind.
+	# alpha's issue is rewritten with alpha's rows only, and beta gets its own.
+	local alpha_behind='{"product":"alpha","package":"alpha-pkg","formula":"alpha","formula_version":"1.1.0","pypi_version":"1.2.0","drift":true}'
 	export MOCK_ISSUES="[$(issue 60 "$FOOTER
-<!-- version-drift:other -->")]"
+<!-- version-drift:alpha -->")]"
 
-	report "$DRIFTED"
+	report "[$alpha_behind,$BETA_BEHIND]"
 
 	[ "$status" -eq 0 ]
+	[ "$(calls 'issue edit')" -eq 1 ]
 	[ "$(calls 'issue create')" -eq 1 ]
-	[ "$(calls 'issue edit')" -eq 0 ]
 	[ "$(calls 'issue close')" -eq 0 ]
+	grep -qx 'Version drift detected: alpha (alpha)' "$MOCK_GH_LOG"
+	grep -qx 'Version drift detected: beta (beta)' "$MOCK_GH_LOG"
 }
 
 @test "report_version_drift: a product that is current again has its issue closed" {
@@ -281,6 +296,24 @@ $FOOTER" "Why is the formula behind?")]"
 	grep -q 'Every beta-full formula matches' "$MOCK_GH_LOG"
 }
 
+@test "report_version_drift: a failed write fails the report but the other products are still handled" {
+	# alpha's issue cannot be rewritten; beta's must still be closed, and the
+	# report must fail so the job does and the failure is notified.
+	local alpha_behind='{"product":"alpha","package":"alpha-pkg","formula":"alpha","formula_version":"1.1.0","pypi_version":"1.2.0","drift":true}'
+	export MOCK_ISSUES="[$(issue 40 "$FOOTER
+<!-- version-drift:alpha -->"),$(issue 50 "$FOOTER
+<!-- version-drift:beta -->")]"
+	export MOCK_WRITE_FAILS=40
+
+	report "[$alpha_behind,$BETA_OK]"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Could not refresh issue #40 for alpha"* ]]
+	[ "$(calls 'issue edit')" -eq 1 ]
+	[ "$(calls 'issue close')" -eq 1 ]
+	grep -q 'Every beta formula matches' "$MOCK_GH_LOG"
+}
+
 @test "scheduled validation: runs are serialised so two reports cannot both create an issue" {
 	local workflow="$REPO_ROOT/.github/workflows/scheduled-validation.yml"
 	local concurrency
@@ -291,4 +324,38 @@ print(c.get('group'), c.get('cancel-in-progress'))
 " "$workflow")"
 
 	[ "$concurrency" = "scheduled-validation False" ]
+}
+
+@test "report_version_drift: an issue a person opened is never owned, even with the marker and footer on their own lines" {
+	# Someone pastes the automation's old issue body, marker and all, into
+	# their own issue. Authorship, not text, decides ownership.
+	export MOCK_ISSUES="[$(issue 75 "## Version Drift Detected
+$FOOTER
+<!-- version-drift:beta -->" "Version drift detected: formula lintro=0.77.0 vs PyPI 0.77.2" human)]"
+
+	report "$CURRENT"
+	[ "$status" -eq 0 ]
+	[ "$(mutations)" -eq 0 ]
+
+	: >"$MOCK_GH_LOG"
+	report "$DRIFTED"
+	[ "$status" -eq 0 ]
+	[ "$(calls 'issue create')" -eq 1 ]
+	[ "$(calls 'issue edit')" -eq 0 ]
+	[ "$(calls 'issue close')" -eq 0 ]
+}
+
+@test "report_version_drift: the issue of a product that left the report is closed" {
+	# gamma was removed from formulas/; its issue would otherwise stay open
+	# for good.
+	export MOCK_ISSUES="[$(issue 55 "$FOOTER
+<!-- version-drift:gamma -->")]"
+
+	report "$CURRENT"
+
+	[ "$status" -eq 0 ]
+	[ "$(calls 'issue close')" -eq 1 ]
+	[ "$(mutations)" -eq 1 ]
+	grep -qx '55' "$MOCK_GH_LOG"
+	grep -q 'No product named gamma is configured' "$MOCK_GH_LOG"
 }

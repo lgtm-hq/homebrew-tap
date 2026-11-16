@@ -235,7 +235,7 @@ EOF
 	[ ! -s "$MOCK_GH_LOG" ]
 }
 
-@test "lgtm-ci tooling ref is the same in the local fallback and both workflows" {
+@test "lgtm-ci tooling ref is the same in the local fallback and every workflow that checks it out" {
 	local root ref wf
 	root="$(repo_root)"
 	# The fallback default in lgtm-ci-tooling.sh is what local runs and the
