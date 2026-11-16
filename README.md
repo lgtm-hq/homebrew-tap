@@ -274,11 +274,11 @@ Tap scripts reuse [lgtm-ci](https://github.com/lgtm-hq/lgtm-ci) for PyPI
 registry helpers (`wait_for_package`, `get_pypi_download_url`,
 `get_pypi_sha256`) and for GitHub-signed commits: `update-formula.sh` runs
 lgtm-ci's `scripts/ci/git/create-signed-commit.sh` from `LGTM_CI_TOOLING_DIR` in
-reset mode (added in lgtm-ci v0.75.0). `update-formula.yml` and
-`deploy-pages.yml` sparse-checkout lgtm-ci at `LGTM_CI_TOOLING_REF`
+reset mode (added in lgtm-ci v0.75.0). `update-formula.yml`, `deploy-pages.yml`
+and `scheduled-validation.yml` sparse-checkout lgtm-ci at `LGTM_CI_TOOLING_REF`
 (`8f0fd9339df5d30a529aa572ceb51345b8be33a0`, v0.79.2), and
 `scripts/ci/lib/lgtm-ci-tooling.sh` uses the same ref as its local default; bump
-those three together. The reusable-workflow `uses:` refs and their `tooling-ref`
+those four together. The reusable-workflow `uses:` refs and their `tooling-ref`
 inputs (`ci.yml`, `ai-review.yml`, `pr-auto-assign.yml`) must match each other
 within each workflow.
 

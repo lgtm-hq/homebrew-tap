@@ -11,35 +11,77 @@ permissions:
   contents: read
   issues: write
 
-env:
-  PYPI_PACKAGE: lintro
+# One run at a time: two overlapping reports could each see no open issue
+# for a product and both create one.
+concurrency:
+  group: scheduled-validation
+  cancel-in-progress: false
 
 jobs:
-  validate-formula:
-    name: Validate Formula Installation
-    runs-on: macos-26
-    timeout-minutes: 20
+  # Version drift is checked for every product config under formulas/, on its
+  # own runner, so a failed installation check below cannot hide a stale
+  # formula and a stale formula cannot hide a failed installation.
+  check-version-drift:
+    name: Check Version Drift
+    runs-on: ${{ vars.LGTM_CI_RUNNER || 'ubuntu-26.04' }}
+    timeout-minutes: 10
+    env:
+      LGTM_CI_TOOLING_REF: 8f0fd9339df5d30a529aa572ceb51345b8be33a0 # v0.79.2
     outputs:
-      formula_version: ${{ steps.version-check.outputs.formula_version }}
-      pypi_version: ${{ steps.version-check.outputs.pypi_version }}
+      drift_report: ${{ steps.version-check.outputs.drift_report }}
       has_drift: ${{ steps.version-check.outputs.has_drift }}
     steps:
       - name: Checkout
         # yamllint disable-line rule:line-length
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout lgtm-ci tooling
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: lgtm-hq/lgtm-ci
+          path: .lgtm-ci-tooling
+          ref: ${{ env.LGTM_CI_TOOLING_REF }}
+          sparse-checkout: |
+            .github/actions/setup-python
+            scripts/ci/
+          sparse-checkout-cone-mode: true
+          persist-credentials: false
+
+      # The product configs are YAML; the config reader needs the project's
+      # dependencies, which the runner's own python3 does not provide.
+      - name: Set up Python
+        uses: ./.lgtm-ci-tooling/.github/actions/setup-python
+        with:
+          python-version: '3.13'
+          install-dependencies: 'true'
+          cache: 'false'
 
       - name: Check version drift
         id: version-check
-        run: |
-          scripts/ci/check-version-drift.sh --all "${{ env.PYPI_PACKAGE }}"
+        run: uv run bash scripts/ci/check-version-drift.sh --all
+
+  validate-formula:
+    name: Validate Formula Installation
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate formula
         run: scripts/ci/validate-formulas.sh
 
+  # Runs whenever the drift check itself succeeded, with or without drift:
+  # it opens or refreshes the drift issue, and closes it once nothing is
+  # behind. It does not wait for the installation check.
   report-version-drift:
     name: Report Version Drift
-    needs: validate-formula
-    if: needs.validate-formula.outputs.has_drift == 'true'
+    needs: check-version-drift
+    if: needs.check-version-drift.result == 'success'
     runs-on: ${{ vars.LGTM_CI_RUNNER || 'ubuntu-26.04' }}
     steps:
       - name: Checkout
@@ -49,15 +91,14 @@ jobs:
       - name: Report version drift
         env:
           GH_TOKEN: ${{ github.token }}
+          DRIFT_REPORT: ${{ needs.check-version-drift.outputs.drift_report }}
         run: |
           source scripts/ci/lib/github-issues.sh
-          report_version_drift \
-            "${{ needs.validate-formula.outputs.formula_version }}" \
-            "${{ needs.validate-formula.outputs.pypi_version }}"
+          report_version_drift "$DRIFT_REPORT"
 
   notify-failure:
     name: Notify on Failure
-    needs: validate-formula
+    needs: [check-version-drift, validate-formula, report-version-drift]
     if: failure()
     runs-on: ${{ vars.LGTM_CI_RUNNER || 'ubuntu-26.04' }}
     steps:

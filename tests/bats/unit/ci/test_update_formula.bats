@@ -235,7 +235,7 @@ EOF
 	[ ! -s "$MOCK_GH_LOG" ]
 }
 
-@test "lgtm-ci tooling ref is the same in the local fallback and both workflows" {
+@test "lgtm-ci tooling ref is the same in the local fallback and every workflow that checks it out" {
 	local root ref wf
 	root="$(repo_root)"
 	# The fallback default in lgtm-ci-tooling.sh is what local runs and the
@@ -249,7 +249,7 @@ EOF
 	[[ "$ref" =~ ^[0-9a-f]{40}$ ]]
 	# Bash built-ins only: this file's mocks can leave grep off PATH.
 	local line found
-	for wf in update-formula deploy-pages; do
+	for wf in update-formula deploy-pages scheduled-validation; do
 		found=""
 		while IFS= read -r line || [[ -n "$line" ]]; do
 			if [[ "$line" =~ ^[[:space:]]+LGTM_CI_TOOLING_REF:[[:space:]]+([0-9a-f]{40})([[:space:]]|$) ]]; then
