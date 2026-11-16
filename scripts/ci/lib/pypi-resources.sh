@@ -104,8 +104,15 @@ generate_pinned_resources() {
 	done
 
 	log_info "Generating resource stanzas..."
-	local site_packages
-	site_packages=$("$analysis_venv/bin/python" -c "import site; print(site.getsitepackages()[0])")
+	# The walk runs on the generator host's Python but reads installed
+	# distributions and Python marker values only from this description of
+	# the analysis environment, printed by that environment's own
+	# interpreter. The host's packages and Python version never reach it.
+	local analysis_env_json="$out_dir/analysis-env.json"
+	if ! "$analysis_venv/bin/python" -I "$script_dir/probe_analysis_env.py" >"$analysis_env_json"; then
+		log_error "Could not describe the analysis environment"
+		return 1
+	fi
 	# Markers are evaluated for the formula's target (macOS, the requested
 	# CPU), never for the machine running this generator; the root package's
 	# extras are followed so extras-only dependencies are pinned too.
@@ -114,6 +121,7 @@ generate_pinned_resources() {
 		platform_machine="x86_64"
 	fi
 	local generate_args=("$script_dir/generate_resources.py" "$package"
+		--analysis-env "$analysis_env_json"
 		--platform-machine "$platform_machine"
 		--python-version "$python_version")
 	if [[ -n "$extras" ]]; then
@@ -123,7 +131,7 @@ generate_pinned_resources() {
 		generate_args+=(--exclude "${exclude_args[@]}")
 	fi
 	local resources
-	resources=$(PYTHONPATH="$site_packages" python3 "${generate_args[@]}")
+	resources=$(python3 "${generate_args[@]}")
 
 	local resource_count
 	resource_count=$(printf '%s\n' "$resources" | awk '/^  resource / { count++ } END { print count + 0 }')
