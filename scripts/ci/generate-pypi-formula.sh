@@ -252,6 +252,31 @@ if [[ "$SKIP_VERIFY" != "true" ]]; then
 fi
 
 if [[ "$GENERATE_RESOURCES" == "true" ]]; then
+	# A pypi formula's homebrew-deps are names only (the {name, build}
+	# form belongs to a binary formula's Intel block). Each name goes into
+	# Ruby source (depends_on "<name>"), so it must be a list of formula
+	# names. Read into a variable first: a failure inside a process
+	# substitution would be lost and the formula would render without its
+	# depends_on lines.
+	HOMEBREW_PKG_ARRAY=()
+	if ! HOMEBREW_DEP_NAMES=$(python3 -c "
+import json, re, sys
+entries = json.loads(sys.argv[1]).get('homebrew-deps')
+if entries is None:
+    entries = []
+if not isinstance(entries, list):
+    sys.exit(1)
+for entry in entries:
+    if not isinstance(entry, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9@+._/-]*', entry):
+        sys.exit(1)
+    print(entry)" "$CONFIG_JSON"); then
+		log_error "homebrew-deps for ${FORMULA_KEY} must be a list of formula names"
+		exit 1
+	fi
+	while IFS= read -r line; do
+		[[ -n "$line" ]] && HOMEBREW_PKG_ARRAY+=("$line")
+	done <<<"$HOMEBREW_DEP_NAMES"
+
 	generate_pinned_resources "$PACKAGE_NAME" "$TARBALL_FILE" "$PYTHON_VERSION" \
 		"$CONFIG_JSON" "$TMPDIR" "$MIN_RESOURCE_COUNT" "$PYPI_EXTRAS"
 
@@ -275,24 +300,6 @@ RUBY
 	else
 		printf '    venv.pip_install_and_link %s' "$INSTALL_TARGET" >"$TMPDIR/install_package.txt"
 	fi
-
-	# A pypi formula's homebrew-deps are names only (the {name, build}
-	# form belongs to a binary formula's Intel block). Read into a variable
-	# first: a failure inside a process substitution would be lost and the
-	# formula would render without its depends_on lines.
-	HOMEBREW_PKG_ARRAY=()
-	if ! HOMEBREW_DEP_NAMES=$(python3 -c "
-import json, sys
-for entry in json.loads(sys.argv[1]).get('homebrew-deps') or []:
-    if not isinstance(entry, str) or not entry:
-        sys.exit(1)
-    print(entry)" "$CONFIG_JSON"); then
-		log_error "homebrew-deps for ${FORMULA_KEY} must be a list of formula names"
-		exit 1
-	fi
-	while IFS= read -r line; do
-		[[ -n "$line" ]] && HOMEBREW_PKG_ARRAY+=("$line")
-	done <<<"$HOMEBREW_DEP_NAMES"
 
 	CAVEATS_RAW=$(python3 -c "import json, sys; print(json.loads(sys.argv[1]).get('caveats', '') or '')" "$CONFIG_JSON")
 	if [[ -n "$CAVEATS_RAW" ]]; then

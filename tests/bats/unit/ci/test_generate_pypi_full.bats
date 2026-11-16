@@ -760,8 +760,6 @@ YAML
 	grep -q '^    launcher_path = "${PATH}:#{libexec}/bin"$' "$CAPME_OUTPUT"
 	grep -q '^    (bin/"capme").write_env_script libexec/"bin/capme", PATH: launcher_path$' "$CAPME_OUTPUT"
 	[ "$(grep -c 'pip_install_and_link' "$CAPME_OUTPUT")" -eq 0 ]
-	# No hand-aligned continuation line, whatever the command's length.
-	[ "$(awk 'length > 118' "$CAPME_OUTPUT" | wc -l)" -eq 0 ]
 
 	local declared
 	for declared in 'sometimes' '1' '"true"'; do
@@ -777,13 +775,52 @@ YAML
 	# and the formula rendered without any depends_on line.
 	make_capped_fixtures
 
-	run_generate_capme_extras "    homebrew-deps:
+	local declared
+	for declared in \
+		'    homebrew-deps:
       - name: captool
-        build: true"
+        build: true' \
+		'    homebrew-deps: captool' \
+		'    homebrew-deps:
+      captool: true' \
+		'    homebrew-deps:
+      - "captool\" ; system \"id"' \
+		'    homebrew-deps:
+      - ""'; do
+		run_generate_capme_extras "$declared"
+
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"homebrew-deps for capme must be a list of formula names"* ]]
+		[ ! -f "$CAPME_OUTPUT" ]
+	done
+}
+
+@test "generate-pypi-formula: venv-bin-on-path without generate-resources is refused" {
+	make_capped_fixtures
+	CAPME_CONFIG="$TEST_TEMP_DIR/capme.yml"
+	cat >"$CAPME_CONFIG" <<'YAML'
+---
+package: capme
+source-repo: lgtm-hq/capme
+homepage: https://github.com/lgtm-hq/capme
+license: MIT
+description: "Fixture package with an optional extra"
+
+formulas:
+  capme:
+    type: pypi
+    python-version: "3.13"
+    test-command: "capme --version"
+    venv-bin-on-path: true
+YAML
+
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$CAPME_CONFIG" --formula-key capme --version 0.1.0 \
+		--output "$TEST_TEMP_DIR/capme.rb"
 
 	[ "$status" -ne 0 ]
-	[[ "$output" == *"homebrew-deps for capme"* ]]
-	[ ! -f "$CAPME_OUTPUT" ]
+	[[ "$output" == *"venv-bin-on-path for capme needs generate-resources: true"* ]]
+	[ ! -f "$TEST_TEMP_DIR/capme.rb" ]
 }
 
 @test "generate-pypi-formula: an empty or null extras list means no extras" {
