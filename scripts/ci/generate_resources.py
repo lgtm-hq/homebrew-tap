@@ -7,14 +7,23 @@ This is a modern replacement for homebrew-pypi-poet that:
 - Generates resource stanzas compatible with Homebrew formulae
 
 Usage:
-    # Generate resources for a package installed in current environment
-    python3 generate_resources.py lintro
+    # Describe the environment the package was installed into, then generate
+    # resources for it (the walk itself runs on any Python with `packaging`)
+    <venv>/bin/python -I probe_analysis_env.py > env.json
+    python3 generate_resources.py lintro --analysis-env env.json
 
     # Exclude specific packages (e.g., already available as Homebrew formulae)
-    python3 generate_resources.py lintro --exclude bandit black mypy ruff yamllint
+    python3 generate_resources.py lintro --analysis-env env.json \
+        --exclude bandit black mypy ruff yamllint
 
     # Follow the root package's extras and resolve for an Intel Mac
-    python3 generate_resources.py lintro --extras mcp --platform-machine x86_64
+    python3 generate_resources.py lintro --analysis-env env.json \
+        --extras mcp --platform-machine x86_64
+
+The walk reads installed distributions and Python details only from the
+analysis environment described by --analysis-env, never from the interpreter
+it runs under: the host's own packages and Python version must not decide
+what a formula pins.
 
 Requirements that the analysis environment did not install (a dependency
 gated on a marker that is false where the analysis ran, e.g. macOS x86_64
@@ -25,9 +34,11 @@ specifier is pinned and its own requirements are walked the same way.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from importlib.metadata import distributions
+from pathlib import Path
 from typing import Any
 
 from packaging.requirements import InvalidRequirement, Requirement
@@ -36,20 +47,42 @@ from packaging.version import InvalidVersion, Version
 
 from pypi_utils import fetch_pypi_json, get_sdist_info, normalize_name
 
-# Homebrew macOS Python formula install environment for marker evaluation.
+# Every PEP 508 marker variable. All of them are set explicitly for each
+# run: a variable left out would be filled in by `packaging` from the
+# interpreter the walk runs under, which is not the formula's.
+MARKER_KEYS: frozenset[str] = frozenset(
+    {
+        "implementation_name",
+        "implementation_version",
+        "os_name",
+        "platform_machine",
+        "platform_python_implementation",
+        "platform_release",
+        "platform_system",
+        "platform_version",
+        "python_full_version",
+        "python_version",
+        "sys_platform",
+    },
+)
+
+# What a formula's target always is, whatever machine generates it: macOS.
 # platform_machine is set per run (--platform-machine): arm64 for Apple
 # silicon formulas, x86_64 for the Intel branch of a binary formula.
-# python_version and python_full_version are set per run (--python-version)
-# from the formula's configured python-version; the values below are only
-# the defaults for a direct invocation.
-TARGET_ENV: dict[str, str] = {
-    "python_version": "3.13",
-    "python_full_version": "3.13.0",
+TARGET_PLATFORM: dict[str, str] = {
     "sys_platform": "darwin",
     "os_name": "posix",
     "platform_system": "Darwin",
     "platform_machine": "arm64",
 }
+
+# Marker environment for this run, filled by load_analysis_env(): the
+# analysis environment's Python values with TARGET_PLATFORM on top.
+TARGET_ENV: dict[str, str] = {}
+
+# Directories holding the analysis environment's distributions, filled by
+# load_analysis_env(). Nothing else is ever searched.
+_ANALYSIS_SITE_PATHS: list[str] = []
 
 # Requirements not installed in the analysis environment, resolved from
 # PyPI metadata: normalized name -> (version, requires_dist).
@@ -66,18 +99,91 @@ RESOURCE_TEMPLATE = """  resource "{name}" do
 """
 
 
+def load_analysis_env(
+    path: Path,
+    python_version: str,
+    platform_machine: str,
+) -> None:
+    """Read the analysis environment's description and set the run's targets.
+
+    Fills ``TARGET_ENV`` and ``_ANALYSIS_SITE_PATHS`` from the JSON that
+    probe_analysis_env.py printed under the analysis interpreter.
+
+    Args:
+        path: The JSON file.
+        python_version: The formula's MAJOR.MINOR; the environment must run it.
+        platform_machine: Target platform_machine (arm64 or x86_64).
+    """
+    try:
+        described = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        sys.exit(f"Cannot read the analysis environment description {path}: {error}")
+    if not isinstance(described, dict):
+        sys.exit(f"{path} does not describe an analysis environment")
+
+    site_paths = described.get("site_paths")
+    if (
+        not isinstance(site_paths, list)
+        or not site_paths
+        or not all(isinstance(entry, str) and entry for entry in site_paths)
+    ):
+        sys.exit(f"{path} lists no site_paths for the analysis environment")
+    missing_dirs = [entry for entry in site_paths if not Path(entry).is_dir()]
+    if missing_dirs:
+        sys.exit(f"{path} names site_paths that do not exist: {missing_dirs}")
+
+    marker_env = described.get("marker_env")
+    if not isinstance(marker_env, dict):
+        sys.exit(f"{path} carries no marker_env for the analysis environment")
+    absent = sorted(
+        key
+        for key in MARKER_KEYS
+        if not isinstance(marker_env.get(key), str)
+        # Release and version may legitimately be empty strings.
+        or (not marker_env[key] and key not in {"platform_release", "platform_version"})
+    )
+    if absent:
+        sys.exit(f"{path} is missing marker values: {', '.join(absent)}")
+    if marker_env["python_version"] != python_version:
+        sys.exit(
+            f"The analysis environment runs Python {marker_env['python_version']}, "
+            f"but --python-version is {python_version}",
+        )
+
+    target = {key: marker_env[key] for key in MARKER_KEYS}
+    if marker_env["sys_platform"] != "darwin":
+        # The kernel release of a non-macOS generator is never the target's.
+        # The target's own is unknown (a formula serves several macOS
+        # releases), so a marker on either value does not match.
+        target["platform_release"] = ""
+        target["platform_version"] = ""
+    target.update(TARGET_PLATFORM)
+    target["platform_machine"] = platform_machine
+
+    TARGET_ENV.clear()
+    TARGET_ENV.update(target)
+    _ANALYSIS_SITE_PATHS[:] = site_paths
+
+
 def build_distribution_map() -> dict[str, tuple[str, list[str] | None]]:
-    """Build a cached map of all installed distributions.
+    """Build a map of the distributions installed in the analysis environment.
 
     Returns:
         Dictionary mapping normalized package names to (version, requires) tuples.
     """
+    if not _ANALYSIS_SITE_PATHS:
+        # An empty path list would make importlib search the walk's own
+        # interpreter, which is exactly what must never happen.
+        sys.exit("The analysis environment has not been loaded")
     dist_map: dict[str, tuple[str, list[str] | None]] = {}
-    for dist in distributions():
+    for dist in distributions(path=list(_ANALYSIS_SITE_PATHS)):
         name = dist.metadata["Name"]
         version = dist.metadata["Version"]
         if name and version:
             normalized = normalize_name(name)
+            if normalized in dist_map:
+                # The first directory wins, as it does on import.
+                continue
             requires = dist.metadata.get_all("Requires-Dist")
             dist_map[normalized] = (version, requires)
     return dist_map
@@ -355,16 +461,26 @@ def main() -> None:
         help="Comma-separated extras of the root package to follow (e.g. mcp)",
     )
     parser.add_argument(
+        "--analysis-env",
+        required=True,
+        type=Path,
+        help=(
+            "JSON printed by probe_analysis_env.py under the interpreter the "
+            "package was installed with; the only source of installed "
+            "distributions and Python marker values"
+        ),
+    )
+    parser.add_argument(
         "--platform-machine",
-        default=TARGET_ENV["platform_machine"],
+        default=TARGET_PLATFORM["platform_machine"],
         help="Target platform_machine for marker evaluation (arm64 or x86_64)",
     )
     parser.add_argument(
         "--python-version",
-        default=TARGET_ENV["python_version"],
+        required=True,
         help=(
-            "Target Python MAJOR.MINOR the formula installs with; used for "
-            "marker evaluation and the sdist requires_python check"
+            "Python MAJOR.MINOR the formula installs with; the analysis "
+            "environment must run it"
         ),
     )
     args = parser.parse_args()
@@ -373,9 +489,11 @@ def main() -> None:
         parser.error(
             f"--python-version must be MAJOR.MINOR (got {args.python_version!r})",
         )
-    TARGET_ENV["platform_machine"] = args.platform_machine
-    TARGET_ENV["python_version"] = args.python_version
-    TARGET_ENV["python_full_version"] = f"{args.python_version}.0"
+    load_analysis_env(
+        path=args.analysis_env,
+        python_version=args.python_version,
+        platform_machine=args.platform_machine,
+    )
     exclude: set[str] = {normalize_name(name) for name in args.exclude}
     main_package = normalize_name(args.package)
     exclude.add(main_package)

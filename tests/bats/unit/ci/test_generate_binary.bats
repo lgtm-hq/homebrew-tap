@@ -313,7 +313,8 @@ PY
 	run_generate_pinme
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Skipping idna 3.21: no sdist accepts Python 3.13.0 (requires_python)"* ]]
+	# The message names the analysis environment's real patch release.
+	[[ "$output" =~ Skipping\ idna\ 3\.21:\ no\ sdist\ accepts\ Python\ 3\.13\.[0-9]+\ \(requires_python\) ]]
 	[[ "$output" == *"Resolved idna==3.19 from PyPI"* ]]
 	! grep -q 'idna-3.21' "$OUTPUT_FILE"
 	grep -q 'idna-3.19.tar.gz' "$OUTPUT_FILE"
@@ -344,7 +345,7 @@ PY
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Analysis environment: Python 3.14"* ]]
-	[[ "$output" != *"no sdist accepts Python 3.13.0"* ]]
+	[[ "$output" != *"no sdist accepts Python 3.13"* ]]
 	grep -q 'depends_on "python@3.14"' "$OUTPUT_FILE"
 	grep -q 'idna-3.21.tar.gz' "$OUTPUT_FILE"
 	! grep -q 'idna-3.19' "$OUTPUT_FILE"
@@ -361,7 +362,8 @@ PY
 }
 
 @test "generate_resources: --python-version must be MAJOR.MINOR" {
-	run python3 "$SCRIPTS_DIR/generate_resources.py" pinme --python-version 3
+	run python3 "$SCRIPTS_DIR/generate_resources.py" pinme --python-version 3 \
+		--analysis-env "$TEST_TEMP_DIR/unused.json"
 
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"--python-version must be MAJOR.MINOR"* ]]
