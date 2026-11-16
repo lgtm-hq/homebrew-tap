@@ -328,9 +328,10 @@ PY
 }
 
 @test "generate_resources: quotes and marker syntax inside a string do not hide a kernel comparison" {
-	# Each of these is decided by the kernel and was once decided silently,
-	# because the marker was rewritten as text and a quote inside a string
-	# shifted where the next string began.
+	# Each of these is decided by the kernel and was once decided silently:
+	# the marker was rewritten as text and a quote inside a string shifted
+	# where the next string began, or (the last three) both operands are
+	# quoted strings and packaging looks the right one up as a name.
 	install "$ENV_SITE" click 8.1.7
 	install "$ENV_SITE" mdurl 0.1.2
 	describe_env
@@ -353,11 +354,15 @@ platform_release >= "5" and os_name != 'a" and os_name != "posix'
 platform_release >= "5" or os_name == 'a" or os_name == "posix'
 platform_version != 'a "'
 os_name not in 'platform_release == "x"' and platform_release == "23"
+"25.1.0" == "platform_release"
+"25.1.0" != "platform_release"
+"Darwin" in "platform_version"
 MARKERS
 }
 
 @test "generate_resources: a kernel variable's name inside a string is a value, not a kernel marker" {
-	# Neither marker reads the kernel: the names only appear as text.
+	# None of these reads the kernel: with a variable on the left, the right
+	# operand is only text to compare with.
 	install "$ENV_SITE" rootpkg 1.0.0 \
 		'click==8.1.7; platform_machine != "platform_release"' \
 		"mdurl==0.1.2; os_name in 'platform_version == \"posix\"'" \

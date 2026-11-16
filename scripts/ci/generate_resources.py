@@ -247,22 +247,25 @@ def _evaluate(marker: Marker, extras: frozenset[str]) -> bool:
 
 
 def _reads_kernel(comparison: tuple[Any, ...]) -> bool:
-    """Tell whether a parsed comparison has a kernel variable as an operand.
+    """Tell whether evaluating a parsed comparison reads a kernel value.
 
-    Only variables count: a string that happens to spell a variable's name
-    is a value like any other.
+    This mirrors how `packaging` evaluates a comparison: if the left operand
+    is a variable, its name is looked up in the environment and the right
+    operand is taken as text; otherwise the *right* operand's text is the
+    name looked up, whether it was written as a variable or as a quoted
+    string. So ``"25.1.0" == "platform_release"`` reads the kernel release,
+    while ``platform_machine != "platform_release"`` only compares with the
+    text.
 
     Args:
         comparison: One (operand, operator, operand) tuple of a marker tree.
 
     Returns:
-        True if either operand is platform_release or platform_version.
+        True if the name looked up is platform_release or platform_version.
     """
-    return any(
-        type(operand).__name__ == "Variable"
-        and getattr(operand, "value", None) in KERNEL_MARKER_KEYS
-        for operand in (comparison[0], comparison[-1])
-    )
+    left, right = comparison[0], comparison[-1]
+    looked_up = left if type(left).__name__ == "Variable" else right
+    return getattr(looked_up, "value", None) in KERNEL_MARKER_KEYS
 
 
 def _assume_kernel(
