@@ -340,3 +340,159 @@ YAML
 	grep -q '^      resource "pydantic-core" do' "$REPO_ROOT/Formula/lintro.rb"
 	grep -q 'wheel_only = %w\[pydantic-core\]' "$REPO_ROOT/Formula/lintro.rb"
 }
+
+# Offline fixture for #633: capme 0.1.0 depends on capdep, whose only release
+# declares Requires-Python ==3.13.*. Both packages are built here and pip
+# resolves them with PIP_NO_INDEX, so which versions it accepts does not
+# depend on the host interpreter or on PyPI's contents. Creating the analysis
+# environment is not offline: uv may still fetch the interpreter and pip.
+# capme's sdist carries its own build backend (no build requirements).
+make_capped_fixtures() {
+	CAPPED="$TEST_TEMP_DIR/capped"
+	mkdir -p "$CAPPED/pypi" "$CAPPED/sdist" "$CAPPED/links"
+	python3 - "$CAPPED" <<'PY'
+import hashlib
+import io
+import json
+import sys
+import tarfile
+import zipfile
+from pathlib import Path
+
+root = Path(sys.argv[1])
+WHEEL = "Wheel-Version: 1.0\nGenerator: fixture\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
+
+
+def write_wheel(path, name, version, extra):
+    dist = f"{name}-{version}.dist-info"
+    files = {
+        f"{name}/__init__.py": "",
+        f"{dist}/METADATA": f"Metadata-Version: 2.1\nName: {name}\nVersion: {version}\n{extra}",
+        f"{dist}/WHEEL": WHEEL,
+    }
+    record = "".join(f"{entry},,\n" for entry in files) + f"{dist}/RECORD,,\n"
+    with zipfile.ZipFile(path, "w") as archive:
+        for entry, content in files.items():
+            archive.writestr(entry, content)
+        archive.writestr(f"{dist}/RECORD", record)
+
+
+write_wheel(
+    root / "links" / "capdep-1.0.0-py3-none-any.whl",
+    "capdep",
+    "1.0.0",
+    "Requires-Python: ==3.13.*\n",
+)
+
+backend = f"""import zipfile
+
+WHEEL = {WHEEL!r}
+DIST = "capme-0.1.0.dist-info"
+FILES = {{
+    "capme/__init__.py": "",
+    DIST + "/METADATA": "Metadata-Version: 2.1\\nName: capme\\nVersion: 0.1.0\\nRequires-Dist: capdep\\n",
+    DIST + "/WHEEL": WHEEL,
+}}
+
+
+def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
+    name = "capme-0.1.0-py3-none-any.whl"
+    record = "".join(entry + ",,\\n" for entry in FILES) + DIST + "/RECORD,,\\n"
+    with zipfile.ZipFile(wheel_directory + "/" + name, "w") as archive:
+        for entry, content in FILES.items():
+            archive.writestr(entry, content)
+        archive.writestr(DIST + "/RECORD", record)
+    return name
+"""
+sources = {
+    "pyproject.toml": '[build-system]\nrequires = []\nbuild-backend = "fixture_backend"\nbackend-path = ["."]\n',
+    "fixture_backend.py": backend,
+    "PKG-INFO": "Metadata-Version: 2.1\nName: capme\nVersion: 0.1.0\n",
+}
+sdist = root / "sdist" / "capme-0.1.0.tar.gz"
+with tarfile.open(sdist, "w:gz") as archive:
+    for entry, content in sources.items():
+        data = content.encode()
+        info = tarfile.TarInfo(f"capme-0.1.0/{entry}")
+        info.size = len(data)
+        archive.addfile(info, io.BytesIO(data))
+
+
+def release(name, version, sha):
+    return {
+        "info": {"name": name, "version": version, "requires_dist": None},
+        "urls": [
+            {
+                "packagetype": "sdist",
+                "filename": f"{name}-{version}.tar.gz",
+                "url": f"https://files.pythonhosted.org/packages/fx/00/{name}-{version}.tar.gz",
+                "digests": {"sha256": sha},
+            }
+        ],
+    }
+
+
+(root / "pypi" / "capme-0.1.0.json").write_text(
+    json.dumps(release("capme", "0.1.0", hashlib.sha256(sdist.read_bytes()).hexdigest()))
+)
+(root / "pypi" / "capdep-1.0.0.json").write_text(json.dumps(release("capdep", "1.0.0", "c3" * 32)))
+PY
+	export PYPI_FIXTURE_DIR="$CAPPED/pypi"
+	# Host pip settings must not change what the fixture proves.
+	unset PIP_IGNORE_REQUIRES_PYTHON PIP_INDEX_URL PIP_EXTRA_INDEX_URL PIP_PYTHON_VERSION
+	export PIP_NO_INDEX=1 PIP_FIND_LINKS="$CAPPED/links" PIP_DISABLE_PIP_VERSION_CHECK=1
+}
+
+run_generate_capme() { # $1 = python-version
+	CAPME_CONFIG="$TEST_TEMP_DIR/capme.yml"
+	CAPME_OUTPUT="$TEST_TEMP_DIR/capme.rb"
+	cat >"$CAPME_CONFIG" <<YAML
+---
+package: capme
+source-repo: lgtm-hq/capme
+homepage: https://github.com/lgtm-hq/capme
+license: MIT
+description: "Fixture package whose dependency supports one Python only"
+
+formulas:
+  capme:
+    type: pypi
+    generate-resources: true
+    python-version: "$1"
+    test-command: "capme --version"
+YAML
+	run bash "$SCRIPTS_DIR/generate-pypi-formula.sh" \
+		--config "$CAPME_CONFIG" \
+		--formula-key capme \
+		--version 0.1.0 \
+		--output "$CAPME_OUTPUT"
+}
+
+@test "generate-pypi-formula: a dependency capped to the formula's Python resolves whatever the host runs" {
+	# The reported failure (#633): pip applied a dependency's Requires-Python
+	# against the generator host's interpreter. capdep only installs on
+	# Python 3.13, so this passes only when pip runs under the configured 3.13.
+	make_capped_fixtures
+
+	run_generate_capme "3.13"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Analysis environment: Python 3.13"* ]]
+	grep -q 'depends_on "python@3.13"' "$CAPME_OUTPUT"
+	grep -q 'resource "capdep" do' "$CAPME_OUTPUT"
+}
+
+@test "generate-pypi-formula: the same dependency is refused when the formula declares another Python" {
+	# Proof that the configured interpreter, not the host's, decides: the
+	# identical fixture must fail for a 3.14 formula on every host.
+	make_capped_fixtures
+
+	run_generate_capme "3.14"
+
+	[ "$status" -ne 0 ]
+	# pip's own reason, so a failure for any other cause does not pass this.
+	[[ "$output" == *"capdep"* ]]
+	[[ "$output" == *"requires a different Python"* ]]
+	[[ "$output" == *"pip could not install capme and its dependencies under Python 3.14"* ]]
+	[ ! -f "$CAPME_OUTPUT" ]
+}

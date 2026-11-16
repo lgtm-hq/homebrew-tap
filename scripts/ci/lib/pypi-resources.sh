@@ -58,9 +58,32 @@ generate_pinned_resources() {
 		[[ -n "$line" ]] && wheel_pkgs+=("$line")
 	done < <(python3 -c "import json, sys; print('\n'.join(json.loads(sys.argv[1]).keys()))" "$wheel_packages_json")
 
+	# The dependency closure is resolved under the interpreter the formula
+	# installs with (python-version in the product config), never under
+	# whatever python3 the generator host happens to provide. pip applies
+	# each release's Requires-Python against this interpreter, so a host on a
+	# newer Python must not decide which versions are pinned. See #633.
 	local analysis_venv="$out_dir/analysis-venv"
-	log_info "Creating temporary venv for dependency analysis..."
-	python3 -m venv "$analysis_venv"
+	if ! [[ "$python_version" =~ ^[0-9]+\.[0-9]+$ ]]; then
+		log_error "python-version must be MAJOR.MINOR (got '${python_version}')"
+		return 1
+	fi
+	if ! command -v uv >/dev/null 2>&1; then
+		log_error "uv is required to create the Python ${python_version} analysis environment"
+		return 1
+	fi
+	log_info "Creating temporary venv for dependency analysis (Python ${python_version})..."
+	if ! uv venv --quiet --seed --python "$python_version" "$analysis_venv"; then
+		log_error "Could not create a Python ${python_version} environment for dependency analysis"
+		return 1
+	fi
+	local analysis_python
+	analysis_python=$("$analysis_venv/bin/python" -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+	if [[ "$analysis_python" != "$python_version" ]]; then
+		log_error "Analysis environment runs Python ${analysis_python}, but the formula declares ${python_version}"
+		return 1
+	fi
+	log_info "Analysis environment: Python ${analysis_python}"
 
 	# pip accepts extras on a local archive path ("pkg.tar.gz[extra]"), so
 	# the extras' dependency closure is part of the analysed tree.
@@ -69,7 +92,10 @@ generate_pinned_resources() {
 		install_target="${tarball_file}[${extras}]"
 	fi
 	log_info "Installing ${package} from tarball..."
-	"$analysis_venv/bin/pip" install --quiet "$install_target"
+	if ! "$analysis_venv/bin/pip" install --quiet "$install_target"; then
+		log_error "pip could not install ${package} and its dependencies under Python ${python_version} (pip error above)"
+		return 1
+	fi
 
 	local exclude_args=()
 	local pkg
@@ -88,7 +114,8 @@ generate_pinned_resources() {
 		platform_machine="x86_64"
 	fi
 	local generate_args=("$script_dir/generate_resources.py" "$package"
-		--platform-machine "$platform_machine")
+		--platform-machine "$platform_machine"
+		--python-version "$python_version")
 	if [[ -n "$extras" ]]; then
 		generate_args+=(--extras "$extras")
 	fi

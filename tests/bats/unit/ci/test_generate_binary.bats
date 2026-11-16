@@ -185,11 +185,13 @@ run_generate() { # $1 = binary-assets json, rest = extra args
 
 # pinme fixture: click (always), mdurl (only via the mcp extra) and idna
 # (only on macOS x86_64, so never installed in the analysis venv).
-write_pinme_config() { # $1 = extras yaml list ("" for none)
+write_pinme_config() { # $1 = extras yaml list ("" for none), $2 = python-version (default 3.13)
+	local pinme_python="${2:-3.13}"
 	CONFIG="$TEST_TEMP_DIR/pinme-binary.yml"
 	cp "$REPO_ROOT/tests/fixtures/pypi/pinme-0.1.0.json" \
 		"$REPO_ROOT/tests/fixtures/pypi/mdurl-0.1.2.json" \
 		"$REPO_ROOT/tests/fixtures/pypi/idna-3.19.json" \
+		"$REPO_ROOT/tests/fixtures/pypi/idna-3.21.json" \
 		"$REPO_ROOT/tests/fixtures/pypi/idna.json" "$FIXTURES/pypi/"
 	cp "$REPO_ROOT/tests/fixtures/sdist/pinme-0.1.0.tar.gz" "$FIXTURES/sdist/"
 	printf 'pinme binary\n' >"$FIXTURES/assets/pinme-macos-arm64"
@@ -212,7 +214,7 @@ formulas:
       arm64: pinme-macos-arm64
     install-name: pinme
     intel-pypi:
-      python-version: "3.13"
+      python-version: "${pinme_python}"
 ${1}
 YAML
 }
@@ -315,6 +317,54 @@ PY
 	[[ "$output" == *"Resolved idna==3.19 from PyPI"* ]]
 	! grep -q 'idna-3.21' "$OUTPUT_FILE"
 	grep -q 'idna-3.19.tar.gz' "$OUTPUT_FILE"
+}
+
+@test "generate-binary-formula: the dependency closure is resolved under the formula's python-version" {
+	# The analysis environment must run the configured interpreter whatever
+	# python3 the generator host provides: pip applies Requires-Python
+	# against it, so a newer host must not decide which versions are pinned
+	# (winnow 0.37.7 failed on a 3.15 host although its formula installs on
+	# 3.13). See #633.
+	write_pinme_config ""
+
+	run_generate_pinme
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Creating temporary venv for dependency analysis (Python 3.13)"* ]]
+	[[ "$output" == *"Analysis environment: Python 3.13"* ]]
+}
+
+@test "generate-binary-formula: a different python-version changes both the environment and the PyPI resolution" {
+	# idna 3.21 only ships files with requires_python >=3.14. A formula on
+	# 3.14 must therefore pin 3.21 where the 3.13 formula above falls back
+	# to 3.19; a resolver that hardcodes 3.13 would still pick 3.19.
+	write_pinme_config "" "3.14"
+
+	run_generate_pinme
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Analysis environment: Python 3.14"* ]]
+	[[ "$output" != *"no sdist accepts Python 3.13.0"* ]]
+	grep -q 'depends_on "python@3.14"' "$OUTPUT_FILE"
+	grep -q 'idna-3.21.tar.gz' "$OUTPUT_FILE"
+	! grep -q 'idna-3.19' "$OUTPUT_FILE"
+}
+
+@test "generate-binary-formula: an interpreter that cannot be provided fails closed" {
+	write_pinme_config "" "3.99"
+
+	run_generate_pinme
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Could not create a Python 3.99 environment for dependency analysis"* ]]
+	[ ! -f "$OUTPUT_FILE" ]
+}
+
+@test "generate_resources: --python-version must be MAJOR.MINOR" {
+	run python3 "$SCRIPTS_DIR/generate_resources.py" pinme --python-version 3
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"--python-version must be MAJOR.MINOR"* ]]
 }
 
 @test "generate-binary-formula: Intel homebrew-deps render sorted with the Python dependency" {

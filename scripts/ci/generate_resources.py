@@ -25,6 +25,7 @@ specifier is pinned and its own requirements are walked the same way.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from importlib.metadata import distributions
 from typing import Any
@@ -38,6 +39,9 @@ from pypi_utils import fetch_pypi_json, get_sdist_info, normalize_name
 # Homebrew macOS Python formula install environment for marker evaluation.
 # platform_machine is set per run (--platform-machine): arm64 for Apple
 # silicon formulas, x86_64 for the Intel branch of a binary formula.
+# python_version and python_full_version are set per run (--python-version)
+# from the formula's configured python-version; the values below are only
+# the defaults for a direct invocation.
 TARGET_ENV: dict[str, str] = {
     "python_version": "3.13",
     "python_full_version": "3.13.0",
@@ -355,9 +359,23 @@ def main() -> None:
         default=TARGET_ENV["platform_machine"],
         help="Target platform_machine for marker evaluation (arm64 or x86_64)",
     )
+    parser.add_argument(
+        "--python-version",
+        default=TARGET_ENV["python_version"],
+        help=(
+            "Target Python MAJOR.MINOR the formula installs with; used for "
+            "marker evaluation and the sdist requires_python check"
+        ),
+    )
     args = parser.parse_args()
 
+    if not re.fullmatch(r"\d+\.\d+", args.python_version):
+        parser.error(
+            f"--python-version must be MAJOR.MINOR (got {args.python_version!r})",
+        )
     TARGET_ENV["platform_machine"] = args.platform_machine
+    TARGET_ENV["python_version"] = args.python_version
+    TARGET_ENV["python_full_version"] = f"{args.python_version}.0"
     exclude: set[str] = {normalize_name(name) for name in args.exclude}
     main_package = normalize_name(args.package)
     exclude.add(main_package)

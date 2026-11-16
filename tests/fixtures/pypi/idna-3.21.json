@@ -1,0 +1,34 @@
+{
+  "info": {
+    "name": "idna",
+    "version": "3.21",
+    "requires_dist": [
+      "ruff>=0.16.0; extra == \"all\"",
+      "mypy>=1.11.2; extra == \"all\"",
+      "ty>=0.0.37; extra == \"all\"",
+      "pytest>=8.3.2; extra == \"all\"",
+      "hypothesis>=6.141.1; extra == \"all\"",
+      "coverage>=7.10.0; extra == \"all\""
+    ]
+  },
+  "urls": [
+    {
+      "packagetype": "bdist_wheel",
+      "filename": "idna-3.21-py3-none-any.whl",
+      "requires_python": ">=3.14",
+      "url": "https://files.pythonhosted.org/packages/fx/21/idna-3.21-py3-none-any.whl",
+      "digests": {
+        "sha256": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+      }
+    },
+    {
+      "packagetype": "sdist",
+      "filename": "idna-3.21.tar.gz",
+      "requires_python": ">=3.14",
+      "url": "https://files.pythonhosted.org/packages/fx/21/idna-3.21.tar.gz",
+      "digests": {
+        "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      }
+    }
+  ]
+}
