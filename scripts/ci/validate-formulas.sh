@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# validate-formulas.sh - Validate all Homebrew formulas in this tap
+# validate-formulas.sh - Validate the Homebrew formulas in this tap
 #
 # Performs: style checking, source installation, strict audit, and verification
+#
+# Environment:
+#   FORMULAS  Optional space-separated formula names to validate; unset or
+#             empty validates every formula under Formula/.
 
 set -euo pipefail
 
@@ -44,6 +48,26 @@ formulas=("$REPO_ROOT"/Formula/*.rb)
 if [[ ${#formulas[@]} -eq 0 ]]; then
 	log_error "No formulas found in $REPO_ROOT/Formula"
 	exit 1
+fi
+
+# FORMULAS narrows the run to the named formulas (space-separated), as chosen
+# by detect-formula-changes.sh for a push (#661). Unset or empty validates
+# every formula (pull requests, merge queue, dispatch, scheduled validation).
+FORMULAS="${FORMULAS:-}"
+read -r -a requested <<<"$FORMULAS"
+if [[ ${#requested[@]} -gt 0 ]]; then
+	formulas=()
+	for name in "${requested[@]}"; do
+		if [[ ! "$name" =~ ^[a-z0-9][a-z0-9+_.@-]*$ ]] ||
+			[[ ! -f "$REPO_ROOT/Formula/$name.rb" ]]; then
+			log_error "Requested formula not found: Formula/$name.rb"
+			exit 1
+		fi
+		formulas+=("$REPO_ROOT/Formula/$name.rb")
+	done
+	log_info "Validating selected formulas: ${requested[*]}"
+else
+	log_info "Validating every formula"
 fi
 
 # Style check

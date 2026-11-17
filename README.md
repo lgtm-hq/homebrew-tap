@@ -170,7 +170,11 @@ harden-runner allowlist.
 Formula CI (`validate-homebrew-formula.yml`) installs every formula from source,
 runs `brew audit --strict --online`, `brew test` and a `--version` smoke check;
 a formula that does not install fails the run. Accepted audit findings are
-listed explicitly in `scripts/ci/validate-formulas.sh`.
+listed explicitly in `scripts/ci/validate-formulas.sh`. Pull requests, the merge
+queue, manual runs and the weekly `scheduled-validation.yml` validate every
+formula; a push to `main` validates only the formulas it changed (a formula
+file, or every formula from a changed `formulas/*.yml`), and every formula when
+it changes shared scripts or workflows (`scripts/ci/detect-formula-changes.sh`).
 
 ### Dispatch contract (caller repos)
 
