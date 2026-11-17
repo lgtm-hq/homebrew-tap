@@ -89,7 +89,7 @@ teardown() {
 	export HEAD_SHA='merge-head'
 	export LGTM_CI_RUNNER='custom-ubuntu-runner'
 	git() {
-		[ "$*" = 'diff --name-only merge-base...merge-head' ] || return 1
+		[ "$*" = '-c core.quotePath=false diff --name-only --no-renames merge-base...merge-head' ] || return 1
 		printf '%s\n' README.md
 	}
 	export -f git
@@ -196,6 +196,8 @@ make_git_repo() {
 		scripts/ci/generate-pypi-formula.sh \
 		scripts/ci/validate-formulas.sh \
 		scripts/ci/lib/local-tap.sh \
+		scripts/ci/lib/config-formula-keys.awk \
+		.gitattributes \
 		.github/workflows/validate-homebrew-formula.yml \
 		.github/workflows/update-formula.yml; do
 		: >"$GITHUB_OUTPUT"
@@ -229,8 +231,9 @@ make_git_repo() {
 
 @test "detect-formula-changes: config key without a formula file validates all" {
 	local tap="$TEST_TEMP_DIR/tap"
-	mkdir -p "$tap/scripts/ci" "$tap/Formula" "$tap/formulas"
+	mkdir -p "$tap/scripts/ci/lib" "$tap/Formula" "$tap/formulas"
 	cp "$REPO_ROOT/scripts/ci/detect-formula-changes.sh" "$tap/scripts/ci/"
+	cp "$REPO_ROOT/scripts/ci/lib/config-formula-keys.awk" "$tap/scripts/ci/lib/"
 	: >"$tap/Formula/alpha.rb"
 	cat >"$tap/formulas/alpha.yml" <<'YAML'
 ---
@@ -316,8 +319,14 @@ YAML
 
 	# Every tracked file either selects formulas or is a known non-formula
 	# path. A new kind of formula source (a new directory, a cask, a config
-	# outside formulas/) fails here until the selection maps it.
-	local non_formula='^(\.github/|tests/|[^/]+\.md$|LICENSE$|\.[^/]+$|pyproject\.toml$|uv\.lock$|renovate\.json$)'
+	# outside formulas/), a new action or reusable workflow, or a new dotfile
+	# fails here until the selection maps it or this list names it.
+	# pyproject.toml and uv.lock feed only the generator; validation checks
+	# the committed formula files and calls no Python.
+	local non_formula='^(tests/|[^/]+\.md$|LICENSE$|pyproject\.toml$|uv\.lock$|renovate\.json$'
+	non_formula+='|\.github/(CODEOWNERS|PULL_REQUEST_TEMPLATE\.md|actionlint\.yaml)$'
+	non_formula+='|\.github/workflows/(ai-review|all-checks-gate|ci|deploy-pages|merge-release-bot-pr|pr-auto-assign|scheduled-validation)\.yml$'
+	non_formula+='|\.(gitignore|lintro-config\.yaml|lintro-ignore|markdownlint-cli2\.jsonc|prettierignore|prettierrc\.json|shellcheckrc|typos\.toml|yamllint)$)'
 	while IFS= read -r path; do
 		: >"$GITHUB_OUTPUT"
 		run_push "$path"
@@ -355,4 +364,316 @@ YAML
 		name="$(basename "$formula" .rb)"
 		[[ " $covered " == *" $name "* ]]
 	done
+}
+
+# =============================================================================
+# Real git history: renames, quoted names, several commits, merges
+# =============================================================================
+
+# Build a temporary tap repository with the real selection script, formulas
+# and configs, so REPO_ROOT inside the script is the temporary repository.
+make_tap_repo() {
+	GIT_REPO="$TEST_TEMP_DIR/tap-repo"
+	mkdir -p "$GIT_REPO/scripts/ci/lib" "$GIT_REPO/Formula" "$GIT_REPO/formulas"
+	cp "$REPO_ROOT/scripts/ci/detect-formula-changes.sh" "$GIT_REPO/scripts/ci/"
+	cp "$REPO_ROOT/scripts/ci/lib/config-formula-keys.awk" "$GIT_REPO/scripts/ci/lib/"
+	cp "$REPO_ROOT"/Formula/*.rb "$GIT_REPO/Formula/"
+	cp "$REPO_ROOT"/formulas/*.yml "$GIT_REPO/formulas/"
+	echo helper >"$GIT_REPO/scripts/ci/helper.sh"
+	echo readme >"$GIT_REPO/README.md"
+	cd "$GIT_REPO"
+	git init -q
+	git checkout -qb main
+	git config user.email test@example.com
+	git config user.name test
+	git config commit.gpgsign false
+	git add -A
+	git commit -qm base
+	BASE_COMMIT="$(git rev-parse HEAD)"
+}
+
+# Run the temporary repository's script for a push from the given commit.
+run_tap_push() {
+	export EVENT_NAME=push
+	export PUSH_BEFORE="$1"
+	run bash "$GIT_REPO/scripts/ci/detect-formula-changes.sh"
+}
+
+# Run the temporary repository's script for a pull request from BASE_COMMIT.
+run_tap_pull_request() {
+	export EVENT_NAME=pull_request
+	export BASE_SHA="$BASE_COMMIT"
+	HEAD_SHA="$(git rev-parse HEAD)"
+	export HEAD_SHA
+	run bash "$GIT_REPO/scripts/ci/detect-formula-changes.sh"
+}
+
+@test "detect-formula-changes: moving a formula out of Formula/ validates all" {
+	make_tap_repo
+	mkdir attic
+	git mv Formula/winnow.rb attic/winnow.rb
+	git commit -qm move
+	run_tap_push "$BASE_COMMIT"
+	assert_all
+}
+
+@test "detect-formula-changes: moving a script out of scripts/ validates all" {
+	make_tap_repo
+	mkdir tools
+	git mv scripts/ci/helper.sh tools/helper.sh
+	git commit -qm move
+	run_tap_push "$BASE_COMMIT"
+	assert_all
+}
+
+@test "detect-formula-changes: moving a config out of formulas/ validates all" {
+	make_tap_repo
+	mkdir docs
+	git mv formulas/winnow.yml docs/winnow.yml
+	git commit -qm move
+	run_tap_push "$BASE_COMMIT"
+	assert_all
+}
+
+@test "detect-formula-changes: renaming a formula inside Formula/ validates all" {
+	make_tap_repo
+	git mv Formula/winnow.rb Formula/winnow-next.rb
+	git commit -qm rename
+	run_tap_push "$BASE_COMMIT"
+	assert_all
+}
+
+@test "detect-formula-changes: pull request moving a formula out validates all" {
+	make_tap_repo
+	mkdir attic
+	git mv Formula/winnow.rb attic/winnow.rb
+	git commit -qm move
+	run_tap_pull_request
+	assert_all
+}
+
+@test "detect-formula-changes: non-ASCII formula path validates all" {
+	make_tap_repo
+	echo x >"Formula/caf$(printf '\303\251').rb"
+	git add -A
+	git commit -qm accent
+	run_tap_push "$BASE_COMMIT"
+	assert_all
+}
+
+@test "detect-formula-changes: path git still quotes validates all" {
+	make_tap_repo
+	echo x >'Formula/a"b.rb'
+	git add -A
+	git commit -qm quote
+	# Even with core.quotePath=false git quotes this name.
+	[[ "$(git -c core.quotePath=false diff --name-only "$BASE_COMMIT" HEAD)" == \"* ]]
+	run_tap_push "$BASE_COMMIT"
+	assert_all
+}
+
+@test "detect-formula-changes: pull request with a non-ASCII path validates all" {
+	make_tap_repo
+	echo x >"scripts/caf$(printf '\303\251').sh"
+	git add -A
+	git commit -qm accent
+	run_tap_pull_request
+	assert_all
+}
+
+@test "detect-formula-changes: pull request with a quoted path validates all" {
+	make_tap_repo
+	echo x >'notes "draft".txt'
+	git add -A
+	git commit -qm quote
+	run_tap_pull_request
+	assert_all
+}
+
+@test "detect-formula-changes: push of several commits validates every package" {
+	make_tap_repo
+	echo '# change' >>Formula/winnow.rb
+	git commit -qam winnow
+	echo '# change' >>formulas/lintro.yml
+	git commit -qam lintro
+	echo more >>README.md
+	git commit -qam docs
+	run_tap_push "$BASE_COMMIT"
+	assert_selected "lintro lintro-full winnow"
+}
+
+@test "detect-formula-changes: push of a merge commit validates the merged change" {
+	make_tap_repo
+	git checkout -qb side
+	echo '# change' >>Formula/lintro.rb
+	git commit -qam lintro
+	git checkout -q main
+	echo '# change' >>Formula/winnow.rb
+	git commit -qam winnow
+	local winnow_commit
+	winnow_commit="$(git rev-parse HEAD)"
+	git merge -q --no-ff -m merge side
+
+	# The push carries the winnow commit and the merge.
+	run_tap_push "$BASE_COMMIT"
+	assert_selected "lintro winnow"
+
+	# winnow was already pushed; the push carries only the merge.
+	: >"$GITHUB_OUTPUT"
+	run_tap_push "$winnow_commit"
+	assert_selected "lintro"
+}
+
+@test "detect-formula-changes: config the awk reader rejects validates all" {
+	make_tap_repo
+	printf 'formulas:\n  lintro: {}\n  ? lintro-full\n  : {}\n' >formulas/lintro.yml
+	git commit -qam explicit-key
+	run_tap_push "$BASE_COMMIT"
+	assert_all
+}
+
+# =============================================================================
+# config-formula-keys.awk
+# =============================================================================
+
+AWK_READER_REL="scripts/ci/lib/config-formula-keys.awk"
+
+# Print every awk implementation installed here, one command per line.
+available_awks() {
+	local impl
+	for impl in awk gawk mawk; do
+		if command -v "$impl" >/dev/null 2>&1; then
+			echo "$impl"
+		fi
+	done
+	if command -v busybox >/dev/null 2>&1 &&
+		busybox awk 'BEGIN { exit 0 }' >/dev/null 2>&1; then
+		echo "busybox awk"
+	fi
+	return 0
+}
+
+# Read a config with one awk implementation; prints the sorted keys, or ALL
+# when the reader rejects the layout or finds no key.
+read_keys_with() {
+	local impl="$1" file="$2" keys
+	local -a cmd
+	read -r -a cmd <<<"$impl"
+	if ! keys="$("${cmd[@]}" -f "$REPO_ROOT/$AWK_READER_REL" "$file")" ||
+		[ -z "$keys" ]; then
+		echo ALL
+		return 0
+	fi
+	printf '%s\n' "$keys" | LC_ALL=C sort -u | tr '\n' ' ' | sed 's/ $//'
+}
+
+# Assert every installed awk reads the config text in $1 as $2.
+assert_awk_reads() {
+	local file="$TEST_TEMP_DIR/config.yml" impl actual
+	printf '%s' "$1" >"$file"
+	while IFS= read -r impl; do
+		actual="$(read_keys_with "$impl" "$file")"
+		[ "$actual" = "$2" ] || {
+			echo "$impl read '$actual', expected '$2' from:" >&2
+			cat -A "$file" >&2 2>/dev/null || cat "$file" >&2
+			return 1
+		}
+	done < <(available_awks)
+}
+
+@test "config-formula-keys: reports which awk implementations ran" {
+	local impls
+	impls="$(available_awks | tr '\n' ',' | sed 's/,$//')"
+	[ -n "$impls" ]
+	echo "# config-formula-keys.awk tested with: $impls" >&3
+}
+
+@test "config-formula-keys: reads the plain layout" {
+	assert_awk_reads $'---\npackage: alpha\nformulas:\n  # comment\n  alpha:\n    type: pypi\n\n  alpha-full:\n    extras:\n      - mcp\nother: 1\n' \
+		"alpha alpha-full"
+	assert_awk_reads $'formulas:\n    alpha: {}\n    beta:\n      test: |\n        beta-2:\n        "x\n' \
+		"alpha beta"
+}
+
+@test "config-formula-keys: reads the committed configs" {
+	local path impl
+	for path in "$REPO_ROOT"/formulas/*.yml; do
+		while IFS= read -r impl; do
+			[ "$(read_keys_with "$impl" "$path")" != ALL ]
+		done < <(available_awks)
+	done
+}
+
+@test "config-formula-keys: explicit-key mapping falls back to all" {
+	assert_awk_reads $'formulas:\n  lintro: {}\n  ? lintro-full\n  : {}\n' ALL
+}
+
+@test "config-formula-keys: key line without a colon falls back to all" {
+	assert_awk_reads $'formulas:\n  lintro: {}\n  lintro-full\n    : {}\n' ALL
+	assert_awk_reads $'formulas:\n  lintro: {}\n  lintro-full\n  : {}\n' ALL
+}
+
+@test "config-formula-keys: tab indentation falls back to all" {
+	assert_awk_reads $'formulas:\n  lintro: {}\n\tlintro-full: {}\n' ALL
+	assert_awk_reads $'formulas:\n\tlintro: {}\n' ALL
+	assert_awk_reads $'formulas:\n  lintro:\n  \ttype: pypi\n' ALL
+}
+
+@test "config-formula-keys: multi-document file falls back to all" {
+	assert_awk_reads $'---\nformulas:\n  lintro: {}\n---\nformulas:\n  winnow: {}\n' ALL
+	assert_awk_reads $'formulas:\n  lintro: {}\n...\n' ALL
+	assert_awk_reads $'%YAML 1.1\n---\nformulas:\n  lintro: {}\n' ALL
+}
+
+@test "config-formula-keys: other unsupported layouts fall back to all" {
+	local text
+	for text in \
+		$'formulas: {lintro: {}}\n' \
+		$'formulas: !!omap\n  - lintro: {}\n' \
+		$'formulas: &f\n  lintro: {}\n' \
+		$'formulas:\n  - lintro\n' \
+		$'formulas:\n  "lintro": {}\n' \
+		$'formulas:\n  lintro :\n' \
+		$'formulas:\n  true: {}\n' \
+		$'formulas:\n  010: {}\n' \
+		$'formulas:\n  lintro: {}\n winnow: {}\n' \
+		$'formulas:\n  lintro: {}\nformulas:\n  winnow: {}\n' \
+		$'formulas:\n  lintro:\n    desc: "one\n  winnow: two"\n' \
+		$'formulas:\n  lintro:\n    extras: [a,\n  winnow: b]\n' \
+		$'formulas:\n  lintro: {}\n  <<: {winnow: {}}\n' \
+		$'formulas:\r\n  lintro: {}\r\n' \
+		$'"formulas":\n  lintro: {}\n' \
+		$'formulas:\n' \
+		$'package: x\n'; do
+		assert_awk_reads "$text" ALL
+	done
+}
+
+@test "config-formula-keys: matches read_formula_config.py or falls back to all" {
+	ensure_test_python_deps "$REPO_ROOT"
+	local cases="$TEST_TEMP_DIR/cases" manifest="$TEST_TEMP_DIR/manifest.tsv"
+	local file plain expected impl actual exact=0 fallback=0 failures=0
+	mkdir -p "$cases"
+	python3 "$REPO_ROOT/tests/helpers/awk_reader_property.py" \
+		"$REPO_ROOT/scripts/ci/read_formula_config.py" "$cases" >"$manifest"
+	[ "$(wc -l <"$manifest")" -ge 500 ]
+
+	# Same set as Python, or every formula; a plain layout must match exactly,
+	# and a file Python rejects must fall back to every formula.
+	while IFS=$'\t' read -r file plain expected; do
+		while IFS= read -r impl; do
+			actual="$(read_keys_with "$impl" "$cases/$file")"
+			if [ "$actual" = ALL ] && [ "$plain" = 0 ]; then
+				fallback=$((fallback + 1))
+			elif [ "$actual" != ALL ] && [ "$actual" = "$expected" ]; then
+				exact=$((exact + 1))
+			else
+				failures=$((failures + 1))
+				echo "$file [$impl]: awk '$actual', python '$expected'" >&2
+			fi
+		done < <(available_awks)
+	done <"$manifest"
+	echo "# awk reader: $exact exact, $fallback fell back to all, $failures failures" >&3
+	[ "$failures" -eq 0 ]
+	[ "$exact" -gt 0 ]
 }

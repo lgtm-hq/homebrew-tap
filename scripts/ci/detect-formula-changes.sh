@@ -16,10 +16,14 @@
 #       from the push's `before` commit:
 #         Formula/<name>.rb          -> <name>
 #         formulas/<config>.yml      -> every formula key under its `formulas:`
-#         shared files (scripts/, the validation and update workflows), any
-#         other path under Formula/ or formulas/, a deleted formula or config,
-#         or a config key without a Formula/<key>.rb  -> every formula
+#         shared files (scripts/, .gitattributes, the validation and update
+#         workflows), any other path under Formula/ or formulas/, a deleted
+#         formula or config, a config key without a Formula/<key>.rb, a
+#         config layout the awk reader does not accept, or a path git prints
+#         quoted                     -> every formula
+#         pyproject.toml, uv.lock    -> nothing (see SHARED_PATH_REGEX)
 #         anything else              -> nothing
+#       Renames and moves count as a deletion plus an addition.
 #       An empty or all-zero `before` (first push), or one that is not an
 #       ancestor of HEAD (force-push) or not in the clone, validates every
 #       formula.
@@ -55,10 +59,15 @@ BASE_SHA="${BASE_SHA:-}"
 HEAD_SHA="${HEAD_SHA:-HEAD}"
 
 # Paths whose changes require formula validation (pull requests: all of it).
-FORMULA_PATH_REGEX='^(Formula/|formulas/|scripts/|\.github/workflows/(validate-homebrew-formula|update-formula)\.yml$)'
+FORMULA_PATH_REGEX='^(Formula/|formulas/|scripts/|\.gitattributes$|\.github/workflows/(validate-homebrew-formula|update-formula)\.yml$)'
 # Shared paths that can affect every formula: the generator, its templates and
-# scripts, the validation scripts and the workflows that run them.
-SHARED_PATH_REGEX='^(scripts/|\.github/workflows/(validate-homebrew-formula|update-formula)\.yml$)'
+# scripts, the validation scripts and the workflows that run them, and
+# .gitattributes, which decides the bytes of every checked-out formula.
+# pyproject.toml and uv.lock are deliberately absent: they feed only the
+# generator, validation checks the committed Formula/*.rb files and calls no
+# Python, and a formula the generator rewrites is validated when that rewrite
+# is pushed.
+SHARED_PATH_REGEX='^(scripts/|\.gitattributes$|\.github/workflows/(validate-homebrew-formula|update-formula)\.yml$)'
 # Formula names that are safe to pass on as data.
 FORMULA_NAME_REGEX='^[a-z0-9][a-z0-9+_.@-]*$'
 
@@ -82,27 +91,23 @@ emit_all() {
 }
 
 # Print the formula keys under the top-level `formulas:` mapping of a product
-# config, one per line. Reads the indentation of the first key and lists every
-# key at that indentation until the next top-level key.
+# config, one per line. Fails (status 2, no output) for any layout the awk
+# reader does not understand; the caller then validates every formula.
 config_formula_keys() {
-	awk '
-		/^formulas:[[:space:]]*$/ { inside = 1; next }
-		inside && /^[^[:space:]#]/ { inside = 0 }
-		inside && /^[[:space:]]+[^[:space:]#][^:]*:/ {
-			match($0, /^[[:space:]]+/)
-			if (indent == 0) { indent = RLENGTH }
-			if (RLENGTH == indent) {
-				key = $0
-				sub(/^[[:space:]]+/, "", key)
-				sub(/:.*$/, "", key)
-				print key
-			}
-		}
-	' "$1"
+	awk -f "$SCRIPT_DIR/lib/config-formula-keys.awk" "$1"
 }
 
 formula_exists() {
 	[[ "$1" =~ $FORMULA_NAME_REGEX ]] && [[ -f "$REPO_ROOT/Formula/$1.rb" ]]
+}
+
+# List changed paths between two commits. --no-renames lists both sides of a
+# rename or move (git shows only the destination otherwise, so moving a file
+# out of Formula/ or scripts/ would select nothing), and core.quotePath=false
+# prints non-ASCII names as-is instead of quoted, which would defeat the ^
+# anchors below. Names git still quotes select every formula on a push.
+changed_paths() {
+	git -c core.quotePath=false diff --name-only --no-renames "$@"
 }
 
 # Map changed paths to formula names, one per line, or print $ALL when the
@@ -111,7 +116,12 @@ select_formulas() {
 	local path name key keys
 	while IFS= read -r path; do
 		[[ -z "$path" ]] && continue
-		if [[ "$path" =~ $SHARED_PATH_REGEX ]]; then
+		# git still quotes a name with a double quote, backslash or control
+		# character; such a path cannot be matched reliably.
+		if [[ "$path" == \"* ]]; then
+			echo "$ALL"
+			return 0
+		elif [[ "$path" =~ $SHARED_PATH_REGEX ]]; then
 			echo "$ALL"
 			return 0
 		elif [[ "$path" =~ ^Formula/([^/]+)\.rb$ ]]; then
@@ -126,7 +136,7 @@ select_formulas() {
 				echo "$ALL"
 				return 0
 			}
-			keys="$(config_formula_keys "$REPO_ROOT/$path")"
+			keys="$(config_formula_keys "$REPO_ROOT/$path")" || keys=""
 			[[ -n "$keys" ]] || {
 				echo "$ALL"
 				return 0
@@ -156,7 +166,7 @@ if [[ "$EVENT_NAME" == "push" ]]; then
 	if [[ -n "${CHANGED_FILES:-}" ]]; then
 		changed="$CHANGED_FILES"
 	elif push_base_is_usable; then
-		changed="$(git diff --name-only "$PUSH_BEFORE" "$HEAD_SHA")"
+		changed="$(changed_paths "$PUSH_BEFORE" "$HEAD_SHA")"
 	else
 		emit_all "no usable push base (first push, force-push or unknown commit)"
 		exit 0
@@ -184,10 +194,11 @@ elif [[ -z "$BASE_SHA" ]]; then
 	emit_all "no base commit to compare against"
 	exit 0
 else
-	changed="$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")"
+	changed="$(changed_paths "${BASE_SHA}...${HEAD_SHA}")"
 fi
 
-if grep -qE "$FORMULA_PATH_REGEX" <<<"$changed"; then
+# A name git still quotes (see changed_paths) counts as formula-related.
+if grep -qE "$FORMULA_PATH_REGEX|^\"" <<<"$changed"; then
 	emit_all "formula-related files changed"
 else
 	emit "false" ""
