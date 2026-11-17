@@ -8,8 +8,8 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  url "https://files.pythonhosted.org/packages/99/0e/685efccf631d6bfc3ca87314685e2a7e38f76eb1f1ea091e8fb9ef6a367e/winnow_media-0.37.12.tar.gz"
-  sha256 "7cfa2009e44268046bbb4b65d15930d0dbc528a3932449090e1ebd77f7509ae7"
+  url "https://files.pythonhosted.org/packages/98/90/0e264d996b79cbc677175df9270b3700863e2a586ccdcd965abeb0903ceb/winnow_media-0.37.13.tar.gz"
+  sha256 "be4c73b3fd26b39b3532c03b51d084416f0d7c6abf5c840188568d93e7a2e7df"
   license "MIT"
 
   livecheck do
@@ -31,9 +31,9 @@ class Winnow < Formula
     sha256 "9bbfada76703fd1d784b83eea012e3e8c6a001a876543ef104fa56aaaeb072b4"
   end
 
-  resource "dynaconf" do
-    url "https://files.pythonhosted.org/packages/71/e4/723ba469856bb493c948985e5bd562c8a65f2b93e70c896e9764ab76de00/dynaconf-3.3.5.tar.gz"
-    sha256 "a08f6ab44025034ef3c9f86b32548ab01efd4039094a74bd9f028a43c63d016f"
+  resource "defusedxml" do
+    url "https://files.pythonhosted.org/packages/0f/d5/c66da9b79e5bdb124974bfe172b4daf3c984ebd9c2a06e2b8a4dc7331c72/defusedxml-0.7.1.tar.gz"
+    sha256 "1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69"
   end
 
   resource "exifread" do
@@ -94,6 +94,11 @@ class Winnow < Formula
   resource "tinytag" do
     url "https://files.pythonhosted.org/packages/38/0f/fae085b7f19fe0c67b68e6d70098ac6cd046cc498f253f5ee56a3dd03bbc/tinytag-2.3.2.tar.gz"
     sha256 "021d711cdbdbf840d3b67b976cb34dadc58d2fcfd490eb74ef9602b37b991414"
+  end
+
+  resource "tomli" do
+    url "https://files.pythonhosted.org/packages/c6/df/055cc5e3cd4bdbbd6f1a53187b6a65033d6258f9dfc6ea21902fd1fed015/tomli-2.3.2.tar.gz"
+    sha256 "ba6f699836c403252ae4a41ddaae9a30333bdac3fbb57b6ea28a50fffbb14d77"
   end
 
   resource "typing-extensions" do
