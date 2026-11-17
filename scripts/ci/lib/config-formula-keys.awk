@@ -250,7 +250,10 @@ BEGIN {
 }
 
 END {
-	if (rejected) {
+	# No top-level formulas: mapping, or one with no keys (empty, null or a
+	# sequence), is not the plain layout: refuse it here rather than rely on
+	# the caller reading empty output as "validate every formula".
+	if (rejected || !seen_formulas || count == 0) {
 		exit 2
 	}
 	for (i = 1; i <= count; i++) {

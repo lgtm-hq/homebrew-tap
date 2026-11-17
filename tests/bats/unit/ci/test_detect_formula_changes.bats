@@ -677,3 +677,21 @@ assert_awk_reads() {
 	[ "$failures" -eq 0 ]
 	[ "$exact" -gt 0 ]
 }
+
+@test "config-formula-keys: a config without formula keys exits 2" {
+	local file="$TEST_TEMP_DIR/config.yml" impl text status
+	local -a cmd
+	for text in "" $'other: 1\n' $'formulas:\n' $'formulas:\n- lintro\n' \
+		$'formulas: null\n' $'# only a comment\n'; do
+		printf '%s' "$text" >"$file"
+		while IFS= read -r impl; do
+			read -r -a cmd <<<"$impl"
+			status=0
+			"${cmd[@]}" -f "$REPO_ROOT/$AWK_READER_REL" "$file" >/dev/null || status=$?
+			[ "$status" -eq 2 ] || {
+				echo "$impl exited $status, expected 2, for: $text" >&2
+				return 1
+			}
+		done < <(available_awks)
+	done
+}
