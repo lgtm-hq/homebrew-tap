@@ -167,14 +167,27 @@ lgtm-hq/py-lintro#2562. `gh attestation verify` needs egress to `api.github.com`
 and `tuf-repo-cdn.sigstore.dev`; both are in the `update-formula.yml`
 harden-runner allowlist.
 
-Formula CI (`validate-homebrew-formula.yml`) installs every formula from source,
-runs `brew audit --strict --online`, `brew test` and a `--version` smoke check;
-a formula that does not install fails the run. Accepted audit findings are
-listed explicitly in `scripts/ci/validate-formulas.sh`. Pull requests, the merge
-queue, manual runs and the weekly `scheduled-validation.yml` validate every
-formula; a push to `main` validates only the formulas it changed (a formula
-file, or every formula from a changed `formulas/*.yml`), and every formula when
-it changes shared scripts or workflows (`scripts/ci/detect-formula-changes.sh`).
+Formula CI (`validate-homebrew-formula.yml`) installs each validated formula
+from source, runs `brew audit --strict --online`, `brew test` and a `--version`
+smoke check; a formula that does not install fails the run. Accepted audit
+findings are listed explicitly in `scripts/ci/validate-formulas.sh`.
+`scripts/ci/detect-formula-changes.sh` decides what a run validates:
+
+- Pull requests and the merge queue validate every formula when a
+  formula-related path changed (`Formula/`, `formulas/`, `scripts/`,
+  `.gitattributes`, the validation and update workflows), and nothing otherwise.
+- Manual runs and the weekly `scheduled-validation.yml` validate every formula.
+- A push to `main` validates only the formulas it changed: a formula file
+  selects that formula, a `formulas/*.yml` selects every key it defines. Shared
+  scripts or workflows, a deleted, moved or renamed formula-related file, a
+  config layout the shell reader does not understand, or a first or force-pushed
+  `main` select every formula. `pyproject.toml` and `uv.lock` select nothing:
+  they feed only the generator, and a formula it rewrites is validated when that
+  rewrite is pushed.
+
+If a push's validation fails or times out, a later push that changes a different
+formula does not validate it again; the failed run stays red and the weekly full
+run covers it.
 
 ### Dispatch contract (caller repos)
 
