@@ -298,3 +298,20 @@ log_line_number() {
 	[[ "$output" == *"Requested formula not found: Formula/../escape.rb"* ]]
 	! grep -q "^install " "$MOCK_BREW_LOG"
 }
+
+@test "validate-formulas: FORMULAS with a newline fails before installing" {
+	local value
+	# `read` stops at the newline: lintro would be dropped, and an unknown
+	# second name would go unchecked.
+	for value in $'winnow\nlintro' $'winnow\nunknown' $'winnow\tlintro'; do
+		: >"$MOCK_BREW_LOG"
+		export FORMULAS="$value"
+
+		run bash "$REPO_ROOT/scripts/ci/validate-formulas.sh"
+
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"FORMULAS must be space-separated names on one line"* ]]
+		! grep -q "^style " "$MOCK_BREW_LOG"
+		! grep -q "^install " "$MOCK_BREW_LOG"
+	done
+}

@@ -54,6 +54,12 @@ fi
 # by detect-formula-changes.sh for a push (#661). Unset or empty validates
 # every formula (pull requests, merge queue, dispatch, scheduled validation).
 FORMULAS="${FORMULAS:-}"
+# `read` stops at the first newline, so a value with a newline or any other
+# control character would silently drop names. Refuse it before installing.
+if [[ "$FORMULAS" =~ [[:cntrl:]] ]]; then
+	log_error "FORMULAS must be space-separated names on one line, without control characters"
+	exit 1
+fi
 read -r -a requested <<<"$FORMULAS"
 if [[ ${#requested[@]} -gt 0 ]]; then
 	formulas=()
