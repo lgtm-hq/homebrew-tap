@@ -24,16 +24,16 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.181.8/lintro-macos-arm64"
-      sha256 "9c1894f1cd82b969233ca707be0605d146fc712a1ad337efc8e85e00f355ba29"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.181.9/lintro-macos-arm64"
+      sha256 "016b6d24d7dc7ca282a36eb6f9efaad7fc62f535079f99f92ec19064ce152354"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv. Every Python dependency is a url+sha256
       # pinned resource below; nothing is resolved from PyPI at install time.
-      url "https://files.pythonhosted.org/packages/88/bc/6abbc71ad065bf111c4e02859e4cfe1f6b8fcf1ebe400c63e63b1c4e6ad3/lintro-0.181.8.tar.gz"
-      sha256 "b767f69d2a3fbc90f1fde93ca12d740a631c9b3de191fe060caaf3feb6693da4"
+      url "https://files.pythonhosted.org/packages/0a/5c/d26035ad514bda25155980fcd6265347901b576bd46e6dbe85f591cc7aaa/lintro-0.181.9.tar.gz"
+      sha256 "9ea040648758c701f7274cf5db0e565535619c5459976dad95802b0dc1615bdb"
 
       depends_on "rust" => :build
       depends_on "libyaml"
