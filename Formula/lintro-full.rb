@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/da/de/5ec4cc3783b7f7ff403975262f4d1182bf9709b86b31f0de11f18721f5bd/lintro-0.182.0.tar.gz"
-  sha256 "3596b0cb58f37712fc60baa480d7489291c22b49cbc17830048607edb576d215"
+  url "https://files.pythonhosted.org/packages/24/2c/5d8d23ec8f929b4e661075e4e7ff1191c9bd96539c1562e577cfe4f38f07/lintro-0.182.1.tar.gz"
+  sha256 "e141f489575e1639334d461c3386062868b71d933c9ee59b52dda9ea0dbdaf1d"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -158,8 +158,8 @@ class LintroFull < Formula
   end
 
   resource "pydantic" do
-    url "https://files.pythonhosted.org/packages/b4/fc/1203d011145c98ddce3cd2f505bb54375ef8d43223053df6bfcf3c746f46/pydantic-2.14.3.tar.gz"
-    sha256 "1054f237f4d4733e5a30e1e2333bd33a2004ab9ab1510bd053a9a31bb48e232d"
+    url "https://files.pythonhosted.org/packages/8e/25/3ec212432a6031b65f043eaca9c820ddf87c0d0aa330023e64f79fcb5db6/pydantic-2.14.4.tar.gz"
+    sha256 "7c19f1d46f8accf55a4617a6116e1ade64840870f397b846a2c53fb9019414ba"
   end
 
   resource "pygments" do
@@ -231,12 +231,12 @@ class LintroFull < Formula
   # pydantic-core requires Rust to build - use platform-specific wheels
   resource "pydantic-core" do
     on_arm do
-      url "https://files.pythonhosted.org/packages/90/a9/fc89a632331882c4cb91b949003418e6f5085ddcf2c9b875d499682bca91/pydantic_core-2.50.4-cp313-cp313-macosx_11_0_arm64.whl"
-      sha256 "1239daaf063e62213ca1f34d96663900bd7510c42a786e843fd328af70e46445"
+      url "https://files.pythonhosted.org/packages/6f/8a/53d7448d3e0c3fd8fb30621ef493e5340d6779f80cba2d515fc81915f96e/pydantic_core-2.50.5-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "639a51931869c0594d8723b2f529c547db1aa33dc9571d001dc205d896170c08"
     end
     on_intel do
-      url "https://files.pythonhosted.org/packages/1b/21/39f8d97e7ea8e3083606ee9bb1d7f3ec70ded780bb6a872aad76c7eb08b2/pydantic_core-2.50.4-cp313-cp313-macosx_10_12_x86_64.whl"
-      sha256 "0f87ae9db5ba8d8de40dcb93982cf8dd544e6552a80d3345af51941cc2146b80"
+      url "https://files.pythonhosted.org/packages/60/32/1a87aca62759be630ef981b735d732ffa17ec8defac0271fa7894a815f9c/pydantic_core-2.50.5-cp313-cp313-macosx_10_12_x86_64.whl"
+      sha256 "e5d5d77a9446f44688a5ef420d92c9facac0865ef5565215db54be184ab7906f"
     end
   end
   def install
