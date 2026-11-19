@@ -24,16 +24,16 @@ class Lintro < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.182.0/lintro-macos-arm64"
-      sha256 "1991d59629f09f0d534e50940c19da7889f207b3f511f70ab6ce9efb780726b9"
+      url "https://github.com/lgtm-hq/py-lintro/releases/download/v0.182.1/lintro-macos-arm64"
+      sha256 "67c5f641e2c80df45f91352a6b899ac8b1ed2a5eaf9175da92fa33d0b5eb8e03"
     end
     on_intel do
       # No x86_64 release binary is published (lgtm-hq/py-lintro#2579), so
       # Intel Macs install the same version from the PyPI sdist into a
       # Homebrew Python virtualenv. Every Python dependency is a url+sha256
       # pinned resource below; nothing is resolved from PyPI at install time.
-      url "https://files.pythonhosted.org/packages/da/de/5ec4cc3783b7f7ff403975262f4d1182bf9709b86b31f0de11f18721f5bd/lintro-0.182.0.tar.gz"
-      sha256 "3596b0cb58f37712fc60baa480d7489291c22b49cbc17830048607edb576d215"
+      url "https://files.pythonhosted.org/packages/24/2c/5d8d23ec8f929b4e661075e4e7ff1191c9bd96539c1562e577cfe4f38f07/lintro-0.182.1.tar.gz"
+      sha256 "e141f489575e1639334d461c3386062868b71d933c9ee59b52dda9ea0dbdaf1d"
 
       depends_on "rust" => :build
       depends_on "libyaml"
@@ -171,8 +171,8 @@ class Lintro < Formula
       end
 
       resource "pydantic" do
-        url "https://files.pythonhosted.org/packages/b4/fc/1203d011145c98ddce3cd2f505bb54375ef8d43223053df6bfcf3c746f46/pydantic-2.14.3.tar.gz"
-        sha256 "1054f237f4d4733e5a30e1e2333bd33a2004ab9ab1510bd053a9a31bb48e232d"
+        url "https://files.pythonhosted.org/packages/8e/25/3ec212432a6031b65f043eaca9c820ddf87c0d0aa330023e64f79fcb5db6/pydantic-2.14.4.tar.gz"
+        sha256 "7c19f1d46f8accf55a4617a6116e1ade64840870f397b846a2c53fb9019414ba"
       end
 
       resource "pygments" do
@@ -252,8 +252,8 @@ class Lintro < Formula
 
       # pydantic-core requires Rust to build - use platform-specific wheels
       resource "pydantic-core" do
-        url "https://files.pythonhosted.org/packages/1b/21/39f8d97e7ea8e3083606ee9bb1d7f3ec70ded780bb6a872aad76c7eb08b2/pydantic_core-2.50.4-cp313-cp313-macosx_10_12_x86_64.whl"
-        sha256 "0f87ae9db5ba8d8de40dcb93982cf8dd544e6552a80d3345af51941cc2146b80"
+        url "https://files.pythonhosted.org/packages/60/32/1a87aca62759be630ef981b735d732ffa17ec8defac0271fa7894a815f9c/pydantic_core-2.50.5-cp313-cp313-macosx_10_12_x86_64.whl"
+        sha256 "e5d5d77a9446f44688a5ef420d92c9facac0865ef5565215db54be184ab7906f"
       end
     end
   end
