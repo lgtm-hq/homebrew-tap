@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/40/65/435b47309ff222a3e210e1affa487c161b0f19f2e21b5f2b4b59a030243d/lintro-0.181.7.tar.gz"
-  sha256 "c8d36f3b666e5317a5f84283b5ce79840aca82725ed3135a248f71f8971ed61c"
+  url "https://files.pythonhosted.org/packages/88/bc/6abbc71ad065bf111c4e02859e4cfe1f6b8fcf1ebe400c63e63b1c4e6ad3/lintro-0.181.8.tar.gz"
+  sha256 "b767f69d2a3fbc90f1fde93ca12d740a631c9b3de191fe060caaf3feb6693da4"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -113,8 +113,8 @@ class LintroFull < Formula
   end
 
   resource "import-linter" do
-    url "https://files.pythonhosted.org/packages/f0/70/ac97afe41a04239a60c9d92fbe593294bf6501309d728af4a400e569d786/import_linter-2.16.tar.gz"
-    sha256 "c5bd0d38bdef46c7251120266b3bf72662bc8cd989a8fe461499936e12e8c6fa"
+    url "https://files.pythonhosted.org/packages/77/e1/2b459e6666297634e1f6461a51851eb50f64e571f4351cb4ad51fad312d5/import_linter-2.17.tar.gz"
+    sha256 "74a4640c96b71965624d296508c3274655d3e4c2593c27b8330dd0570ebd6886"
   end
 
   resource "loguru" do
@@ -153,8 +153,8 @@ class LintroFull < Formula
   end
 
   resource "platformdirs" do
-    url "https://files.pythonhosted.org/packages/d7/9a/8475be631fb33ca1466915e70fd594c42a4e84b512db650eaa14f90fe75d/platformdirs-4.14.5.tar.gz"
-    sha256 "32e9921db7385aa8169bee4fe9501923e5715ba9fb7ea3b9c69b0d8e0639f7a1"
+    url "https://files.pythonhosted.org/packages/a6/2c/ec57eede0db493e61443c76ac7b4d24e94a24050afb3d598bf3678487f75/platformdirs-4.14.7.tar.gz"
+    sha256 "5472257c1cf97a14658af52997011c7e59e4aebf3a24950b973c11b579e1b074"
   end
 
   resource "pydantic" do
