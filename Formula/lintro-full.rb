@@ -8,8 +8,8 @@ class LintroFull < Formula
 
   desc "Unified CLI for code quality (all tools included)"
   homepage "https://github.com/lgtm-hq/py-lintro"
-  url "https://files.pythonhosted.org/packages/81/03/aa47e3c2cf2f0e1d346279bfb9c579b139b70c12f881743ee85a850841c2/lintro-0.182.5.tar.gz"
-  sha256 "df089d94d11b4baabbbcfb4c7fd7088a5969b2052d65a6f83a2bf351dc774f24"
+  url "https://files.pythonhosted.org/packages/22/35/8f321bdd9276237bd8dfcdd0f09a7380a20b168945446f24b0e1c9b16326/lintro-0.182.6.tar.gz"
+  sha256 "9fd79330d7ed0a94df528bbb3d9d2aafde14c82d19387ed1ae3b6159735462f8"
   license "MIT"
   head "https://github.com/lgtm-hq/py-lintro.git", branch: "main"
 
@@ -153,8 +153,8 @@ class LintroFull < Formula
   end
 
   resource "platformdirs" do
-    url "https://files.pythonhosted.org/packages/a6/2c/ec57eede0db493e61443c76ac7b4d24e94a24050afb3d598bf3678487f75/platformdirs-4.14.7.tar.gz"
-    sha256 "5472257c1cf97a14658af52997011c7e59e4aebf3a24950b973c11b579e1b074"
+    url "https://files.pythonhosted.org/packages/71/18/0b0d99f5bf164f04a7a9534c3dbdbe4d5fd2b382667685ad40c192c4d3d1/platformdirs-4.14.8.tar.gz"
+    sha256 "96893d686e84e9e6f358a9ea41a8de544df66dbf2ba6cda250e7dc73acf85b9b"
   end
 
   resource "pydantic" do
