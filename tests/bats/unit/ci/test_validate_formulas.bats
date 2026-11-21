@@ -9,6 +9,7 @@ setup() {
 	setup_temp_dir
 	REPO_ROOT="$(repo_root)"
 	mock_brew "$TEST_TEMP_DIR/mock-bin"
+	unset FORMULAS
 	# lintro and lintro-full declare conflicts_with each other (#144): the
 	# mock refuses to install one while the other is still installed.
 	export MOCK_BREW_CONFLICTS="lintro:lintro-full"
@@ -246,4 +247,71 @@ log_line_number() {
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"without any findings to evaluate"* ]]
 	grep -q "^uninstall --force lintro-full$" "$MOCK_BREW_LOG"
+}
+
+# =============================================================================
+# FORMULAS selection (#661)
+# =============================================================================
+
+@test "validate-formulas: FORMULAS validates only the named formulas" {
+	export FORMULAS="winnow"
+
+	run bash "$REPO_ROOT/scripts/ci/validate-formulas.sh"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Validating selected formulas: winnow"* ]]
+	grep -q "^install --build-from-source local/test-tap/winnow$" "$MOCK_BREW_LOG"
+	! grep -q "^install --build-from-source local/test-tap/lintro" "$MOCK_BREW_LOG"
+	! grep -q "^style .*lintro" "$MOCK_BREW_LOG"
+}
+
+@test "validate-formulas: FORMULAS with a shared config's formulas" {
+	export FORMULAS="lintro lintro-full"
+
+	run bash "$REPO_ROOT/scripts/ci/validate-formulas.sh"
+
+	[ "$status" -eq 0 ]
+	grep -q "^test local/test-tap/lintro$" "$MOCK_BREW_LOG"
+	grep -q "^test local/test-tap/lintro-full$" "$MOCK_BREW_LOG"
+	! grep -q "local/test-tap/winnow" "$MOCK_BREW_LOG"
+}
+
+@test "validate-formulas: empty FORMULAS validates every formula" {
+	export FORMULAS=""
+
+	run bash "$REPO_ROOT/scripts/ci/validate-formulas.sh"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Validating every formula"* ]]
+	for formula in "$REPO_ROOT"/Formula/*.rb; do
+		name="$(basename "$formula" .rb)"
+		grep -q "^test local/test-tap/${name}$" "$MOCK_BREW_LOG"
+	done
+}
+
+@test "validate-formulas: an unknown FORMULAS entry fails" {
+	export FORMULAS="winnow ../escape"
+
+	run bash "$REPO_ROOT/scripts/ci/validate-formulas.sh"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Requested formula not found: Formula/../escape.rb"* ]]
+	! grep -q "^install " "$MOCK_BREW_LOG"
+}
+
+@test "validate-formulas: FORMULAS with a newline fails before installing" {
+	local value
+	# `read` stops at the newline: lintro would be dropped, and an unknown
+	# second name would go unchecked.
+	for value in $'winnow\nlintro' $'winnow\nunknown' $'winnow\tlintro'; do
+		: >"$MOCK_BREW_LOG"
+		export FORMULAS="$value"
+
+		run bash "$REPO_ROOT/scripts/ci/validate-formulas.sh"
+
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"FORMULAS must be space-separated names on one line"* ]]
+		! grep -q "^style " "$MOCK_BREW_LOG"
+		! grep -q "^install " "$MOCK_BREW_LOG"
+	done
 }
