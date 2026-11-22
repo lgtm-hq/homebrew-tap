@@ -124,8 +124,8 @@ log_line_number() {
 	[[ "$output" == *"brew install failed for local/test-tap/lintro-full"* ]]
 	[[ "$output" == *"Validation failed: lintro-full does not install"* ]]
 	# Nothing after the failed install runs for that formula.
-	! grep -q "^audit --strict --online local/test-tap/lintro-full$" "$MOCK_BREW_LOG"
-	! grep -q "^test local/test-tap/lintro-full$" "$MOCK_BREW_LOG"
+	! grep -q "^audit --strict --online local/test-tap/lintro-full$" "$MOCK_BREW_LOG" || false
+	! grep -q "^test local/test-tap/lintro-full$" "$MOCK_BREW_LOG" || false
 }
 
 @test "validate-formulas: runs brew audit --strict --online on every formula" {
@@ -261,8 +261,8 @@ log_line_number() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Validating selected formulas: winnow"* ]]
 	grep -q "^install --build-from-source local/test-tap/winnow$" "$MOCK_BREW_LOG"
-	! grep -q "^install --build-from-source local/test-tap/lintro" "$MOCK_BREW_LOG"
-	! grep -q "^style .*lintro" "$MOCK_BREW_LOG"
+	! grep -q "^install --build-from-source local/test-tap/lintro" "$MOCK_BREW_LOG" || false
+	! grep -q "^style .*lintro" "$MOCK_BREW_LOG" || false
 }
 
 @test "validate-formulas: FORMULAS with a shared config's formulas" {
@@ -273,7 +273,7 @@ log_line_number() {
 	[ "$status" -eq 0 ]
 	grep -q "^test local/test-tap/lintro$" "$MOCK_BREW_LOG"
 	grep -q "^test local/test-tap/lintro-full$" "$MOCK_BREW_LOG"
-	! grep -q "local/test-tap/winnow" "$MOCK_BREW_LOG"
+	! grep -q "local/test-tap/winnow" "$MOCK_BREW_LOG" || false
 }
 
 @test "validate-formulas: empty FORMULAS validates every formula" {
@@ -296,7 +296,7 @@ log_line_number() {
 
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"Requested formula not found: Formula/../escape.rb"* ]]
-	! grep -q "^install " "$MOCK_BREW_LOG"
+	! grep -q "^install " "$MOCK_BREW_LOG" || false
 }
 
 @test "validate-formulas: FORMULAS with a newline fails before installing" {
@@ -311,7 +311,7 @@ log_line_number() {
 
 		[ "$status" -ne 0 ]
 		[[ "$output" == *"FORMULAS must be space-separated names on one line"* ]]
-		! grep -q "^style " "$MOCK_BREW_LOG"
-		! grep -q "^install " "$MOCK_BREW_LOG"
+		! grep -q "^style " "$MOCK_BREW_LOG" || false
+		! grep -q "^install " "$MOCK_BREW_LOG" || false
 	done
 }
