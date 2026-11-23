@@ -8,8 +8,8 @@ class Winnow < Formula
 
   desc "Organize, deduplicate, and keep the best from your media library"
   homepage "https://github.com/lgtm-hq/winnow"
-  url "https://files.pythonhosted.org/packages/98/90/0e264d996b79cbc677175df9270b3700863e2a586ccdcd965abeb0903ceb/winnow_media-0.37.13.tar.gz"
-  sha256 "be4c73b3fd26b39b3532c03b51d084416f0d7c6abf5c840188568d93e7a2e7df"
+  url "https://files.pythonhosted.org/packages/32/31/8cb56ce441f1c3bbe79f304c1ef5249b43db8fb05c12923aefb259a98836/winnow_media-0.37.14.tar.gz"
+  sha256 "57093a00ec285f0911d8159e052811ec3dec7d97f2ae91c8fa67e03c851ff381"
   license "MIT"
 
   livecheck do
@@ -61,19 +61,14 @@ class Winnow < Formula
     sha256 "bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"
   end
 
-  resource "mutagen" do
-    url "https://files.pythonhosted.org/packages/df/70/1675da133ea92227da41bf5b24e1c66be597ff736a1533ade41da986852f/mutagen-1.48.1.tar.gz"
-    sha256 "8f95637ab9f6f305cec6bd1294e197debe207998e3e068596563c74f86b0a173"
-  end
-
   resource "puremagic" do
     url "https://files.pythonhosted.org/packages/a7/8d/4d60110e23f445e2dc106340f9bd5f422bb6c540f4fb21086d3ee44b52ab/puremagic-2.3.0.tar.gz"
     sha256 "b54e4a69dd37c50bacc879380f132382ab4e9a935529628c8975abcc73e10640"
   end
 
   resource "pydantic" do
-    url "https://files.pythonhosted.org/packages/b4/fc/1203d011145c98ddce3cd2f505bb54375ef8d43223053df6bfcf3c746f46/pydantic-2.14.3.tar.gz"
-    sha256 "1054f237f4d4733e5a30e1e2333bd33a2004ab9ab1510bd053a9a31bb48e232d"
+    url "https://files.pythonhosted.org/packages/8e/25/3ec212432a6031b65f043eaca9c820ddf87c0d0aa330023e64f79fcb5db6/pydantic-2.14.4.tar.gz"
+    sha256 "7c19f1d46f8accf55a4617a6116e1ade64840870f397b846a2c53fb9019414ba"
   end
 
   resource "pygments" do
@@ -89,11 +84,6 @@ class Winnow < Formula
   resource "ruamel-yaml" do
     url "https://files.pythonhosted.org/packages/c7/3b/ebda527b56beb90cb7652cb1c7e4f91f48649fbcd8d2eb2fb6e77cd3329b/ruamel_yaml-0.19.1.tar.gz"
     sha256 "53eb66cd27849eff968ebf8f0bf61f46cdac2da1d1f3576dd4ccee9b25c31993"
-  end
-
-  resource "tinytag" do
-    url "https://files.pythonhosted.org/packages/38/0f/fae085b7f19fe0c67b68e6d70098ac6cd046cc498f253f5ee56a3dd03bbc/tinytag-2.3.2.tar.gz"
-    sha256 "021d711cdbdbf840d3b67b976cb34dadc58d2fcfd490eb74ef9602b37b991414"
   end
 
   resource "tomli" do
@@ -147,12 +137,12 @@ class Winnow < Formula
   # pydantic_core requires Rust to build - use platform-specific wheels
   resource "pydantic-core" do
     on_arm do
-      url "https://files.pythonhosted.org/packages/90/a9/fc89a632331882c4cb91b949003418e6f5085ddcf2c9b875d499682bca91/pydantic_core-2.50.4-cp313-cp313-macosx_11_0_arm64.whl"
-      sha256 "1239daaf063e62213ca1f34d96663900bd7510c42a786e843fd328af70e46445"
+      url "https://files.pythonhosted.org/packages/6f/8a/53d7448d3e0c3fd8fb30621ef493e5340d6779f80cba2d515fc81915f96e/pydantic_core-2.50.5-cp313-cp313-macosx_11_0_arm64.whl"
+      sha256 "639a51931869c0594d8723b2f529c547db1aa33dc9571d001dc205d896170c08"
     end
     on_intel do
-      url "https://files.pythonhosted.org/packages/1b/21/39f8d97e7ea8e3083606ee9bb1d7f3ec70ded780bb6a872aad76c7eb08b2/pydantic_core-2.50.4-cp313-cp313-macosx_10_12_x86_64.whl"
-      sha256 "0f87ae9db5ba8d8de40dcb93982cf8dd544e6552a80d3345af51941cc2146b80"
+      url "https://files.pythonhosted.org/packages/60/32/1a87aca62759be630ef981b735d732ffa17ec8defac0271fa7894a815f9c/pydantic_core-2.50.5-cp313-cp313-macosx_10_12_x86_64.whl"
+      sha256 "e5d5d77a9446f44688a5ef420d92c9facac0865ef5565215db54be184ab7906f"
     end
   end
   # pywavelets requires native compilation - use platform-specific wheels
